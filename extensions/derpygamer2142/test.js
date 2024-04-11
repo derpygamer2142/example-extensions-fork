@@ -106,10 +106,46 @@
 
         }
 
+        genBlock (util,thread,blocks,block) {
+            let output = []
+            let heldInputs = structuredClone(blocks[block].inputs)
+                
+            if (heldInputs.hasOwnProperty("SUBSTACK")) {
+                delete heldInputs.SUBSTACK // this is a quick fix and probably won't play well with other extensions.
+                // i will make a custom math/block system later
+            }
+            if (heldInputs.hasOwnProperty("SUBSTACK2")) {
+                delete heldInputs.SUBSTACK2 // see previous comment
+            }
+            if (JSON.stringify(heldInputs) != JSON.stringify({})) {
+                // if the block takes inputs excluding SUBSTACK and SUBSTACK2, generate an input tree for it
+                output.push(Object.getOwnPropertyNames(heldInputs).length)
+                for (let i = 0; i < Object.getOwnPropertyNames(heldInputs).length; i++) {
+                    output.push(this.genInputTree(util,thread,blocks,heldInputs[Object.getOwnPropertyNames(heldInputs)[i]].block,true))
+                }
+            }
+            else {
+                console.log(JSON.stringify(heldInputs) + " does not require a tree")
+            }
+            if (blocks[block].inputs.hasOwnProperty("SUBSTACK")) {
+                output.push(this.compile(util,thread,blocks,blocks[block].inputs.SUBSTACK.block,true))
+            }
+            if (blocks[block].inputs.hasOwnProperty("SUBSTACK2")) {
+                // support for n-number of branches is cringe and we don't need that kind of negativity in here
+                // also no extensions in my pristine compiled hats
+                if (!blocks[block].inputs.hasOwnProperty("SUBSTACK")) {
+                    output.push([])
+                }
+                output.push("else")
+                output.push(this.compile(util,thread,blocks,blocks[block].inputs.SUBSTACK2.block,true))
+            }
+            return output
+        }
+
         compile (util,thread,blocks,firstblock,addStart) {
             let output = []
             let held = firstblock
-            if (addStart) { output.push(blocks[held].opcode) }
+            if (addStart) { output = output.concat(this.genBlock(util,thread,blocks,held)) }
             let next = blocks[held].next
             while (next != null) {
                 held = next
@@ -130,6 +166,9 @@
                     for (let i = 0; i < Object.getOwnPropertyNames(heldInputs).length; i++) {
                         output.push(this.genInputTree(util,thread,blocks,heldInputs[Object.getOwnPropertyNames(heldInputs)[i]].block,true))
                     }
+                }
+                else {
+                    console.log(JSON.stringify(heldInputs) + " does not require a tree")
                 }
                 if (blocks[held].inputs.hasOwnProperty("SUBSTACK")) {
                     output.push(this.compile(util,thread,blocks,blocks[held].inputs.SUBSTACK.block,true))
