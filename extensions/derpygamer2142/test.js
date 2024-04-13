@@ -6,15 +6,14 @@
 
 (function(Scratch) {
     'use strict';
-
-    const vm = Scratch.vm
+    let toAdd = document.createElement("script")
     
+    const vm = Scratch.vm
     if (!Scratch.extensions.unsandboxed) {
         throw new Error("This extension must run unsandboxed.")
     }
     class DerpysExtension {
         getInfo() {
-            this.runs = 1
             return {
                 id: "yourmother",
                 name: "uhhh idk",
@@ -69,7 +68,7 @@
         ablock(args, util) {
             //console.log(Scratch, util, vm)
             util.thread.tryCompile()
-            console.log(util)
+            console.log(vm)
             let script = util.thread
             //console.log(script) // script[Object.getOwnPropertyNames(script)[0]].value.startingFunction
             return 1
@@ -98,7 +97,7 @@
                 let inputs = Object.getOwnPropertyNames(blocks[check].inputs)
                 finalinputs.push(inputs.length)
                 for (let i = 0; i < inputs.length; i++) {
-                    finalinputs.push(this.genInputTree(util, thread, blocks, blocks[check].inputs[inputs[i]].block,false))
+                    finalinputs.push(this.genInputTree(util, thread, blocks, blocks[check].inputs[inputs[i]].block,true))
                 }
                 return finalinputs
             }
@@ -109,7 +108,7 @@
         genBlock (util,thread,blocks,block) {
             let output = []
             let heldInputs = structuredClone(blocks[block].inputs)
-                
+            output.push(blocks[block].opcode)
             if (heldInputs.hasOwnProperty("SUBSTACK")) {
                 delete heldInputs.SUBSTACK // this is a quick fix and probably won't play well with other extensions.
                 // i will make a custom math/block system later
@@ -196,7 +195,9 @@
             console.log(this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false))
         }
 
-
+        declareVar (args, util) {
+            // this block does nothing <3
+        }
         
     }
     Scratch.extensions.register(new DerpysExtension())
