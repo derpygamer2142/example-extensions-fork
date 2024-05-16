@@ -4,7 +4,7 @@
 // By: derpygamer2142 <https://scratch.mit.edu/users/insanetaco2000/>
 // License: MIT
 
-(function(Scratch) {
+(async function(Scratch) {
     'use strict';
     let toAdd = document.createElement("script")
     
@@ -12,7 +12,19 @@
     if (!Scratch.extensions.unsandboxed) {
         throw new Error("This extension must run unsandboxed.")
     }
+    // @ts-ignore
+    if (!navigator.gpu) { // why angry red lines >: (
+        throw new Error("WebGPU is not supported.")
+    }
+    // @ts-ignore
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) {
+        throw Error("Failed to get WebGPU adapter.");
+    }
+    const device = await adapter.requestDevice();
+
     class DerpysExtension {
+
         getInfo() {
             return {
                 id: "yourmother",
@@ -52,6 +64,16 @@
                                 type: Scratch.ArgumentType.STRING
                             },
                             VALUE: {
+                                type: Scratch.ArgumentType.STRING
+                            }
+                        }
+                    },
+                    {
+                        opcode: "runGPU",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Run [CODE] on the gpu",
+                        arguments: {
+                            CODE: {
                                 type: Scratch.ArgumentType.STRING
                             }
                         }
@@ -199,6 +221,39 @@
             // this block does nothing <3
         }
         
+        runGPU (args, util) {
+            const shader = device.createShaderModule({
+                code: args.CODE
+            })
+            console.log("yay")
+                /*
+                
+struct VertexOut {
+  @builtin(position) position : vec4f,
+  @location(0) color : vec4f
+}
+
+@vertex
+fn vertex_main(@location(0) position: vec4f,
+               @location(1) color: vec4f) -> VertexOut
+{
+  var output : VertexOut;
+  output.position = position;
+  output.color = color;
+  return output;
+}
+
+@fragment
+fn fragment_main(fragData: VertexOut) -> @location(0) vec4f
+{
+  return fragData.color;
+}
+
+
+                */
+            
+        }
     }
+    // @ts-ignore
     Scratch.extensions.register(new DerpysExtension())
 })(Scratch);
