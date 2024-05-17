@@ -222,36 +222,156 @@
         }
         
         runGPU (args, util) {
-            const shader = device.createShaderModule({
-                code: args.CODE
-            })
-            console.log("yay")
-                /*
-                
-struct VertexOut {
-  @builtin(position) position : vec4f,
-  @location(0) color : vec4f
-}
 
-@vertex
-fn vertex_main(@location(0) position: vec4f,
-               @location(1) color: vec4f) -> VertexOut
-{
-  var output : VertexOut;
-  output.position = position;
-  output.color = color;
-  return output;
-}
+                // Define global buffer size
+            const BUFFER_SIZE = 1000;
 
-@fragment
-fn fragment_main(fragData: VertexOut) -> @location(0) vec4f
-{
-  return fragData.color;
-}
+            const shader = `
+            @group(0) @binding(0)
+            var<storage, read_write> output: array<f32>;
 
+            @compute @workgroup_size(64)
+            fn main(
+            @builtin(global_invocation_id)
+            global_id : vec3u,
 
-                */
+            @builtin(local_invocation_id)
+            local_id : vec3u,
+            ) {
+            // Avoid accessing the buffer out of bounds
+            if (global_id.x >= ${BUFFER_SIZE}) {
+                return;
+            }
+
+            output[global_id.x] =
+                f32(global_id.x) * 1000. + f32(local_id.x);
+            }
+            `;
+            const output = device.createBuffer({
+                size: BUFFER_SIZE,
+                // @ts-ignore
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+            });
             
+            const stagingBuffer = device.createBuffer({
+                size: BUFFER_SIZE,
+                // @ts-ignore
+                usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+            });
+
+            const shaderModule = device.createShaderModule({
+                code: shader,
+            })
+
+            const bindGroupLayout = device.createBindGroupLayout({
+            entries: [
+                {
+                binding: 0,
+                // @ts-ignore
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: {
+                    type: "storage",
+                },
+                },
+            ],
+            });
+
+            const bindGroup = device.createBindGroup({
+            layout: bindGroupLayout,
+            entries: [
+                {
+                binding: 0,
+                resource: {
+                    buffer: output,
+                },
+                },
+            ],
+            });
+            
+            const computePipeline = device.createComputePipeline({
+            layout: device.createPipelineLayout({
+                bindGroupLayouts: [bindGroupLayout],
+            }),
+            compute: {
+                module: shaderModule,
+                entryPoint: "main",
+            },
+            });
+            
+            // @ts-ignore
+            const commandEncoder = device.createCommandEncoder();
+            // @ts-ignore
+            const passEncoder = commandEncoder.beginComputePass()
+            passEncoder.setPipeline(computePipeline);
+            passEncoder.setBindGroup(0, bindGroup);
+            passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / 64));
+
+            passEncoder.end();
+
+            // Copy output buffer to staging buffer
+            commandEncoder.copyBufferToBuffer(
+                output,
+                0, // Source offset
+                stagingBuffer,
+                0, // Destination offset
+                BUFFER_SIZE,
+            );
+            
+            // End frame by passing array of command buffers to command queue for execution
+            device.queue.submit([commandEncoder.finish()]);
+    
+            // map staging buffer to read results back to JS
+            // let data = ["you done messed up"]
+            // stagingBuffer.mapAsync(
+            //     // @ts-ignore
+            //     GPUMapMode.READ,
+            //     0, // Offset
+            //     BUFFER_SIZE, // Length
+            // ).then((value) => {
+            //     const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE)
+            //     data = copyArrayBuffer.slice()
+            //     stagingBuffer.unmap();
+            // },
+            // (reason) => {
+            //     console.log(reason)
+            // })
+            
+            
+            
+            // console.log(new Float32Array(data));
+
+
+            
+            // map staging buffer to read results back to JS
+            stagingBuffer.mapAsync(
+                // @ts-ignore
+                GPUMapMode.READ,
+                0, // Offset
+                BUFFER_SIZE, // Length
+            ).then((value) => {
+                const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE)
+                const data = copyArrayBuffer.slice();
+                stagingBuffer.unmap();
+                console.log(new Float32Array(data));
+            });
+            
+            // const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE);
+            // const data = copyArrayBuffer.slice();
+            // stagingBuffer.unmap();
+            // console.log(new Float32Array(data));
+            
+  
+
+            // notes:
+            /*
+            most of this can stay the same across multiple modules, the only things that might change
+            are the different input buffers and their usage, but that can probably be generated
+            fairly easily
+
+            this documentation is horrible, i'm fairly sure the writer forgot they were writing about
+            compute shaders halfway through and then just decided to talk about render shaders
+
+            */
         }
     }
     // @ts-ignore
