@@ -96,6 +96,26 @@
                     },
 
                     {
+                        opcode: "tSetPath",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "T: Set path [KEY] to [VALUE] in [NAME]",
+                        arguments: {
+                            KEY: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "key1/key2/key3"
+                            },
+                            VALUE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "value"
+                            },
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            }
+                        }
+                    },
+
+                    {
                         opcode: "tSetJ",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "T: Set [KEY] to [VALUE] in [NAME]",
@@ -215,7 +235,59 @@
                             },
                             ITEM: {
                                 type: Scratch.ArgumentType.STRING,
+                                defaultValue: "item3"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "tConcat",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "T: In array [NAME] concat [NAME2]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
                                 defaultValue: "someID"
+                            },
+                            NAME2: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "anotherID"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "tGetA",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "T: In array [NAME] get [ITEM]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            },
+                            ITEM: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 2
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "tSetA",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "T: In array [NAME] set [INDEX] to [ITEM]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            },
+                            ITEM: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "item"
+                            },
+                            INDEX: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 2
                             }
                         }
                     }
@@ -239,7 +311,7 @@
         tParseJ(args, util) {
             //console.log(Scratch, util, vm)
             const thread = util.thread.topBlock
-            let parsed = {}
+            let parsed = {"error":true}
             try {
                 // there's probably a more efficient way to do this part
                 parsed = JSON.parse(Scratch.Cast.toString(args.DATA))
@@ -358,6 +430,24 @@
             return JSON.stringify(tjson[thread][args.NAME])
         }
 
+        tSetPath(args, util) {
+            const thread = util.thread.topBlock
+            if (!tjson.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if (!tjson[thread].hasOwnProperty(args.NAME)) {
+                return "JSON not found!"
+            }
+            const e = args.KEY.split("/")
+            const path = e.slice(0,e.length-1)
+            let j = tjson[thread][args.NAME]
+            path.forEach((i) => {
+                console.log(j, i)
+                j = j[i]
+            })
+            j[e[e.length-1]] = this.isJson(args.VALUE) ?? args.VALUE
+        }
+
         tParseArray(args, util) {
             // this is the same as tParseJ but with a different variable
             const thread = util.thread.topBlock
@@ -378,9 +468,49 @@
         tPush(args, util) {
             const thread = util.thread.topBlock
             if (!tarray.hasOwnProperty(thread)) {
-                tarray[thread] = {}
+                return "Thread not found!"
             }
-            tjson[thread][args.NAME].push(args.ITEM)
+            tarray[thread][args.NAME].push(args.ITEM)
+        }
+
+        tConcat(args, util) {
+            const thread = util.thread.topBlock
+            if (!tarray.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if ((!tarray[thread].hasOwnProperty(args.NAME)) || (!tarray[thread].hasOwnProperty(args.NAME2))) {
+                return "Array not found!"
+            }
+            tarray[thread][args.NAME] = tarray[thread][args.NAME].concat(tarray[thread][args.NAME2])
+        }
+
+        tGetA(args, util) {
+            const thread = util.thread.topBlock
+            if (!tarray.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if ((!tarray[thread].hasOwnProperty(args.NAME))) {
+                return "Array not found!"
+            }
+            if (args.ITEM >= tarray[thread][args.NAME].length) {
+                return "Out of range!"
+            }
+            return tarray[thread][args.NAME][args.ITEM]
+        }
+
+        tSetA(args, util) {
+            const thread = util.thread.topBlock
+            if (!tarray.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if ((!tarray[thread].hasOwnProperty(args.NAME))) {
+                return "Array not found!"
+            }
+            args.INDEX = Scratch.Cast.toNumber(args.INDEX)
+            if (args.INDEX >= tarray[thread][args.NAME].length) {
+                return "Out of range!"
+            }
+            tarray[thread][args.NAME][args.INDEX] = args.ITEM
         }
 
         debug(args, util) {
