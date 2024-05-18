@@ -227,7 +227,7 @@
                     {
                         opcode: "tPush",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "T: In array [NAME] add [ITEM]",
+                        text: "T: In array [NAME] add [ITEM] | is json [ISJ]",
                         arguments: {
                             NAME: {
                                 type: Scratch.ArgumentType.STRING,
@@ -236,6 +236,10 @@
                             ITEM: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "item3"
+                            },
+                            ISJ: {
+                                type: Scratch.ArgumentType.BOOLEAN,
+                                defaultValue: false
                             }
                         }
                     },
@@ -259,7 +263,7 @@
                     {
                         opcode: "tGetA",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "T: In array [NAME] get [ITEM]",
+                        text: "T: In array [NAME] get [ITEM]", // this says item instead of index, idrc though
                         arguments: {
                             NAME: {
                                 type: Scratch.ArgumentType.STRING,
@@ -275,7 +279,7 @@
                     {
                         opcode: "tSetA",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "T: In array [NAME] set [INDEX] to [ITEM]",
+                        text: "T: In array [NAME] set [INDEX] to [ITEM] | is json [ISJ]",
                         arguments: {
                             NAME: {
                                 type: Scratch.ArgumentType.STRING,
@@ -288,8 +292,147 @@
                             INDEX: {
                                 type: Scratch.ArgumentType.NUMBER,
                                 defaultValue: 2
+                            },
+                            ISJ: {
+                                type: Scratch.ArgumentType.BOOLEAN,
+                                defaultValue: false
                             }
                         }
+                    },
+
+                    {
+                        opcode: "tRawA",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "T: Get raw array [NAME]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "tDeleteA",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "T: In array [NAME] delete [INDEX]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            },
+                            INDEX: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 2
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "tRawA",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "T: Get array [NAME] as raw",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "tLength",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "T: Length of array [NAME]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "tIndexOf",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "T: Index of [ITEM] in [NAME]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            },
+                            ITEM: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "item"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "tContains",
+                        blockType: Scratch.BlockType.BOOLEAN,
+                        text: "T: Array [NAME] contains [ITEM]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            },
+                            ITEM: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "item"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "tSlice",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "T: Get from [INDEX1] to [INDEX2] in array [NAME]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            },
+                            INDEX1: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 1
+                            },
+                            INDEX2: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 2
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "tInsert",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "T: Insert [ITEM] at [INDEX] in array [NAME] | is json [ISJ]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someID"
+                            },
+                            ITEM: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "item"
+                            },
+                            INDEX: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 1
+                            },
+                            ISJ: {
+                                type: Scratch.ArgumentType.BOOLEAN,
+                                defaultValue: false
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "nothing",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "do nothing"
+                        
                     }
                 ]
             };
@@ -336,7 +479,10 @@
             }
             const v = tjson[thread][args.NAME]
             if (v.hasOwnProperty([args.KEY])) {
-                return v[args.KEY]
+                if (typeof v[args.KEY] === "object") {
+                    return JSON.stringify(v[args.KEY])
+                }
+                return  
             }
         }
 
@@ -352,7 +498,7 @@
             const p = args.KEY.split("/") // path
             p.forEach((i) => {
                 if (j.hasOwnProperty(i)) {
-                    j = j.i // go to the next part of the path
+                    j = j[i] // go to the next part of the path
                 }
                 else {
                     return "Invalid path!"
@@ -367,7 +513,7 @@
             v[args.KEY] = this.isJson(args.VALUE) ?? args.VALUE // the nullish coalescing operator scares me
             // spelled that first try 💪
             
-            console.log(tjson)
+            //console.log(tjson)
         }
 
         tDelete(args, util) {
@@ -442,7 +588,7 @@
             const path = e.slice(0,e.length-1)
             let j = tjson[thread][args.NAME]
             path.forEach((i) => {
-                console.log(j, i)
+                //console.log(j, i)
                 j = j[i]
             })
             j[e[e.length-1]] = this.isJson(args.VALUE) ?? args.VALUE
@@ -470,7 +616,7 @@
             if (!tarray.hasOwnProperty(thread)) {
                 return "Thread not found!"
             }
-            tarray[thread][args.NAME].push(args.ITEM)
+            tarray[thread][args.NAME].push(args.ISJ ? this.isJson(args.ITEM) : args.ITEM) // undefined is falsy i think, so i probably don't need to cast it
         }
 
         tConcat(args, util) {
@@ -495,7 +641,8 @@
             if (args.ITEM >= tarray[thread][args.NAME].length) {
                 return "Out of range!"
             }
-            return tarray[thread][args.NAME][args.ITEM]
+            let e = tarray[thread][args.NAME][args.ITEM]
+            return (typeof e === "object") ? JSON.stringify(e) : e
         }
 
         tSetA(args, util) {
@@ -510,11 +657,95 @@
             if (args.INDEX >= tarray[thread][args.NAME].length) {
                 return "Out of range!"
             }
-            tarray[thread][args.NAME][args.INDEX] = args.ITEM
+            tarray[thread][args.NAME][args.INDEX] = args.ISJ ? this.isJson(args.ITEM) : args.ITEM
         }
 
         debug(args, util) {
             console.log(tjson, tarray)
+            //console.log("wow")
+        }
+
+        nothing(args, util) {
+            // nothing
+        }
+
+        tRawA(args, util) {
+            const thread = util.thread.topBlock
+            if (!tarray.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if (!tarray[thread].hasOwnProperty(args.NAME)) {
+                return "Array not found!"
+            }
+            return JSON.stringify(tarray[thread][args.NAME])
+        }
+
+        tDeleteA(args, util) {
+            const thread = util.thread.topBlock
+            if (!tarray.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if (!tarray[thread].hasOwnProperty(args.NAME)) {
+                return "Array not found!"
+            }
+            if (args.INDEX < tarray[thread][args.NAME].length) {
+                delete tarray[thread][args.NAME][args.INDEX]
+            }
+        }
+
+        tLength(args, util) {
+            const thread = util.thread.topBlock
+            if (!tarray.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if (!tarray[thread].hasOwnProperty(args.NAME)) {
+                return "Array not found!"
+            }
+            return tarray[thread][args.NAME].length
+        }
+
+        tIndexOf(args, util) {
+            const thread = util.thread.topBlock
+            if (!tarray.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if (!tarray[thread].hasOwnProperty(args.NAME)) {
+                return "Array not found!"
+            }
+            return tarray[thread][args.NAME].indexOf(args.ITEM) // this might be wrong 
+        }
+
+        tContains(args, util) {
+            const thread = util.thread.topBlock
+            if (!tarray.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if (!tarray[thread].hasOwnProperty(args.NAME)) {
+                return "Array not found!"
+            }
+            return tarray[thread][args.NAME].includes(args.ITEM)
+        }
+
+        tSlice(args, util) {
+            const thread = util.thread.topBlock
+            if (!tarray.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if (!tarray[thread].hasOwnProperty(args.NAME)) {
+                return "Array not found!"
+            }
+            return JSON.stringify(tarray[thread][args.NAME].slice(Scratch.Cast.toNumber(args.INDEX1),Scratch.Cast.toNumber(args.INDEX2)))
+        }
+
+        tInsert(args, util) {
+            const thread = util.thread.topBlock
+            if (!tarray.hasOwnProperty(thread)) {
+                return "Thread not found!"
+            }
+            if (!tarray[thread].hasOwnProperty(args.NAME)) {
+                return "Array not found!"
+            }
+            tarray[thread][args.NAME].splice(Scratch.Cast.toNumber(args.INDEX),0, args.ISJ ? this.isJson(args.ITEM) : args.ITEM)
         }
     }
     // @ts-ignore
