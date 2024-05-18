@@ -1,5 +1,5 @@
-// Name: test
-// ID: uhhhidk
+// Name: cooler json extension
+// ID: coolerjson
 // Description: your mother.
 // By: derpygamer2142 <https://scratch.mit.edu/users/insanetaco2000/>
 // License: MIT
@@ -33,8 +33,8 @@
 
         getInfo() {
             return {
-                id: "yourmother",
-                name: "uhhh idk",
+                id: "coolerjson",
+                name: "the cooler json",
 
                 color1: "#4287f5",
                 color2: "#166af2",
@@ -98,7 +98,7 @@
                     {
                         opcode: "tSetPath",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "T: Set path [KEY] to [VALUE] in [NAME]",
+                        text: "T: Set path [KEY] to [VALUE] in [NAME] | is json [ISJ]",
                         arguments: {
                             KEY: {
                                 type: Scratch.ArgumentType.STRING,
@@ -111,6 +111,10 @@
                             NAME: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "someID"
+                            },
+                            ISJ: {
+                                type: Scratch.ArgumentType.BOOLEAN,
+                                defaultValue: false
                             }
                         }
                     },
@@ -118,7 +122,7 @@
                     {
                         opcode: "tSetJ",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "T: Set [KEY] to [VALUE] in [NAME]",
+                        text: "T: Set [KEY] to [VALUE] in [NAME] | is json [ISJ]",
                         arguments: {
                             KEY: {
                                 type: Scratch.ArgumentType.STRING,
@@ -131,6 +135,10 @@
                             NAME: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "someID"
+                            },
+                            ISJ: {
+                                type: Scratch.ArgumentType.BOOLEAN,
+                                defaultValue: false
                             }
                         }
                     },
@@ -426,14 +434,14 @@
                                 defaultValue: false
                             }
                         }
-                    },
+                    }/*,
 
                     {
                         opcode: "nothing",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "do nothing"
                         
-                    }
+                    }*/
                 ]
             };
 
@@ -510,7 +518,9 @@
         tSetJ(args, util) {
             const thread = util.thread.topBlock
             let v = tjson[thread][args.NAME]
-            v[args.KEY] = this.isJson(args.VALUE) ?? args.VALUE // the nullish coalescing operator scares me
+            v[args.KEY] = args.ISJ ? this.isJson(args.VALUE) : args.VALUE
+            //this.isJson(args.VALUE) ?? args.VALUE 
+            // the nullish coalescing operator scares me
             // spelled that first try 💪
             
             //console.log(tjson)
@@ -588,10 +598,12 @@
             const path = e.slice(0,e.length-1)
             let j = tjson[thread][args.NAME]
             path.forEach((i) => {
-                //console.log(j, i)
+                if (!j.hasOwnProperty(i)) {
+                    return "Invalid path!"
+                }
                 j = j[i]
             })
-            j[e[e.length-1]] = this.isJson(args.VALUE) ?? args.VALUE
+            j[e[e.length-1]] = args.ISJ ? this.isJson(args.VALUE) : args.VALUE
         }
 
         tParseArray(args, util) {
@@ -662,7 +674,6 @@
 
         debug(args, util) {
             console.log(tjson, tarray)
-            //console.log("wow")
         }
 
         nothing(args, util) {
