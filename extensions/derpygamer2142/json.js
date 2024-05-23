@@ -48,6 +48,13 @@
                     },
 
                     {
+                        opcode: "clear",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Clear all data"
+                        
+                    },
+
+                    {
                         opcode: "tParseJ",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "T: Parse json [DATA] as [NAME]",
@@ -486,11 +493,11 @@
                 return "JSON not found!"
             }
             const v = tjson[thread][args.NAME]
-            if (v.hasOwnProperty([args.KEY])) {
+            if (v.hasOwnProperty(args.KEY)) {
                 if (typeof v[args.KEY] === "object") {
                     return JSON.stringify(v[args.KEY])
                 }
-                return  
+                return v[args.KEY]
             }
         }
 
@@ -512,6 +519,9 @@
                     return "Invalid path!"
                 }
             })
+            if (typeof j === "object") {
+                return JSON.stringify(j)
+            }
             return j
         }
         
@@ -757,6 +767,14 @@
                 return "Array not found!"
             }
             tarray[thread][args.NAME].splice(Scratch.Cast.toNumber(args.INDEX),0, args.ISJ ? this.isJson(args.ITEM) : args.ITEM)
+        }
+
+
+        clear(args, util) {
+            tjson  = {}
+            gjson  = {}
+            tarray = {}
+            garray = {}
         }
     }
     // @ts-ignore
