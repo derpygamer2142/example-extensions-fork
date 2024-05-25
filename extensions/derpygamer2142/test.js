@@ -92,7 +92,7 @@
                     break;
                 }
                 case "math_number": {
-                    return Scratch.Cast.toNumber(_blocks[blob.id].fields.NUM.value)
+                    return _blocks[blob.id].fields.NUM.value
                     break;
                 }
             }
