@@ -1,5 +1,5 @@
-// Name: test
-// ID: uhhhidk
+// Name: GPU.sb3
+// ID: gpusb3
 // Description: your mother.
 // By: derpygamer2142 <https://scratch.mit.edu/users/insanetaco2000/>
 // License: MIT
@@ -27,8 +27,8 @@
 
         getInfo() {
             return {
-                id: "yourmother",
-                name: "uhhh idk",
+                id: "gpusb3",
+                name: "GPU.sb3",
 
                 color1: "#4287f5",
                 color2: "#166af2",
@@ -98,6 +98,55 @@
             }
         }
 
+        findType(input) {
+            switch (typeof input) {
+                case "string": {
+                    if (Number.isNaN(Number.parseFloat(input))) {
+                        if (input.toLowerCase() === "true" || input.toLowerCase() === "false") {
+                            return "boolean"
+                        }
+                        else if (input.toLowerCase() === "undefined") {
+                            return "undefined"
+                        }
+                        else if (input.toLowerCase() === "null") {
+                            return "null"
+                        }
+                        else {
+                            return "Error!"
+                        }
+                    }
+                    else {
+                        return this.findType(Number.parseFloat(input))
+                    }
+                }
+                case "number": {
+                    if (Number.isInteger(input)) {
+                        return "integer"
+                    }
+                    else if (Number.isNaN(input)) {
+                        return "NaN"
+                    }
+                    else if (!Number.isFinite(input)) {
+                        return "infinity"
+                    }
+                    else {
+                        return "float"
+                    }
+                }
+                case "boolean": {
+                    return "boolean"
+                }
+                case "undefined": {
+                    return "undefined"
+                }
+                case "object": {
+                    if (input === null) {
+                        return "null"
+                    }
+                }
+            }
+        }
+
     
         genWGSL(util, blocks) {
             let code = ""
@@ -113,6 +162,7 @@
                         const op = b.block
                         switch (op) {
                             case "operator_equals": {
+                                code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1]) : this.textFromOp(util, blocks[i+1]))
                                 code = code.concat(" === ") // temp
                                 code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2]))
@@ -121,65 +171,190 @@
                             }
 
                             case "operator_lt": {
+                                code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
-                                code = code.concat(" < ") // temp
+                                code = code.concat(" < ")
                                 code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(") ")
                                 i += 2
                                 break;
                             }
 
                             case "operator_gt": {
+                                code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
-                                code = code.concat(" > ") // temp
+                                code = code.concat(" > ")
                                 code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(") ")
                                 i += 2
                                 break;
                             }
 
                             case "operator_and": {
+                                code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
-                                code = code.concat(" && ") // temp
+                                code = code.concat(" && ")
                                 code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(") ")
                                 i += 2
                                 break;
                             }
 
                             case "operator_or": {
+                                code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
-                                code = code.concat(" || ") // temp
+                                code = code.concat(" || ")
                                 code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(") ")
                                 i += 2
                                 break;
                             }
 
                             case "operator_add": {
+                                code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" + ")
                                 code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(") ")
                                 i += 2
                                 break;
                             }
 
                             case "operator_subtract": {
+                                code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" - ")
                                 code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(") ")
                                 i += 2
                                 break;
                             }
 
                             case "operator_multiply": {
+                                code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
-                                code = code.concat(" + ")
+                                code = code.concat(" * ")
                                 code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(") ")
                                 i += 2
                                 break;
                             }
 
                             case "operator_divide": {
+                                code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
-                                code = code.concat(" + ")
+                                code = code.concat(" / ")
                                 code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(") ")
+                                i += 2
+                                break;
+                            }
+
+                            case "operator_mathop": {
+                                /*
+                                from https://github.com/TurboWarp/scratch-vm/blob/11eec6604d766dc75fc5eb223b7bd31f167fee88/src/blocks/scratch3_operators.js
+
+                                case 'abs': return Math.abs(n);
+                                case 'floor': return Math.floor(n);
+                                case 'ceiling': return Math.ceil(n);
+                                case 'sqrt': return Math.sqrt(n);
+                                case 'sin': return Math.round(Math.sin((Math.PI * n) / 180) * 1e10) / 1e10;
+                                case 'cos': return Math.round(Math.cos((Math.PI * n) / 180) * 1e10) / 1e10;
+                                case 'tan': return MathUtil.tan(n);
+                                case 'asin': return (Math.asin(n) * 180) / Math.PI;
+                                case 'acos': return (Math.acos(n) * 180) / Math.PI;
+                                case 'atan': return (Math.atan(n) * 180) / Math.PI;
+                                case 'ln': return Math.log(n);
+                                case 'log': return Math.log(n) / Math.LN10;
+                                case 'e ^': return Math.exp(n);
+                                case '10 ^': return Math.pow(10, n);
+                                */
+                                let op = "How do you mess up this badly?"
+                                let trad = false // trig functions need to be converted to radians
+                                let actualop = util.thread.blockContainer._blocks[b.id].fields.OPERATOR.value
+                                switch (actualop) {
+                                    case "abs": {
+                                        op = "abs"
+                                        break;
+                                    }
+
+                                    case "floor": {
+                                        op = "floor"
+                                        break;
+                                    }
+
+                                    case "ceiling": {
+                                        op = "ceil"
+                                        break;
+                                    }
+
+                                    case "sqrt": {
+                                        op = "sqrt"
+                                        break;
+                                    }
+
+                                    case "sin": {
+                                        op = "sin"
+                                        trad = true
+                                        break;
+                                    }
+
+                                    case "cos": {
+                                        op = "cos"
+                                        trad = true
+                                        break;
+                                    }
+
+                                    case "tan": {
+                                        op = "tan"
+                                        trad = true
+                                        break;
+                                    }
+
+                                    case "asin": {
+                                        op = "asin"
+                                        trad = true
+                                        break;
+                                    }
+
+                                    case "acos": {
+                                        op = "acos"
+                                        trad = true
+                                        break;
+                                    }
+
+                                    case "atan": {
+                                        op = "atan"
+                                        trad = true
+                                        break;
+                                    }
+
+                                    case "ln": {
+                                        op = "log" // confusing
+                                        break;
+                                    }
+
+                                    case "log": {
+                                        op = "log" // special behavior below
+                                        break;
+                                    }
+
+                                    case "e ^": {
+                                        op = "exp"
+                                        break;
+                                    }
+
+                                    case "10 ^": {
+                                        op = "pow"
+                                        break;
+                                    }
+                                }
+                                code = code.concat(op)
+                                code = code.concat(op === "pow" ? "(10.0, " : "(")
+                                let num = Scratch.Cast.toNumber(this.textFromOp(util,blocks[i+1])) * (trad ? Math.PI / 180 : 1)
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : Number.isInteger(num) ? Scratch.Cast.toString(num) + ".0" : Scratch.Cast.toString(num))
+                                console.warn("Converted integer to float!")
+                                code = code.concat(actualop === "log" ? ") / " + Scratch.Cast.toString(Math.LN10) : ")")
                                 i += 2
                                 break;
                             }
@@ -200,10 +375,8 @@
                                     code = code.concat(this.genWGSL(util, blocks[i+2]))
                                 }
                                 
-                                
                                 code = code.concat("\n}") // newlines for some semblance of readability
                                 i += 2
-                                console.log(code)
                                 break;
                                 // did i spell that right
                                 /*
@@ -213,6 +386,8 @@
                                 }
                                 */
                             }
+
+                    
 
                             default: {
                                 console.warn("invalid")
@@ -342,7 +517,6 @@
                 if (blocks[held].inputs.hasOwnProperty("SUBSTACK") || blocks[held].opcode === "control_if") {
                     if (blocks[held].opcode === "control_if" && !blocks[held].inputs.hasOwnProperty("SUBSTACK") && !blocks[held].inputs.hasOwnProperty("SUBSTACK2")) {
                         output.push([])
-                        console.log("added []")
                     }
                     else {
                         output.push(this.compile(util,thread,blocks,blocks[held].inputs.SUBSTACK.block,true))
@@ -364,7 +538,7 @@
         }
 
         compileStart (args,util) {
-            let threads = util.startHats("yourmother_compileHat") // this is cringe but idrc, it's temporary
+            let threads = util.startHats("gpusb3_compileHat") // this is cringe but idrc, it's temporary
             threads.forEach((t) => {
                 t.tryCompile()
             })
