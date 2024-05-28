@@ -56,19 +56,6 @@
                         text: "run the compiley thingy"
                     },
                     {
-                        opcode: "declareVar",
-                        blockType: Scratch.BlockType.COMMAND,
-                        text: "declare variable [NAME] as [VALUE]",
-                        arguments: {
-                            NAME: {
-                                type: Scratch.ArgumentType.STRING
-                            },
-                            VALUE: {
-                                type: Scratch.ArgumentType.STRING
-                            }
-                        }
-                    },
-                    {
                         opcode: "runGPU",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "Run [CODE] on the gpu",
@@ -77,8 +64,90 @@
                                 type: Scratch.ArgumentType.STRING
                             }
                         }
+                    },
+
+
+                    {
+                        blockType: "label",
+                        text: "WGSL Blocks"
+                    },
+
+
+                    {
+                        opcode: "declareVar",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "declare [VARTYPE] variable as [NAME] with value [VALUE]: [TYPE]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someVariable"
+                            },
+                            VALUE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: 12
+                            },
+                            VARTYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "VAR_TYPES",
+                                defaultValue: "var"
+                            },
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "TYPES",
+                                defaultValue: "auto"
+                            }
+                        }
+                    },
+                    {
+                        opcode: "getVar",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Get variable [NAME]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someVariable"
+                            }
+                        }
                     }
-                ]
+                ],
+                menus: {
+                    TYPES: {
+                        acceptReporters: false,
+                        items: [
+                            "i32",
+                            "u32",
+                            "f32",
+                            "bool",
+                            "auto"
+                            // f16?
+                        ]
+                    },
+                    VAR_TYPES: {
+                        acceptReporters: false,
+                        items: [
+                            "var",
+                            "let",
+                            "const"
+                        ]
+                    },
+                    VAROPS: {
+                        acceptReporters: false,
+                        items: [
+                            "=",
+                            "+=",
+                            "-=",
+                            "*=",
+                            "/=",
+                            "%=",
+                            "&=",
+                            "|=",
+                            "^=",
+                            ">>=",
+                            "<<="
+                        ]
+                    }
+                    
+                }
             };
 
         }
@@ -147,6 +216,9 @@
             }
         }
 
+        resolveInput(util, block) {
+            return Array.isArray(block) ? this.genWGSL(util,block) : this.textFromOp(util,block)
+        }
     
         genWGSL(util, blocks) {
             let code = ""
@@ -163,9 +235,9 @@
                         switch (op) {
                             case "operator_equals": {
                                 code = code.concat(" (")
-                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1]) : this.textFromOp(util, blocks[i+1]))
+                                code = code.concat(this.resolveInput(util, blocks[i+1]))
                                 code = code.concat(" === ") // temp
-                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2]))
+                                code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 i += 2
                                 break;
                             }
@@ -174,7 +246,7 @@
                                 code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" < ")
-                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
                                 i += 2
                                 break;
@@ -184,7 +256,7 @@
                                 code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" > ")
-                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
                                 i += 2
                                 break;
@@ -194,7 +266,7 @@
                                 code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" && ")
-                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
                                 i += 2
                                 break;
@@ -204,7 +276,7 @@
                                 code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" || ")
-                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
                                 i += 2
                                 break;
@@ -214,7 +286,7 @@
                                 code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" + ")
-                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
                                 i += 2
                                 break;
@@ -224,7 +296,7 @@
                                 code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" - ")
-                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
                                 i += 2
                                 break;
@@ -234,7 +306,7 @@
                                 code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" * ")
-                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
                                 i += 2
                                 break;
@@ -244,11 +316,25 @@
                                 code = code.concat(" (")
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" / ")
-                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util,blocks[i+2]))
+                                code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
                                 i += 2
                                 break;
                             }
+
+                            case "operator_mod": {
+                                code = code.concat(" (")
+                                code = code.concat(this.resolveInput(util,blocks[i+1]))
+                                code = code.concat(" % ")
+                                code = code.concat(this.resolveInput(util,blocks[i+2]))
+                                i += 2
+                                break;
+                            }
+
+                            case "operator_letter_of": {
+                                console.warn("Encountered")
+                            }
+                            
 
                             case "operator_mathop": {
                                 /*
@@ -351,7 +437,7 @@
                                 }
                                 code = code.concat(op)
                                 code = code.concat(op === "pow" ? "(10.0, " : "(")
-                                let num = Scratch.Cast.toNumber(this.textFromOp(util,blocks[i+1])) * (trad ? Math.PI / 180 : 1)
+                                let num = Scratch.Cast.toNumber(this.textFromOp(util,blocks[i+1]))// * (trad ? Math.PI / 180 : 1)
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : Number.isInteger(num) ? Scratch.Cast.toString(num) + ".0" : Scratch.Cast.toString(num))
                                 console.warn("Converted integer to float!")
                                 code = code.concat(actualop === "log" ? ") / " + Scratch.Cast.toString(Math.LN10) : ")")
@@ -370,6 +456,9 @@
                             case "control_if": {
                                 code = code.concat("if (")
                                 code = code.concat(blocks[i+1].length > 0 ? this.genWGSL(util, blocks[i+1]) : "true")
+                                if (blocks[i+1].length <= 0) {
+                                    console.warn("If statement missing condition, defaulting to true!")
+                                }
                                 code = code.concat(") {\n")
                                 if (blocks[i+2].length > 0) {
                                     code = code.concat(this.genWGSL(util, blocks[i+2]))
@@ -539,18 +628,19 @@
 
         compileStart (args,util) {
             let threads = util.startHats("gpusb3_compileHat") // this is cringe but idrc, it's temporary
-            threads.forEach((t) => {
+            if (threads.length > 0) {
+                threads.forEach((t) => {
                 t.tryCompile()
-            })
-            console.log(util)
-            const e = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
-            console.log(e)
-            console.log(this.genWGSL(util, e))
+                })
+                console.log(util)
+                const e = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
+                console.log(e)
+                console.log(this.genWGSL(util, e))
+            }
+            
         }
 
-        declareVar (args, util) {
-            // this block does nothing <3
-        }
+        
         
         runGPU (args, util) {
 
@@ -703,6 +793,14 @@
             compute shaders halfway through and then just decided to talk about render shaders
 
             */
+        }
+
+        getVar(args, util) {
+            return "This doesn't actually do anything."
+        }
+
+        declareVar (args, util) {
+            return 0
         }
     }
     // @ts-ignore
