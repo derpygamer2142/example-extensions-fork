@@ -78,6 +78,11 @@
                         blockType: Scratch.BlockType.COMMAND,
                         text: "declare [VARTYPE] variable as [NAME] with value [VALUE]: [TYPE]",
                         arguments: {
+                            VARTYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "VARTYPES",
+                                defaultValue: "var"
+                            },
                             NAME: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "someVariable"
@@ -86,11 +91,7 @@
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: 12
                             },
-                            VARTYPE: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "VAR_TYPES",
-                                defaultValue: "var"
-                            },
+                            
                             TYPE: {
                                 type: Scratch.ArgumentType.STRING,
                                 menu: "TYPES",
@@ -108,11 +109,27 @@
                                 defaultValue: "someVariable"
                             }
                         }
+                    },
+                    {
+                        opcode: "wgslFunc1",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "[OPERATION] [VALUE]",
+                        arguments: {
+                            OPERATION: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "WGSLFUNCS1",
+                                defaultValue: "trunc"
+                            },
+                            VALUE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "12.345"
+                            }
+                        }
                     }
                 ],
                 menus: {
                     TYPES: {
-                        acceptReporters: false,
+                        acceptReporters: true, // i don't like this, but with acceptReporters as false it shows up in fields and not inputs.
                         items: [
                             "i32",
                             "u32",
@@ -122,16 +139,17 @@
                             // f16?
                         ]
                     },
-                    VAR_TYPES: {
-                        acceptReporters: false,
+                    VARTYPES: {
+                        acceptReporters: true,
                         items: [
                             "var",
                             "let",
                             "const"
                         ]
                     },
+
                     VAROPS: {
-                        acceptReporters: false,
+                        acceptReporters: true,
                         items: [
                             "=",
                             "+=",
@@ -144,6 +162,65 @@
                             "^=",
                             ">>=",
                             "<<="
+                        ]
+                    },
+
+                    WGSLFUNCS1: {
+                        // every WGSL builtin function that takes 1 input
+                        acceptReporters: true,
+                        items: [
+                            "all",
+                            "any",
+                            "arrayLength",
+                            "asinh", // screw atomics, i can add them later
+                            "bitcast",
+                            "cosh",
+                            "countLeadingZeros",
+                            "countOneBits",
+                            "countTrailingZeros",
+                            "degrees",
+                            "determinant",
+                            /*"dpdx",
+                            "dpdxCoarse",
+                            "dpdxFine",
+                            "dpdy",
+                            "dpdyCoarse",
+                            "dpdyFine",*/
+                            "exp",
+                            "exp2",
+                            "firstLeadingBit",
+                            "firstTrailingBit",
+                            "fract",
+                            "frexp",
+                            "inverseSqrt",
+                            "length",
+                            "log",
+                            "log2",
+                            "modf",
+                            "normalize",
+                            "pack2x16float",
+                            "pack2x16snorm",
+                            "pack2x16unorm",
+                            "pack4x8snorm",
+                            "pack4x8unorm",
+                            "quantizeToF16",
+                            "radians",
+                            "reverseBits",
+                            "saturate",
+                            "sign",
+                            "sinh",
+                            "tanh",
+                            // textureDimensions?
+                            "textureNumLayers",
+                            "textureNumLevels",
+                            "textureNumSamples",
+                            "transpose",
+                            "trunc",
+                            "unpack2x16float",
+                            "unpack2x16snorm",
+                            "unpack2x16unorm",
+                            "unpack4x8snorm",
+                            "unpack4x8unorm"
                         ]
                     }
                     
@@ -162,6 +239,19 @@
                 }
                 case "math_number": {
                     return _blocks[blob.id].fields.NUM.value
+                    break;
+                }
+                case "gpusb3_menu_VARTYPES": {
+                    return _blocks[blob.id].fields.VARTYPES.value
+                    break;
+                }
+                case "gpusb3_menu_TYPES": {
+                    return _blocks[blob.id].fields.TYPES.value
+                    break;
+                }
+
+                case "gpusb3_menu_WGSLFUNCS1": {
+                    return _blocks[blob.id].fields.WGSLFUNCS1.value
                     break;
                 }
             }
@@ -225,7 +315,6 @@
             for (let i = 0; i < blocks.length; i++) {
                 //console.log(code)
                 let b = blocks[i]
-
                 if (Array.isArray(b)) {
                     code = code.concat(this.genWGSL(util, blocks[i]))
                 }
@@ -236,8 +325,9 @@
                             case "operator_equals": {
                                 code = code.concat(" (")
                                 code = code.concat(this.resolveInput(util, blocks[i+1]))
-                                code = code.concat(" === ") // temp
+                                code = code.concat(" == ") // temp
                                 code = code.concat(this.resolveInput(util, blocks[i+2]))
+                                code = code.concat(") ")
                                 i += 2
                                 break;
                             }
@@ -331,9 +421,7 @@
                                 break;
                             }
 
-                            case "operator_letter_of": {
-                                console.warn("Encountered")
-                            }
+                            
                             
 
                             case "operator_mathop": {
@@ -356,7 +444,7 @@
                                 case '10 ^': return Math.pow(10, n);
                                 */
                                 let op = "How do you mess up this badly?"
-                                let trad = false // trig functions need to be converted to radians
+                                let trad = false
                                 let actualop = util.thread.blockContainer._blocks[b.id].fields.OPERATOR.value
                                 switch (actualop) {
                                     case "abs": {
@@ -445,8 +533,21 @@
                                 break;
                             }
 
+                            case "gpusb3_wgslFunc1": {
+                                if (Array.isArray(blocks[i+1])) {
+                                    console.error("Function should not have an input!")
+                                    return "Unexpected input in function input!"
+                                }
+                                code = code.concat(Array.isArray(blocks[i+1]) ? "error!" : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat("(")
+                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util, blocks[i+2]))
+                                code = code.concat(")")
+                                i += 2
+                                break;
+                            }
+
                             default: {
-                                console.warn("invalid")
+                                console.warn("Invalid operator! Did you forget the i += (# of inputs)?")
                                 return "Invalid operator!"
                             }
                         }
@@ -476,10 +577,26 @@
                                 */
                             }
 
+                            case "gpusb3_declareVar": {
+                                code = code.concat(Array.isArray(blocks[i+1]) ? "var" : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(" ")
+                                code = code.concat(Array.isArray(blocks[i+2]) ? "_" : this.textFromOp(util,blocks[i+2]))
+                                const t = Array.isArray(blocks[i+4]) ? "auto" : this.textFromOp(util,blocks[i+4])
+                                if (t !== "auto") {
+                                    code = code.concat(": ")
+                                    code = code.concat(t)
+                                }
+                                code = code.concat(" = ")
+                                code = code.concat(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util,blocks[i+3]))
+                                code = code.concat(";\n")
+                                i += 4
+                                break;
+                            }
+
                     
 
                             default: {
-                                console.warn("invalid")
+                                console.warn("Invalid block! Did you forget the i += (# of inputs)?")
                                 return "Invalid opcode!"
                             }
                         }
@@ -801,6 +918,10 @@
 
         declareVar (args, util) {
             return 0
+        }
+
+        wgslFunc1(args,util) {
+            return "This doesn't actually do anything."
         }
     }
     // @ts-ignore
