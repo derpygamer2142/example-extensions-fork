@@ -111,13 +111,13 @@
                         }
                     },
                     {
-                        opcode: "wgslFunc1",
+                        opcode: "wgslFunc",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "[OPERATION] [VALUE]",
+                        text: "WGSL builin [OPERATION] with args [VALUE]",
                         arguments: {
                             OPERATION: {
                                 type: Scratch.ArgumentType.STRING,
-                                menu: "WGSLFUNCS1",
+                                menu: "WGSLFUNCS",
                                 defaultValue: "trunc"
                             },
                             VALUE: {
@@ -125,6 +125,34 @@
                                 defaultValue: "12.345"
                             }
                         }
+                    },
+                    {
+                        opcode: "funcArgs",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Func arg [ARG], next [NEXT]",
+                        arguments: {
+                            ARG: { // yee haw i'm a pirate
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "15"
+                            },
+                            NEXT: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "computeFunc",
+                        blockType: Scratch.BlockType.CONDITIONAL,
+                        text: "Computer shader with workgroup size [WGSIZE]",
+                        arguments: {
+                            WGSIZE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: JSON.stringify([2, 3, 4])
+                            }
+                        },
+                        branchCount: 1
                     }
                 ],
                 menus: {
@@ -165,8 +193,8 @@
                         ]
                     },
 
-                    WGSLFUNCS1: {
-                        // every WGSL builtin function that takes 1 input
+                    WGSLFUNCS: {
+                        // every WGSL builtin function
                         acceptReporters: true,
                         items: [
                             "all",
@@ -250,8 +278,8 @@
                     break;
                 }
 
-                case "gpusb3_menu_WGSLFUNCS1": {
-                    return _blocks[blob.id].fields.WGSLFUNCS1.value
+                case "gpusb3_menu_WGSLFUNCS": {
+                    return _blocks[blob.id].fields.WGSLFUNCS.value
                     break;
                 }
             }
@@ -308,6 +336,21 @@
 
         resolveInput(util, block) {
             return Array.isArray(block) ? this.genWGSL(util,block) : this.textFromOp(util,block)
+        }
+
+        isStringified(text) {
+            console.log(typeof text)
+            try {
+                
+                JSON.parse(text)
+                console.log("whar")
+                return true
+            }
+            catch {
+                console.log(JSON.stringify(text) + " is not json.")
+                return false
+            }
+            return false
         }
     
         genWGSL(util, blocks) {
@@ -420,8 +463,6 @@
                                 i += 2
                                 break;
                             }
-
-                            
                             
 
                             case "operator_mathop": {
@@ -533,7 +574,7 @@
                                 break;
                             }
 
-                            case "gpusb3_wgslFunc1": {
+                            case "gpusb3_wgslFunc": {
                                 if (Array.isArray(blocks[i+1])) {
                                     console.error("Function should not have an input!")
                                     return "Unexpected input in function input!"
@@ -542,6 +583,23 @@
                                 code = code.concat("(")
                                 code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util, blocks[i+2]))
                                 code = code.concat(")")
+                                i += 2
+                                break;
+                            }
+
+                            case "gpusb3_funcArgs": {
+                                
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1]) : this.textFromOp(util, blocks[i+1]))
+
+                                if (Array.isArray(blocks[i+2])) {
+                                    code = code.concat(", ")
+                                    console.log(blocks[i+2].length)
+                                    code = code.concat(this.genWGSL(util, blocks[i+2]))
+                                }
+                                else if (this.textFromOp(util,blocks[i+2]) !== "") {
+                                    code = code.concat(", ")
+                                    code = code.concat(this.textFromOp(util,blocks[i+2]))
+                                }
                                 i += 2
                                 break;
                             }
@@ -593,7 +651,40 @@
                                 break;
                             }
 
-                    
+                            case "gpusb3_computeFunc": {
+                                code = code.concat(`@compute @workgroup_size(${Array.isArray(blocks[i+1]) ? "64" : (this.isStringified(this.textFromOp(util, blocks[i+1])) ? JSON.parse(this.textFromOp(util, blocks[i+1])) : "64")}) fn computeShader(
+@builtin(workgroup_id) workgroup_id : vec3<u32>,
+@builtin(local_invocation_id) local_invocation_id : vec3<u32>,
+@builtin(global_invocation_id) global_invocation_id : vec3<u32>,
+@builtin(local_invocation_index) local_invocation_index: u32,
+@builtin(num_workgroups) num_workgroups: vec3<u32>
+                                ) {\n\n`)
+                                    if (blocks[i+2].length > 0) {
+                                        code = code.concat(this.genWGSL(util, blocks[i+2]))
+                                    }
+                                    else {
+                                        code = code.concat("return;")
+                                    }
+                                    
+                                    code = code.concat("\n}") // newlines for some semblance of readability
+                                    i += 2
+                                    break;
+                                    // did i spell that right
+                                    /*
+                                    expected output:
+                                    @compute @workgroup_size(workgroup size) fn computeShader(
+                                    @builtin(workgroup_id) workgroup_id : vec3<u32>,
+                                    @builtin(local_invocation_id) local_invocation_id : vec3<u32>,
+                                    @builtin(global_invocation_id) global_invocation_id : vec3<u32>,
+                                    @builtin(local_invocation_index) local_invocation_index: u32,
+                                    @builtin(num_workgroups) num_workgroups: vec3<u32>
+                                    ) {
+
+                                    code
+
+                                    }
+                                    */
+                            }
 
                             default: {
                                 console.warn("Invalid block! Did you forget the i += (# of inputs)?")
@@ -705,7 +796,7 @@
                 if (heldInputs.hasOwnProperty("SUBSTACK2")) {
                     delete heldInputs.SUBSTACK2 // see previous comment
                 }
-                if (JSON.stringify(heldInputs) != JSON.stringify({}) || blocks[held].opcode === "control_if") {
+                if (JSON.stringify(heldInputs) != JSON.stringify({}) || blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc") {
                     // if the block takes inputs excluding SUBSTACK and SUBSTACK2, generate an input tree for it
                     //output.push(Object.getOwnPropertyNames(heldInputs).length)
                     if (Object.getOwnPropertyNames(heldInputs).length === 0) {
@@ -720,8 +811,8 @@
                 else {
                     console.log(JSON.stringify(heldInputs) + " does not require a tree")
                 }
-                if (blocks[held].inputs.hasOwnProperty("SUBSTACK") || blocks[held].opcode === "control_if") {
-                    if (blocks[held].opcode === "control_if" && !blocks[held].inputs.hasOwnProperty("SUBSTACK") && !blocks[held].inputs.hasOwnProperty("SUBSTACK2")) {
+                if (blocks[held].inputs.hasOwnProperty("SUBSTACK") || blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc") {
+                    if ((blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc") && !blocks[held].inputs.hasOwnProperty("SUBSTACK") && !blocks[held].inputs.hasOwnProperty("SUBSTACK2")) {
                         output.push([])
                     }
                     else {
@@ -913,15 +1004,23 @@
         }
 
         getVar(args, util) {
-            return "This doesn't actually do anything."
+            return "This block lets you get variables in your function."
         }
 
         declareVar (args, util) {
-            return 0
+            return 0 // command, so no return
         }
 
-        wgslFunc1(args,util) {
-            return "This doesn't actually do anything."
+        wgslFunc(args,util) {
+            return "This block has a bunch of WGSL builtin functions."
+        }
+
+        funcArgs(args,util) {
+            return "Chain multiple of this block together to create function inputs."
+        }
+
+        computeFunc(args, util) {
+            return 0 // conditional, no return
         }
     }
     // @ts-ignore
