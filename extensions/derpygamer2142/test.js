@@ -153,6 +153,27 @@
                             }
                         },
                         branchCount: 1
+                    },
+
+                    {
+                        opcode: "wgslForLoop",
+                        blockType: Scratch.BlockType.CONDITIONAL, // this isn't a conditional :trol:
+                        text: "For [VARNAME] in range [START], [END]",
+                        arguments: {
+                            VARNAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "i"
+                            },
+                            START: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            END: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 10
+                            }
+                        },
+                        branchCount: 1
                     }
                 ],
                 menus: {
@@ -666,8 +687,48 @@
                                         code = code.concat("return;")
                                     }
                                     
-                                    code = code.concat("\n}") // newlines for some semblance of readability
+                                    code = code.concat("}\n") // newlines for some semblance of readability
                                     i += 2
+                                    break;
+                                    // did i spell that right
+                                    /*
+                                    expected output:
+                                    @compute @workgroup_size(workgroup size) fn computeShader(
+                                    @builtin(workgroup_id) workgroup_id : vec3<u32>,
+                                    @builtin(local_invocation_id) local_invocation_id : vec3<u32>,
+                                    @builtin(global_invocation_id) global_invocation_id : vec3<u32>,
+                                    @builtin(local_invocation_index) local_invocation_index: u32,
+                                    @builtin(num_workgroups) num_workgroups: vec3<u32>
+                                    ) {
+
+                                    code
+
+                                    }
+                                    */
+                            }
+
+                            case "gpusb3_wgslForLoop": {
+                                if (Array.isArray(blocks[i+1])) {
+                                    console.warn("Unexpected input for variable!")
+                                    return "Unexpected input for variable!"
+                                }
+                                code = code.concat(`
+var ${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1])} = ${this.resolveInput(util, blocks[i+2])};
+loop {
+${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1])}++;
+break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1])} > ${this.resolveInput(util,blocks[i+3])});
+
+`
+                                )
+                                    if (blocks[i+4].length > 0) {
+                                        code = code.concat(this.genWGSL(util, blocks[i+4]))
+                                    }
+                                    else {
+                                        code = code.concat("break;")
+                                    }
+                                    
+                                    code = code.concat("}\n") // newlines for some semblance of readability
+                                    i += 4
                                     break;
                                     // did i spell that right
                                     /*
@@ -1021,6 +1082,10 @@
 
         computeFunc(args, util) {
             return 0 // conditional, no return
+        }
+
+        wgslForLoop(args, util) {
+            return 0 // technically a conditional, no return
         }
     }
     // @ts-ignore
