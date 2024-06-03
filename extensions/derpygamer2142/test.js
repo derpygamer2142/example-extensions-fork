@@ -625,6 +625,12 @@
                                 break;
                             }
 
+                            case "gpusb3_getVar": {
+                                code = code.concat(Array.isArray(blocks[i+1]) ? "_" : this.textFromOp(util, blocks[i+1])) // if your variable name is invalid it's your own fault
+                                i += 1
+                                break;
+                            }
+
                             default: {
                                 console.warn("Invalid operator! Did you forget the i += (# of inputs)?")
                                 return "Invalid operator!"
