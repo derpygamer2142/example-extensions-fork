@@ -129,7 +129,7 @@
                     {
                         opcode: "funcArgs",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "Func arg [ARG], next [NEXT]",
+                        text: "Func arg input [ARG], next [NEXT]",
                         arguments: {
                             ARG: { // yee haw i'm a pirate
                                 type: Scratch.ArgumentType.STRING,
@@ -174,6 +174,23 @@
                             }
                         },
                         branchCount: 1
+                    },
+
+                    {
+                        opcode: "defFunc",
+                        blockType: Scratch.BlockType.CONDITIONAL,
+                        text: "Function that returns type [TYPE] with args [ARGS]",
+                        arguments: {
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "FUNCTYPES",
+                                defaultValue: "void"
+                            }/*,
+                            ARGS: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }*/
+                        }
                     }
                 ],
                 menus: {
@@ -270,6 +287,17 @@
                             "unpack2x16unorm",
                             "unpack4x8snorm",
                             "unpack4x8unorm"
+                        ]
+                    },
+
+                    FUNCTYPES: {
+                        acceptReporters: true,
+                        items: [
+                            "i32",
+                            "u32",
+                            "f32",
+                            "bool",
+                            "void"
                         ]
                     }
                     
@@ -662,6 +690,33 @@
                                 */
                             }
 
+                            case "control_if_else": {
+                                code = code.concat("if (")
+                                code = code.concat(blocks[i+1].length > 0 ? this.genWGSL(util, blocks[i+1]) : "true")
+                                if (blocks[i+1].length <= 0) {
+                                    console.warn("If statement missing condition, defaulting to true!")
+                                }
+                                code = code.concat(") {\n")
+                                if (blocks[i+2].length > 0) {
+                                    code = code.concat(this.genWGSL(util, blocks[i+2]))
+                                }
+                                
+                                code = code.concat("\n}\nelse {\n") // newlines for some semblance of readability
+                                if (blocks[i+3].length > 0) {
+                                    code = code.concat(this.genWGSL(util, blocks[i+3]))
+                                }
+                                code = code.concat("\n}\n")
+                                i += 3
+                                break;
+                                // did i spell that right
+                                /*
+                                expected output:
+                                if (condition) {
+                                code
+                                }
+                                */
+                            }
+
                             case "gpusb3_declareVar": {
                                 code = code.concat(Array.isArray(blocks[i+1]) ? "var" : this.textFromOp(util,blocks[i+1]))
                                 code = code.concat(" ")
@@ -826,6 +881,10 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                 for (let i = 0; i < Object.getOwnPropertyNames(heldInputs).length; i++) {
                     output.push(this.genInputTree(util,thread,blocks,heldInputs[Object.getOwnPropertyNames(heldInputs)[i]].block,true))
                 }
+
+                if (block.opcode === "gpusb3_defFunc" && (!heldInputs.hasOwnProperty("ARGS"))) {
+                    output.push(null)
+                }
             }
             else {
                 console.log(JSON.stringify(heldInputs) + " does not require a tree")
@@ -839,7 +898,6 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                 if (!blocks[block].inputs.hasOwnProperty("SUBSTACK")) {
                     output.push([])
                 }
-                output.push("else")
                 output.push(this.compile(util,thread,blocks,blocks[block].inputs.SUBSTACK2.block,true))
             }
             return output
@@ -873,13 +931,16 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                         for (let i = 0; i < Object.getOwnPropertyNames(heldInputs).length; i++) {
                             output.push(this.genInputTree(util,thread,blocks,heldInputs[Object.getOwnPropertyNames(heldInputs)[i]].block,true))
                         }
+                        if (blocks[held].opcode === "gpusb3_defFunc" && (!heldInputs.hasOwnProperty("ARGS"))) {
+                            output.push(null)
+                        }
                     }
                 }
                 else {
                     console.log(JSON.stringify(heldInputs) + " does not require a tree")
                 }
-                if (blocks[held].inputs.hasOwnProperty("SUBSTACK") || blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc") {
-                    if ((blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc") && !blocks[held].inputs.hasOwnProperty("SUBSTACK") && !blocks[held].inputs.hasOwnProperty("SUBSTACK2")) {
+                if (blocks[held].inputs.hasOwnProperty("SUBSTACK") || blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc" || blocks[held].opcode === "gpusb3_defFunc") {
+                    if ((blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc" || blocks[held].opcode === "gpusb3_defFunc") && !blocks[held].inputs.hasOwnProperty("SUBSTACK")) {
                         output.push([])
                     }
                     else {
@@ -893,7 +954,6 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                     if (!blocks[held].inputs.hasOwnProperty("SUBSTACK")) {
                         output.push([])
                     }
-                    output.push("else")
                     output.push(this.compile(util,thread,blocks,blocks[held].inputs.SUBSTACK2.block,true))
                 }
                 
@@ -1092,6 +1152,10 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
 
         wgslForLoop(args, util) {
             return 0 // technically a conditional, no return
+        }
+
+        defFunc(args, util) {
+            return 0 // also technically a condition
         }
     }
     // @ts-ignore
