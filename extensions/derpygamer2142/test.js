@@ -921,7 +921,7 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                 if (heldInputs.hasOwnProperty("SUBSTACK2")) {
                     delete heldInputs.SUBSTACK2 // see previous comment
                 }
-                if (JSON.stringify(heldInputs) != JSON.stringify({}) || blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc") {
+                if (JSON.stringify(heldInputs) != JSON.stringify({}) || blocks[held].opcode === "control_if" || blocks[held].opcode === "control_if_else" || blocks[held].opcode === "gpusb3_computeFunc") {
                     // if the block takes inputs excluding SUBSTACK and SUBSTACK2, generate an input tree for it
                     //output.push(Object.getOwnPropertyNames(heldInputs).length)
                     if (Object.getOwnPropertyNames(heldInputs).length === 0) {
@@ -939,8 +939,8 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                 else {
                     console.log(JSON.stringify(heldInputs) + " does not require a tree")
                 }
-                if (blocks[held].inputs.hasOwnProperty("SUBSTACK") || blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc" || blocks[held].opcode === "gpusb3_defFunc") {
-                    if ((blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc" || blocks[held].opcode === "gpusb3_defFunc") && !blocks[held].inputs.hasOwnProperty("SUBSTACK")) {
+                if (blocks[held].inputs.hasOwnProperty("SUBSTACK") || blocks[held].opcode === "control_if" || blocks[held].opcode === "control_if_else" || blocks[held].opcode === "gpusb3_computeFunc" || blocks[held].opcode === "gpusb3_defFunc") {
+                    if ((blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc" || blocks[held].opcode === "gpusb3_defFunc" || blocks[held].opcode === "control_if_else") && !blocks[held].inputs.hasOwnProperty("SUBSTACK")) {
                         output.push([])
                     }
                     else {
@@ -948,13 +948,16 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                     }
                     
                 }
-                if (blocks[held].inputs.hasOwnProperty("SUBSTACK2")) { // remember to check if it's an empty if-else
+                if (blocks[held].inputs.hasOwnProperty("SUBSTACK2") || blocks[held].opcode === "control_if_else") { // remember to check if it's an empty if-else
                     // support for n-number of branches is cringe and we don't need that kind of negativity in here
                     // also no extensions in my pristine compiled hats
-                    if (!blocks[held].inputs.hasOwnProperty("SUBSTACK")) {
+                    if ((blocks[held].opcode === "control_if_else" && !blocks[held].inputs.hasOwnProperty("SUBSTACK2"))) {
                         output.push([])
                     }
-                    output.push(this.compile(util,thread,blocks,blocks[held].inputs.SUBSTACK2.block,true))
+                    else {
+                        output.push(this.compile(util,thread,blocks,blocks[held].inputs.SUBSTACK2.block,true))
+                    }
+                    
                 }
                 
             }
