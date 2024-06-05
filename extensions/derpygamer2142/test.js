@@ -177,10 +177,35 @@
                     },
 
                     {
+                        opcode: "defFuncArgs",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Def arg [ARGNAME]: [ARGTYPE], next [NEXTARG]",
+                        arguments: {
+                            ARGNAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someArg"
+                            },
+                            ARGTYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "RAWTYPES",
+                                defaultValue: "i32"
+                            },
+                            NEXTARG: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
+                        }
+                    },
+
+                    {
                         opcode: "defFunc",
                         blockType: Scratch.BlockType.CONDITIONAL,
-                        text: "Function that returns type [TYPE] with args [ARGS]",
+                        text: "Def function [FUNCNAME] that returns type [TYPE] with args [ARGS]",
                         arguments: {
+                            FUNCNAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myFunc"
+                            },
                             TYPE: {
                                 type: Scratch.ArgumentType.STRING,
                                 menu: "FUNCTYPES",
@@ -190,6 +215,20 @@
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: ""
                             }*/
+                        }
+                    },
+
+                    {
+                        opcode: "funcReturn",
+                        blockType: Scratch.BlockType.COMMAND,
+                        isTerminal: true,
+                        text: "Return [TORETURN]",
+                        arguments: {
+                            TORETURN: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
+                            
                         }
                     }
                 ],
@@ -299,6 +338,15 @@
                             "bool",
                             "void"
                         ]
+                    },
+                    RAWTYPES: {
+                        acceptReporters: true,
+                        items: [
+                            "i32",
+                            "u32",
+                            "f32",
+                            "bool"
+                        ]
                     }
                     
                 }
@@ -329,6 +377,16 @@
 
                 case "gpusb3_menu_WGSLFUNCS": {
                     return _blocks[blob.id].fields.WGSLFUNCS.value
+                    break;
+                }
+
+                case "gpusb3_menu_FUNCTYPES": {
+                    return _blocks[blob.id].fields.FUNCTYPES.value
+                    break;
+                }
+
+                case "gpusb3_menu_RAWTYPES": {
+                    return _blocks[blob.id].fields.RAWTYPES.value
                     break;
                 }
             }
@@ -659,6 +717,26 @@
                                 break;
                             }
 
+                            case "gpusb3_defFuncArgs": {
+                                console.log("whar")
+                                if (Array.isArray(blocks[i+1])) {
+                                    console.warn("Unexpectecd input for function args definition!")
+                                    return "Unexpectecd input for function args definition!"
+                                }
+                                if (Array.isArray(blocks[i+2])) {
+                                    console.warn("Unexpected input for function args type!")
+                                    return "Unexpected input for function args type!"
+                                }
+                                code = code.concat(`${this.textFromOp(util,blocks[i+1])}: ${this.textFromOp(util, blocks[i+2])}`)
+                                if (Array.isArray(blocks[i+3])) {
+                                    code = code.concat(`, ${this.genWGSL(util, blocks[i+3])}`)
+                                }
+                                i += 3
+                                break;
+                            }
+
+                            
+
                             default: {
                                 console.warn("Invalid operator! Did you forget the i += (# of inputs)?")
                                 return "Invalid operator!"
@@ -807,6 +885,52 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                                     }
                                     */
                             }
+                            
+                            case "gpusb3_defFunc": {
+                                if (Array.isArray(blocks[i+1])) {
+                                    console.warn("Unexpected input for function name!")
+                                    return "Unexpected input for function name!"
+                                }
+                                if (Array.isArray(blocks[i+2])) {
+                                    console.warn("Unexpected input for function return type!")
+                                    return "Unexpected input for function return type!"
+                                }
+                                code = code.concat(`fn ${this.textFromOp(util, blocks[i+1])}(`)
+                                if (blocks[i+3] !== null) {
+                                    if (Array.isArray(blocks[i+3])) {
+                                        code = code.concat(this.genWGSL(util, blocks[i+3]))
+                                    }
+                                    else {
+                                        code = code.concat(this.textFromOp(util, blocks[i+3]))
+                                    }
+                                }
+                                code = code.concat(this.textFromOp(util, blocks[i+2]) === "void" ? ") {\n" : `) -> ${this.textFromOp(util, blocks[i+2])} {\n`)
+                                if (blocks[i+4].length > 0) {
+                                    code = code.concat(this.genWGSL(util, blocks[i+4]))
+                                }
+                                else {
+                                    code = code.concat(`return ${this.textFromOp(util, blocks[i+2]) === "void" ? "" : this.textFromOp(util, blocks[i+2])}();`) // return a constructor for whatever type it should return
+                                }
+                                
+                                code = code.concat("}\n") // newlines for some semblance of readability
+                                i += 4
+                                break;
+                            }
+
+                            case "gpusb3_funcReturn": {
+                                code = code.concat(`return`)
+                                if (Array.isArray(blocks[i+1])) {
+                                    code = code.concat(" ")
+                                    code = code.concat(this.genWGSL(util,blocks[i+1]))
+                                }
+                                else if (this.textFromOp(util, blocks[i+1]) !== "") {
+                                    code = code.concat(" ")
+                                    code = code.concat(this.textFromOp(util, blocks[i+1]))
+                                }
+                                code = code.concat(";\n")
+                                i += 1
+                                break;
+                            }
 
                             default: {
                                 console.warn("Invalid block! Did you forget the i += (# of inputs)?")
@@ -948,7 +1072,7 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                     }
                     
                 }
-                if (blocks[held].inputs.hasOwnProperty("SUBSTACK2") || blocks[held].opcode === "control_if_else") { // remember to check if it's an empty if-else
+                if (blocks[held].inputs.hasOwnProperty("SUBSTACK2") || blocks[held].opcode === "control_if_else") {
                     // support for n-number of branches is cringe and we don't need that kind of negativity in here
                     // also no extensions in my pristine compiled hats
                     if ((blocks[held].opcode === "control_if_else" && !blocks[held].inputs.hasOwnProperty("SUBSTACK2"))) {
@@ -1159,6 +1283,14 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
 
         defFunc(args, util) {
             return 0 // also technically a condition
+        }
+
+        defFuncArgs(args, util) {
+            return "This is used to add arguments to your functions."
+        }
+
+        funcReturn(args, util) {
+            return 0 // command block (MINECRAFT REFERENCE?????!!!!)
         }
     }
     // @ts-ignore
