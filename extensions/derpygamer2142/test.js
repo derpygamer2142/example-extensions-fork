@@ -99,6 +99,28 @@
                             }
                         }
                     },
+
+                    {
+                        opcode: "varOp",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Variable [VARNAME] [VAROP]  [INPUT]",
+                        arguments: {
+                            VARNAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someVariable"
+                            },
+                            VAROP: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "VAROPS",
+                                defaultValue: "+="
+                            },
+                            INPUT: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "8"
+                            }
+                        }
+                    },
+
                     {
                         opcode: "getVar",
                         blockType: Scratch.BlockType.REPORTER,
@@ -219,6 +241,18 @@
                     },
 
                     {
+                        opcode: "getFuncArg",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Function arg [ARGNAME]",
+                        arguments: {
+                            ARGNAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someArg"
+                            }
+                        }
+                    },
+
+                    {
                         opcode: "funcReturn",
                         blockType: Scratch.BlockType.COMMAND,
                         isTerminal: true,
@@ -229,6 +263,38 @@
                                 defaultValue: ""
                             }
                             
+                        }
+                    },
+
+                    {
+                        opcode: "c_runFunc",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Run function [FUNCNAME] with args [ARGS]",
+                        arguments: {
+                            FUNCNAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myFunc"
+                            },
+                            ARGS: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "r_runFunc",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Run function [FUNCNAME] with args [ARGS]",
+                        arguments: {
+                            FUNCNAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myFunc"
+                            },
+                            ARGS: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
                         }
                     }
                 ],
@@ -279,6 +345,7 @@
                             "arrayLength",
                             "asinh", // screw atomics, i can add them later
                             "bitcast",
+                            "bool",
                             "cosh",
                             "countLeadingZeros",
                             "countOneBits",
@@ -293,10 +360,12 @@
                             "dpdyFine",*/
                             "exp",
                             "exp2",
+                            "f32",
                             "firstLeadingBit",
                             "firstTrailingBit",
                             "fract",
                             "frexp",
+                            "i32",
                             "inverseSqrt",
                             "length",
                             "log",
@@ -321,6 +390,7 @@
                             "textureNumSamples",
                             "transpose",
                             "trunc",
+                            "u32",
                             "unpack2x16float",
                             "unpack2x16snorm",
                             "unpack2x16unorm",
@@ -370,24 +440,31 @@
                     return _blocks[blob.id].fields.VARTYPES.value
                     break;
                 }
+                case "gpusb3_menu_VAROPS": {
+                    return _blocks[blob.id].fields.VAROPS.value
+                    break;
+                }
                 case "gpusb3_menu_TYPES": {
                     return _blocks[blob.id].fields.TYPES.value
                     break;
                 }
-
                 case "gpusb3_menu_WGSLFUNCS": {
                     return _blocks[blob.id].fields.WGSLFUNCS.value
                     break;
                 }
-
                 case "gpusb3_menu_FUNCTYPES": {
                     return _blocks[blob.id].fields.FUNCTYPES.value
                     break;
                 }
-
                 case "gpusb3_menu_RAWTYPES": {
                     return _blocks[blob.id].fields.RAWTYPES.value
                     break;
+                }
+
+                default: {
+                    console.warn("Input type not found, did you forget to add a menu?")
+                    return "Input type not found!"
+                    
                 }
             }
         }
@@ -700,7 +777,6 @@
 
                                 if (Array.isArray(blocks[i+2])) {
                                     code = code.concat(", ")
-                                    console.log(blocks[i+2].length)
                                     code = code.concat(this.genWGSL(util, blocks[i+2]))
                                 }
                                 else if (this.textFromOp(util,blocks[i+2]) !== "") {
@@ -718,7 +794,6 @@
                             }
 
                             case "gpusb3_defFuncArgs": {
-                                console.log("whar")
                                 if (Array.isArray(blocks[i+1])) {
                                     console.warn("Unexpectecd input for function args definition!")
                                     return "Unexpectecd input for function args definition!"
@@ -735,7 +810,26 @@
                                 break;
                             }
 
-                            
+                            case "gpusb3_getFuncArg": {
+                                if (Array.isArray(blocks[i+1])) {
+                                    console.warn("Unexpected input for arg name!")
+                                    return "Unexpected input for arg name!"
+                                }
+                                code = code.concat(this.textFromOp(util, blocks[i+1]))
+                                i += 1
+                                break;
+                            }
+
+                            case "gpusb3_r_runFunc": {
+                                if (Array.isArray(blocks[i+1])) {
+                                    console.warn("Unexpected input for function name!")
+                                    return "Unexpected input for function name!"
+                                }
+                                code = code.concat(this.textFromOp(util, blocks[i+1]))
+                                code = code.concat(`(${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2])})`)
+                                i += 2;
+                                break;
+                            }
 
                             default: {
                                 console.warn("Invalid operator! Did you forget the i += (# of inputs)?")
@@ -808,6 +902,22 @@
                                 code = code.concat(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util,blocks[i+3]))
                                 code = code.concat(";\n")
                                 i += 4
+                                break;
+                            }
+
+                            case "gpusb3_varOp": {
+                                if (Array.isArray(blocks[i+1])) {
+                                    console.warn("Unexpected input for variable name!")
+                                    return "Unexpected input for variable name!"
+                                }
+                                if (Array.isArray(blocks[i+2])) {
+                                    console.warn("Unexpected input for variable operation!")
+                                    return "Unexpected input for variable operation!"
+                                }
+                                code = code.concat(this.textFromOp(util, blocks[i+1]))
+                                code = code.concat(` ${this.textFromOp(util, blocks[i+2])} ${Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3])};\n`)
+
+                                i += 3
                                 break;
                             }
 
@@ -909,7 +1019,7 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                                     code = code.concat(this.genWGSL(util, blocks[i+4]))
                                 }
                                 else {
-                                    code = code.concat(`return ${this.textFromOp(util, blocks[i+2]) === "void" ? "" : this.textFromOp(util, blocks[i+2])}();`) // return a constructor for whatever type it should return
+                                    code = code.concat(`return ${this.textFromOp(util, blocks[i+2]) === "void" ? "" : this.textFromOp(util, blocks[i+2])}();\n`) // return a constructor for whatever type it should return
                                 }
                                 
                                 code = code.concat("}\n") // newlines for some semblance of readability
@@ -929,6 +1039,17 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                                 }
                                 code = code.concat(";\n")
                                 i += 1
+                                break;
+                            }
+
+                            case "gpusb3_c_runFunc": {
+                                if (Array.isArray(blocks[i+1])) {
+                                    console.warn("Unexpected input for function name!")
+                                    return "Unexpected input for function name!"
+                                }
+                                code = code.concat(this.textFromOp(util, blocks[i+1]))
+                                code = code.concat(`(${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2])});\n`)
+                                i += 2;
                                 break;
                             }
 
@@ -1265,6 +1386,10 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
             return 0 // command, so no return
         }
 
+        varOp(args, util) {
+            return 0 // command
+        }
+
         wgslFunc(args,util) {
             return "This block has a bunch of WGSL builtin functions."
         }
@@ -1289,8 +1414,20 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
             return "This is used to add arguments to your functions."
         }
 
+        getFuncArg(args, util) {
+            return "Use this block to get the value of an argument you defined using the def function arg block."
+        }
+
         funcReturn(args, util) {
             return 0 // command block (MINECRAFT REFERENCE?????!!!!)
+        }
+
+        c_runFunc(args, util) {
+            return 0 // also a command block
+        }
+
+        r_runFunc(args, util) {
+            return "This block will run a given function and return the output."
         }
     }
     // @ts-ignore
