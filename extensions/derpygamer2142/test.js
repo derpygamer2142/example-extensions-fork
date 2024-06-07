@@ -22,7 +22,10 @@
         throw Error("Failed to get WebGPU adapter.");
     }
     const device = await adapter.requestDevice();
+    let shaders = {}
+    let bullshitPromisesThatExistToSaveMe5Minutes = {
 
+    }
     class DerpysExtension {
 
         getInfo() {
@@ -47,13 +50,23 @@
                     {
                         opcode: "compileHat",
                         blockType: Scratch.BlockType.EVENT,
-                        text: "uhhh idk",
-                        isEdgeActivated: false
+                        text: "uhhh idk name [NAME] other thing [GPUARGS]",
+                        isEdgeActivated: false,
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myGPUFunction"
+                            },
+                            GPUARGS: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "placeholder"
+                            }
+                        }
                     },
                     {
                         opcode: "compileStart",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "run the compiley thingy"
+                        text: "run the compiley thingy "
                     },
                     {
                         opcode: "runGPU",
@@ -424,7 +437,7 @@
 
         }
 
-        textFromOp(util, blob) {
+        textFromOp(util, blob, unsafe) {
             // i can't remember if blocks is _blocks, so i'm just getting it again
             const _blocks = util.thread.blockContainer._blocks
             switch (blob.block) {
@@ -462,6 +475,9 @@
                 }
 
                 default: {
+                    if (unsafe) {
+                        return false
+                    }
                     console.warn("Input type not found, did you forget to add a menu?")
                     return "Input type not found!"
                     
@@ -519,7 +535,7 @@
         }
 
         resolveInput(util, block) {
-            return Array.isArray(block) ? this.genWGSL(util,block) : this.textFromOp(util,block)
+            return Array.isArray(block) ? this.genWGSL(util,block) : this.textFromOp(util,block,false)
         }
 
         isStringified(text) {
@@ -561,7 +577,7 @@
 
                             case "operator_lt": {
                                 code = code.concat(" (")
-                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1],false))
                                 code = code.concat(" < ")
                                 code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
@@ -571,7 +587,7 @@
 
                             case "operator_gt": {
                                 code = code.concat(" (")
-                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1],false))
                                 code = code.concat(" > ")
                                 code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
@@ -581,7 +597,7 @@
 
                             case "operator_and": {
                                 code = code.concat(" (")
-                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1],false))
                                 code = code.concat(" && ")
                                 code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
@@ -591,7 +607,7 @@
 
                             case "operator_or": {
                                 code = code.concat(" (")
-                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1],false))
                                 code = code.concat(" || ")
                                 code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
@@ -601,7 +617,7 @@
 
                             case "operator_add": {
                                 code = code.concat(" (")
-                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1],false))
                                 code = code.concat(" + ")
                                 code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
@@ -611,7 +627,7 @@
 
                             case "operator_subtract": {
                                 code = code.concat(" (")
-                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1],false))
                                 code = code.concat(" - ")
                                 code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
@@ -621,7 +637,7 @@
 
                             case "operator_multiply": {
                                 code = code.concat(" (")
-                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1],false))
                                 code = code.concat(" * ")
                                 code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
@@ -631,7 +647,7 @@
 
                             case "operator_divide": {
                                 code = code.concat(" (")
-                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : this.textFromOp(util,blocks[i+1],false))
                                 code = code.concat(" / ")
                                 code = code.concat(this.resolveInput(util, blocks[i+2]))
                                 code = code.concat(") ")
@@ -750,7 +766,7 @@
                                 }
                                 code = code.concat(op)
                                 code = code.concat(op === "pow" ? "(10.0, " : "(")
-                                let num = Scratch.Cast.toNumber(this.textFromOp(util,blocks[i+1]))// * (trad ? Math.PI / 180 : 1)
+                                let num = Scratch.Cast.toNumber(this.textFromOp(util,blocks[i+1],false))// * (trad ? Math.PI / 180 : 1)
                                 code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1]) : Number.isInteger(num) ? Scratch.Cast.toString(num) + ".0" : Scratch.Cast.toString(num))
                                 console.warn("Converted integer to float!")
                                 code = code.concat(actualop === "log" ? ") / " + Scratch.Cast.toString(Math.LN10) : ")")
@@ -763,9 +779,9 @@
                                     console.error("Function should not have an input!")
                                     return "Unexpected input in function input!"
                                 }
-                                code = code.concat(Array.isArray(blocks[i+1]) ? "error!" : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? "error!" : this.textFromOp(util,blocks[i+1],false))
                                 code = code.concat("(")
-                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util, blocks[i+2]))
+                                code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2]) : this.textFromOp(util, blocks[i+2],false))
                                 code = code.concat(")")
                                 i += 2
                                 break;
@@ -773,22 +789,22 @@
 
                             case "gpusb3_funcArgs": {
                                 
-                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1]) : this.textFromOp(util, blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1]) : this.textFromOp(util, blocks[i+1],false))
 
                                 if (Array.isArray(blocks[i+2])) {
                                     code = code.concat(", ")
                                     code = code.concat(this.genWGSL(util, blocks[i+2]))
                                 }
-                                else if (this.textFromOp(util,blocks[i+2]) !== "") {
+                                else if (this.textFromOp(util,blocks[i+2],false) !== "") {
                                     code = code.concat(", ")
-                                    code = code.concat(this.textFromOp(util,blocks[i+2]))
+                                    code = code.concat(this.textFromOp(util,blocks[i+2],false))
                                 }
                                 i += 2
                                 break;
                             }
 
                             case "gpusb3_getVar": {
-                                code = code.concat(Array.isArray(blocks[i+1]) ? "_" : this.textFromOp(util, blocks[i+1])) // if your variable name is invalid it's your own fault
+                                code = code.concat(Array.isArray(blocks[i+1]) ? "_" : this.textFromOp(util, blocks[i+1],false)) // if your variable name is invalid it's your own fault
                                 i += 1
                                 break;
                             }
@@ -802,7 +818,7 @@
                                     console.warn("Unexpected input for function args type!")
                                     return "Unexpected input for function args type!"
                                 }
-                                code = code.concat(`${this.textFromOp(util,blocks[i+1])}: ${this.textFromOp(util, blocks[i+2])}`)
+                                code = code.concat(`${this.textFromOp(util,blocks[i+1],false)}: ${this.textFromOp(util, blocks[i+2],false)}`)
                                 if (Array.isArray(blocks[i+3])) {
                                     code = code.concat(`, ${this.genWGSL(util, blocks[i+3])}`)
                                 }
@@ -815,7 +831,7 @@
                                     console.warn("Unexpected input for arg name!")
                                     return "Unexpected input for arg name!"
                                 }
-                                code = code.concat(this.textFromOp(util, blocks[i+1]))
+                                code = code.concat(this.textFromOp(util, blocks[i+1],false))
                                 i += 1
                                 break;
                             }
@@ -825,8 +841,8 @@
                                     console.warn("Unexpected input for function name!")
                                     return "Unexpected input for function name!"
                                 }
-                                code = code.concat(this.textFromOp(util, blocks[i+1]))
-                                code = code.concat(`(${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2])})`)
+                                code = code.concat(this.textFromOp(util, blocks[i+1],false))
+                                code = code.concat(`(${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2],false)})`)
                                 i += 2;
                                 break;
                             }
@@ -890,16 +906,16 @@
                             }
 
                             case "gpusb3_declareVar": {
-                                code = code.concat(Array.isArray(blocks[i+1]) ? "var" : this.textFromOp(util,blocks[i+1]))
+                                code = code.concat(Array.isArray(blocks[i+1]) ? "var" : this.textFromOp(util,blocks[i+1],false))
                                 code = code.concat(" ")
-                                code = code.concat(Array.isArray(blocks[i+2]) ? "_" : this.textFromOp(util,blocks[i+2]))
-                                const t = Array.isArray(blocks[i+4]) ? "auto" : this.textFromOp(util,blocks[i+4])
+                                code = code.concat(Array.isArray(blocks[i+2]) ? "_" : this.textFromOp(util,blocks[i+2],false))
+                                const t = Array.isArray(blocks[i+4]) ? "auto" : this.textFromOp(util,blocks[i+4],false)
                                 if (t !== "auto") {
                                     code = code.concat(": ")
                                     code = code.concat(t)
                                 }
                                 code = code.concat(" = ")
-                                code = code.concat(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util,blocks[i+3]))
+                                code = code.concat(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util,blocks[i+3],false))
                                 code = code.concat(";\n")
                                 i += 4
                                 break;
@@ -914,15 +930,15 @@
                                     console.warn("Unexpected input for variable operation!")
                                     return "Unexpected input for variable operation!"
                                 }
-                                code = code.concat(this.textFromOp(util, blocks[i+1]))
-                                code = code.concat(` ${this.textFromOp(util, blocks[i+2])} ${Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3])};\n`)
+                                code = code.concat(this.textFromOp(util, blocks[i+1],false))
+                                code = code.concat(` ${this.textFromOp(util, blocks[i+2],false)} ${Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3],false)};\n`)
 
                                 i += 3
                                 break;
                             }
 
                             case "gpusb3_computeFunc": {
-                                code = code.concat(`@compute @workgroup_size(${Array.isArray(blocks[i+1]) ? "64" : (this.isStringified(this.textFromOp(util, blocks[i+1])) ? JSON.parse(this.textFromOp(util, blocks[i+1])) : "64")}) fn computeShader(
+                                code = code.concat(`@compute @workgroup_size(${Array.isArray(blocks[i+1]) ? "64" : (this.isStringified(this.textFromOp(util, blocks[i+1],false)) ? JSON.parse(this.textFromOp(util, blocks[i+1],false)) : "64")}) fn computeShader(
 @builtin(workgroup_id) workgroup_id : vec3<u32>,
 @builtin(local_invocation_id) local_invocation_id : vec3<u32>,
 @builtin(global_invocation_id) global_invocation_id : vec3<u32>,
@@ -962,10 +978,10 @@
                                     return "Unexpected input for variable!"
                                 }
                                 code = code.concat(`
-var ${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1])} = ${this.resolveInput(util, blocks[i+2])};
+var ${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)} = ${this.resolveInput(util, blocks[i+2])};
 loop {
-${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1])}++;
-break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1])} > ${this.resolveInput(util,blocks[i+3])});
+${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)}++;
+break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)} > ${this.resolveInput(util,blocks[i+3])});
 
 `
                                 )
@@ -1005,21 +1021,21 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                                     console.warn("Unexpected input for function return type!")
                                     return "Unexpected input for function return type!"
                                 }
-                                code = code.concat(`fn ${this.textFromOp(util, blocks[i+1])}(`)
+                                code = code.concat(`fn ${this.textFromOp(util, blocks[i+1],false)}(`)
                                 if (blocks[i+3] !== null) {
                                     if (Array.isArray(blocks[i+3])) {
                                         code = code.concat(this.genWGSL(util, blocks[i+3]))
                                     }
                                     else {
-                                        code = code.concat(this.textFromOp(util, blocks[i+3]))
+                                        code = code.concat(this.textFromOp(util, blocks[i+3],false))
                                     }
                                 }
-                                code = code.concat(this.textFromOp(util, blocks[i+2]) === "void" ? ") {\n" : `) -> ${this.textFromOp(util, blocks[i+2])} {\n`)
+                                code = code.concat(this.textFromOp(util, blocks[i+2],false) === "void" ? ") {\n" : `) -> ${this.textFromOp(util, blocks[i+2],false)} {\n`)
                                 if (blocks[i+4].length > 0) {
                                     code = code.concat(this.genWGSL(util, blocks[i+4]))
                                 }
                                 else {
-                                    code = code.concat(`return ${this.textFromOp(util, blocks[i+2]) === "void" ? "" : this.textFromOp(util, blocks[i+2])}();\n`) // return a constructor for whatever type it should return
+                                    code = code.concat(`return ${this.textFromOp(util, blocks[i+2],false) === "void" ? "" : this.textFromOp(util, blocks[i+2],false)}();\n`) // return a constructor for whatever type it should return
                                 }
                                 
                                 code = code.concat("}\n") // newlines for some semblance of readability
@@ -1033,9 +1049,9 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                                     code = code.concat(" ")
                                     code = code.concat(this.genWGSL(util,blocks[i+1]))
                                 }
-                                else if (this.textFromOp(util, blocks[i+1]) !== "") {
+                                else if (this.textFromOp(util, blocks[i+1],false) !== "") {
                                     code = code.concat(" ")
-                                    code = code.concat(this.textFromOp(util, blocks[i+1]))
+                                    code = code.concat(this.textFromOp(util, blocks[i+1],false))
                                 }
                                 code = code.concat(";\n")
                                 i += 1
@@ -1047,8 +1063,8 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                                     console.warn("Unexpected input for function name!")
                                     return "Unexpected input for function name!"
                                 }
-                                code = code.concat(this.textFromOp(util, blocks[i+1]))
-                                code = code.concat(`(${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2])});\n`)
+                                code = code.concat(this.textFromOp(util, blocks[i+1],false))
+                                code = code.concat(`(${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2],false)});\n`)
                                 i += 2;
                                 break;
                             }
@@ -1209,16 +1225,59 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
             return output
         }
 
-        compileStart (args,util) {
+        async compileStart (args,util) {
+            bullshitPromisesThatExistToSaveMe5Minutes.dislikedresolve = null
+            bullshitPromisesThatExistToSaveMe5Minutes.idislikethis = new Promise((resolve, reject) => {
+                bullshitPromisesThatExistToSaveMe5Minutes.dislikedresolve = resolve
+                // see variable name
+            })
             let threads = util.startHats("gpusb3_compileHat") // this is cringe but idrc, it's temporary
+            bullshitPromisesThatExistToSaveMe5Minutes.dislikedresolve("i don't like promises") // i think this is to prevent race conditions but idk anymore
             if (threads.length > 0) {
-                threads.forEach((t) => {
-                t.tryCompile()
+                threads.forEach(async (t) => {
+                    t.tryCompile()
+                    const actualargs = t.blockContainer._blocks[t.topBlock].inputs
+                    let outputargs = {}
+                    //const argkeys = Object.keys(actualargs)
+                    /*
+                    expected behavior so that i can understand what i'm trying to do
+                    you can define a list of arguments that a gpu func will take, the buffer list and bindings will be generated from that
+                    run on the gpu block will take in arguments, this gets passed when the shader module is run
+                    */
+                    bullshitPromisesThatExistToSaveMe5Minutes[t.topBlock] = {
+                        promise: null,
+                        args: null,
+                        resolvething: null
+                    } // this code causes me physical pain and should be classified as a memetic hazard
+                    bullshitPromisesThatExistToSaveMe5Minutes[t.topBlock].promise = new Promise((resolve, reject) => {
+                        bullshitPromisesThatExistToSaveMe5Minutes[t.topBlock].resolvething = resolve
+                        // see variable name
+                    })
+
+                    await bullshitPromisesThatExistToSaveMe5Minutes[t.topBlock].promise.then((args) => {
+                        outputargs = args
+                    })
+                    // const text = this.textFromOp(util, actualargs[argkeys[j]].block, true)
+                    // if (text) {
+                    //     outputargs[argkeys[j]] =  t
+                    // }
+                    // else {
+                    //     console.warn("")
+                    // }
+                        
+                    
+                    t.args = outputargs
                 })
                 console.log(util)
+                console.log(threads)
                 const e = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
+                const compiled = this.genWGSL(util, e)
+                // const module = device.createShaderModule({
+
+                // })
                 console.log(e)
-                console.log(this.genWGSL(util, e))
+                console.log(compiled)
+                delete bullshitPromisesThatExistToSaveMe5Minutes.idislikethis
             }
             
         }
@@ -1376,6 +1435,16 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
             compute shaders halfway through and then just decided to talk about render shaders
 
             */
+        }
+
+        async compileHat(args, util) {
+            if (bullshitPromisesThatExistToSaveMe5Minutes.hasOwnProperty("idislikethis")) {
+                await bullshitPromisesThatExistToSaveMe5Minutes.idislikethis
+                bullshitPromisesThatExistToSaveMe5Minutes[util.thread.topBlock].args = args
+                bullshitPromisesThatExistToSaveMe5Minutes[util.thread.topBlock].resolvething(args)
+                util.thread.stopThisScript()
+            }
+            
         }
 
         getVar(args, util) {
