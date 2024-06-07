@@ -1254,8 +1254,9 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                         // see variable name
                     })
 
-                    await bullshitPromisesThatExistToSaveMe5Minutes[t.topBlock].promise.then((args) => {
+                    bullshitPromisesThatExistToSaveMe5Minutes[t.topBlock].promise.then((args) => {
                         outputargs = args
+                        console.log("thened")
                     })
                     // const text = this.textFromOp(util, actualargs[argkeys[j]].block, true)
                     // if (text) {
@@ -1267,9 +1268,10 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                         
                     
                     t.args = outputargs
+                    console.log(outputargs)
                 })
                 console.log(util)
-                console.log(threads)
+                //console.log(threads)
                 const e = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
                 const compiled = this.genWGSL(util, e)
                 // const module = device.createShaderModule({
