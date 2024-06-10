@@ -1225,17 +1225,32 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
             return output
         }
 
-        async compileStart (args,util) {
+        compileStart (args,util) {
             bullshitPromisesThatExistToSaveMe5Minutes.dislikedresolve = null
             bullshitPromisesThatExistToSaveMe5Minutes.idislikethis = new Promise((resolve, reject) => {
-                bullshitPromisesThatExistToSaveMe5Minutes.dislikedresolve = resolve
+                bullshitPromisesThatExistToSaveMe5Minutes.dislikedresolve = resolve // this promise is so that the hats know when to set the arguments
                 // see variable name
             })
-            let threads = util.startHats("gpusb3_compileHat") // this is cringe but idrc, it's temporary
-            bullshitPromisesThatExistToSaveMe5Minutes.dislikedresolve("i don't like promises") // i think this is to prevent race conditions but idk anymore
+            let threads = util.startHats("gpusb3_compileHat") // NOTE TO SELF: THIS DOESN'T START THE HATS(why is it named that then. this is stupid and i don't like it, i am going to complain on my twitter dot com (just kidding twitter is for nerds and i don't use it. also as of writing this comment for some it reason allows weird stuff now, what were they even thinking. twitter was bad to begin with but elon musk's midlife crisis ran it so far into the ground that it burned alive, also i'm not calling it x)), thanks sharkpool
+            /*
+                thanks sharkpool, very cool <3
+                runtime.allScriptsByOpcodeDo(opcode, (script, target) => {
+                        const thread = runtime._pushThread(script.blockId, target);
+                        //...
+                });
+            */
+            vm.runtime.allScriptsByOpcodeDo("gpusb3_compileHat", (script, target) => {
+                console.log("found a hat!")
+                console.log(target)
+                // @ts-ignore
+                const thread = vm.runtime._pushThread(script.blockId, target);
+            });
+
+                bullshitPromisesThatExistToSaveMe5Minutes.dislikedresolve("i don't like promises") // i think this is to prevent race conditions but idk anymore
             if (threads.length > 0) {
-                threads.forEach(async (t) => {
-                    t.tryCompile()
+                threads.forEach((t) => {
+                    t.tryCompile() // this doesn't do anything =D
+                    
                     const actualargs = t.blockContainer._blocks[t.topBlock].inputs
                     let outputargs = {}
                     //const argkeys = Object.keys(actualargs)
@@ -1249,8 +1264,9 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
                         args: null,
                         resolvething: null
                     } // this code causes me physical pain and should be classified as a memetic hazard
-                    bullshitPromisesThatExistToSaveMe5Minutes[t.topBlock].promise = new Promise((resolve, reject) => {
-                        bullshitPromisesThatExistToSaveMe5Minutes[t.topBlock].resolvething = resolve
+                    bullshitPromisesThatExistToSaveMe5Minutes[t.topBlock].promise = new Promise((resolve, reject) => { // the hat block will provide the arguments and then resolve this promise
+                        bullshitPromisesThatExistToSaveMe5Minutes[t.topBlock].resolvething = resolve 
+                        console.log("bound promise thingy")
                         // see variable name
                     })
 
@@ -1440,7 +1456,9 @@ break if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks
         }
 
         async compileHat(args, util) {
-            if (bullshitPromisesThatExistToSaveMe5Minutes.hasOwnProperty("idislikethis")) {
+            console.log("the hat did the thing:")
+            console.log(args)
+            if (bullshitPromisesThatExistToSaveMe5Minutes.hasOwnProperty("idislikethis")) { // this is to prevent stupid idiots from clicking the hat
                 await bullshitPromisesThatExistToSaveMe5Minutes.idislikethis
                 bullshitPromisesThatExistToSaveMe5Minutes[util.thread.topBlock].args = args
                 bullshitPromisesThatExistToSaveMe5Minutes[util.thread.topBlock].resolvething(args)
