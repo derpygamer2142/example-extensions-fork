@@ -1014,12 +1014,14 @@
                                 }
 
                                 case "gpusb3_computeFunc": {
-                                    code = code.concat(`@compute @workgroup_size(${Array.isArray(blocks[i+1]) ? "64" : (this.isStringified(this.textFromOp(util, blocks[i+1],false)) ? JSON.parse(this.textFromOp(util, blocks[i+1],false)) : "64")}) fn computeShader(
-    @builtin(workgroup_id) workgroup_id : vec3<u32>,
-    @builtin(local_invocation_id) local_invocation_id : vec3<u32>,
-    @builtin(global_invocation_id) global_invocation_id : vec3<u32>,
-    @builtin(local_invocation_index) local_invocation_index: u32,
-    @builtin(num_workgroups) num_workgroups: vec3<u32>
+                                    code = code.concat(`@group(0) @binding(0) var<storage, read_write> data: array<f32>;
+
+@compute @workgroup_size(${Array.isArray(blocks[i+1]) ? "64" : (this.isStringified(this.textFromOp(util, blocks[i+1],false)) ? JSON.parse(this.textFromOp(util, blocks[i+1],false)) : "64")}) fn computeShader(
+@builtin(workgroup_id) workgroup_id : vec3<u32>,
+@builtin(local_invocation_id) local_invocation_id : vec3<u32>,
+@builtin(global_invocation_id) global_invocation_id : vec3<u32>,
+@builtin(local_invocation_index) local_invocation_index: u32,
+@builtin(num_workgroups) num_workgroups: vec3<u32>
                                     ) {\n\n`)
                                         if (blocks[i+2].length > 0) {
                                             code = code.concat(this.genWGSL(util,blocks[i+2],false,recursionDepth+1))
@@ -1361,11 +1363,119 @@
                 //console.log(threads)
                 const e = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
                 const compiled = this.genWGSL(util, e, false, 0)
-                // const module = device.createShaderModule({
-
-                // })
+                
                 console.log(e)
                 console.log(compiled)
+                const BUFFER_SIZE = 1000;
+
+
+                const output = device.createBuffer({
+                    size: BUFFER_SIZE,
+                    // @ts-ignore
+                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+                });
+                
+                const stagingBuffer = device.createBuffer({
+                    size: BUFFER_SIZE,
+                    // @ts-ignore
+                    usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+                });
+    
+                const shaderModule = device.createShaderModule({
+                    code: compiled,
+                })
+    
+                const bindGroupLayout = device.createBindGroupLayout({
+                entries: [
+                    {
+                    binding: 0,
+                    // @ts-ignore
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: {
+                        type: "storage",
+                    },
+                    },
+                ],
+                });
+    
+                const bindGroup = device.createBindGroup({
+                layout: bindGroupLayout,
+                entries: [
+                    {
+                    binding: 0,
+                    resource: {
+                        buffer: output,
+                    },
+                    },
+                ],
+                });
+                
+                const computePipeline = device.createComputePipeline({
+                    layout: device.createPipelineLayout({
+                        bindGroupLayouts: [bindGroupLayout],
+                    }),
+                    compute: {
+                        module: shaderModule,
+                        entryPoint: "computeShader",
+                    },
+                });
+                
+                // @ts-ignore
+                const commandEncoder = device.createCommandEncoder();
+                // @ts-ignore
+                const passEncoder = commandEncoder.beginComputePass()
+                passEncoder.setPipeline(computePipeline);
+                passEncoder.setBindGroup(0, bindGroup);
+                passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / 64));
+    
+                passEncoder.end();
+    
+                // Copy output buffer to staging buffer
+                commandEncoder.copyBufferToBuffer(
+                    output,
+                    0, // Source offset
+                    stagingBuffer,
+                    0, // Destination offset
+                    BUFFER_SIZE,
+                );
+                
+                // End frame by passing array of command buffers to command queue for execution
+                device.queue.submit([commandEncoder.finish()]);
+        
+                // map staging buffer to read results back to JS
+                // let data = ["you done messed up"]
+                // stagingBuffer.mapAsync(
+                //     // @ts-ignore
+                //     GPUMapMode.READ,
+                //     0, // Offset
+                //     BUFFER_SIZE, // Length
+                // ).then((value) => {
+                //     const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE)
+                //     data = copyArrayBuffer.slice()
+                //     stagingBuffer.unmap();
+                // },
+                // (reason) => {
+                //     console.log(reason)
+                // })
+                
+                
+                
+                // console.log(new Float32Array(data));
+    
+    
+                
+                // map staging buffer to read results back to JS
+                stagingBuffer.mapAsync(
+                    // @ts-ignore
+                    GPUMapMode.READ,
+                    0, // Offset
+                    BUFFER_SIZE, // Length
+                ).then((value) => {
+                    const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE)
+                    const data = copyArrayBuffer.slice();
+                    stagingBuffer.unmap();
+                    console.log(new Float32Array(data));
+                });
             }
             
         }
@@ -1440,13 +1550,13 @@
             });
             
             const computePipeline = device.createComputePipeline({
-            layout: device.createPipelineLayout({
-                bindGroupLayouts: [bindGroupLayout],
-            }),
-            compute: {
-                module: shaderModule,
-                entryPoint: "main",
-            },
+                layout: device.createPipelineLayout({
+                    bindGroupLayouts: [bindGroupLayout],
+                }),
+                compute: {
+                    module: shaderModule,
+                    entryPoint: "main",
+                },
             });
             
             // @ts-ignore
