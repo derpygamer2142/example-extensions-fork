@@ -132,6 +132,30 @@
                     },
 
                     {
+                        opcode: "bindInput",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Bind shader input # [BINDNUM] to variable [VARNAME] with settings [SETTINGS] type [INPUTTYPE]",
+                        arguments: {
+                            BINDNUM: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            VARNAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "data"
+                            },
+                            SETTINGS: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "storage, read_write"
+                            },
+                            INPUTTYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "array<f32>"
+                            }
+                        }
+                    },
+
+                    {
                         opcode: "varOp",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "Variable [VARNAME] [VAROP]  [INPUT]",
@@ -163,6 +187,47 @@
                             }
                         }
                     },
+
+                    {
+                        blockType: "label",
+                        text: "      "
+                    },
+
+                    {
+                        opcode: "typeConstructor",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Create [TYPE] of [SUBTYPE]",
+                        arguments: {
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "CONSTRUCTABLETYPES",
+                                defaultValue: "vector3"
+                            },
+                            SUBTYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "rootType",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Base type [TYPE]",
+                        arguments: {
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "RAWTYPES",
+                                defaultValue: "f32"
+                            }
+                        }
+                    },
+
+                    {
+                        blockType: "label",
+                        text: "      "
+                    },
+                    
                     {
                         opcode: "wgslFunc",
                         blockType: Scratch.BlockType.REPORTER,
@@ -456,6 +521,15 @@
                             "placeholder",
                             "placeholder"
                         ]
+                    },
+                    CONSTRUCTABLETYPES: {
+                        acceptReporters: true,
+                        items: [
+                            "vector2",
+                            "vector3",
+                            "vector4",
+                            "array"
+                        ]
                     }
                     
                 }
@@ -468,6 +542,7 @@
             const _blocks = util.thread.blockContainer._blocks
             switch (blob.block) {
                 case "text": {
+                    //console.log(_blocks[blob.id])
                     return _blocks[blob.id].fields.TEXT.value
                     break;
                 }
@@ -504,12 +579,17 @@
                     return _blocks[blob.id].fields.GPUFUNCARGTYPES.value
                     break;
                 }
+                
+                case "gpusb3_menu_CONSTRUCTABLETYPES": {
+                    return _blocks[blob.id].fields.CONSTRUCTABLETYPES.value
+                }
 
                 default: {
                     if (unsafe) {
                         return false
                     }
                     console.warn("Input type not found, did you forget to add a menu?")
+                    console.warn(blob)
                     return "Input type not found!"
                     
                 }
@@ -570,11 +650,9 @@
         }
 
         isStringified(text) {
-            console.log(typeof text)
             try {
                 
                 JSON.parse(text)
-                console.log("whar")
                 return true
             }
             catch {
@@ -637,7 +715,6 @@
                     else {
                         
                         if (typeof b === "object") {
-                            console.log(b)
                             //const op = b.block
 
                             switch (b.block) {
@@ -885,6 +962,26 @@
                                     break;
                                 }
 
+                                case "gpusb3_typeConstructor": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        console.warn("Unexpected input for construction type!")
+                                        return "Unexpected input for construction type!"
+                                    }
+                                    code = code.concat(`${this.textFromOp(util, blocks[i+1], false)}<${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)}>`)
+                                    i += 2
+                                    break;
+                                }
+
+                                case "gpusb3_rootType": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        console.warn("Unexpected input for type!")
+                                        return "Unexpected input for type!"
+                                    }
+                                    code = code.concat(this.textFromOp(util, blocks[i+1], false))
+                                    i += 1
+                                    break;
+                                }
+
                                 case "gpusb3_defFuncArgs": {
                                     if (Array.isArray(blocks[i+1])) {
                                         console.warn("Unexpectecd input for function args definition!")
@@ -1013,21 +1110,23 @@
                                     break;
                                 }
 
-                                case "gpusb3_computeFunc": {
-                                    code = code.concat(`@group(0) @binding(0) var<storage, read_write> data: array<f32>;
+                                case "gpusb3_computeFunc": { // @group(0) @binding(0) var<storage, read_write> data: array<f32>;
+                                    code = code.concat(`
 
 @compute @workgroup_size(${Array.isArray(blocks[i+1]) ? "64" : (this.isStringified(this.textFromOp(util, blocks[i+1],false)) ? JSON.parse(this.textFromOp(util, blocks[i+1],false)) : "64")}) fn computeShader(
+
 @builtin(workgroup_id) workgroup_id : vec3<u32>,
 @builtin(local_invocation_id) local_invocation_id : vec3<u32>,
 @builtin(global_invocation_id) global_invocation_id : vec3<u32>,
 @builtin(local_invocation_index) local_invocation_index: u32,
 @builtin(num_workgroups) num_workgroups: vec3<u32>
+
                                     ) {\n\n`)
                                         if (blocks[i+2].length > 0) {
                                             code = code.concat(this.genWGSL(util,blocks[i+2],false,recursionDepth+1))
                                         }
                                         else {
-                                            code = code.concat("return;")
+                                            code = code.concat("return;\n")
                                         }
                                         
                                         code = code.concat("}\n") // newlines for some semblance of readability
@@ -1070,7 +1169,7 @@
                                             code = code.concat(this.genWGSL(util,blocks[i+4],false,recursionDepth+1))
                                         }
                                         else {
-                                            code = code.concat("break;")
+                                            code = code.concat("break;\n")
                                         }
                                         
                                         code = code.concat("}\n") // newlines for some semblance of readability
@@ -1091,6 +1190,21 @@
 
                                         }
                                         */
+                                }
+
+                                case "gpusb3_bindInput": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        console.warn("Unexpected input for binding #!")
+                                        return "Unexpected input for binding #!"
+                                    }
+
+                                    if (Array.isArray(blocks[i+2])) {
+                                        console.warn("Unexpected input for binding name!")
+                                        return "Unexpected input for binding name!"
+                                    }
+                                    code = code.concat(`@group(0) @binding(${this.textFromOp(util, blocks[i+1], false)}) var<${Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3], false, recursionDepth+1) : this.textFromOp(util, blocks[i+3])}> ${this.textFromOp(util, blocks[i+2])}: ${Array.isArray(blocks[i+4]) ? this.genWGSL(util, blocks[i+4], false, recursionDepth+1) : this.textFromOp(util, blocks[i+4], false)};\n`)
+                                    i += 4
+                                    break;
                                 }
                                 
                                 case "gpusb3_defFunc": {
@@ -1386,28 +1500,28 @@
                 })
     
                 const bindGroupLayout = device.createBindGroupLayout({
-                entries: [
-                    {
-                    binding: 0,
-                    // @ts-ignore
-                    visibility: GPUShaderStage.COMPUTE,
-                    buffer: {
-                        type: "storage",
-                    },
-                    },
-                ],
+                    entries: [
+                        {
+                            binding: 0,
+                            // @ts-ignore
+                            visibility: GPUShaderStage.COMPUTE,
+                            buffer: {
+                                type: "storage",
+                            },
+                        },
+                    ]
                 });
     
                 const bindGroup = device.createBindGroup({
-                layout: bindGroupLayout,
-                entries: [
-                    {
-                    binding: 0,
-                    resource: {
-                        buffer: output,
-                    },
-                    },
-                ],
+                    layout: bindGroupLayout,
+                    entries: [
+                        {
+                            binding: 0,
+                            resource: {
+                                buffer: output,
+                            },
+                        },
+                    ],
                 });
                 
                 const computePipeline = device.createComputePipeline({
@@ -1524,34 +1638,34 @@
                 code: shader,
             })
 
-            const bindGroupLayout = device.createBindGroupLayout({
-            entries: [
-                {
-                binding: 0,
-                // @ts-ignore
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: {
-                    type: "storage",
-                },
-                },
-            ],
-            });
+            // const bindGroupLayout = device.createBindGroupLayout({
+            // entries: [
+            //     {
+            //     binding: 0,
+            //     // @ts-ignore
+            //     visibility: GPUShaderStage.COMPUTE,
+            //     buffer: {
+            //         type: "storage",
+            //     },
+            //     },
+            // ],
+            // });
 
-            const bindGroup = device.createBindGroup({
-            layout: bindGroupLayout,
-            entries: [
-                {
-                binding: 0,
-                resource: {
-                    buffer: output,
-                },
-                },
-            ],
-            });
+            // const bindGroup = device.createBindGroup({
+            // layout: bindGroupLayout,
+            // entries: [
+            //     {
+            //     binding: 0,
+            //     resource: {
+            //         buffer: output,
+            //     },
+            //     },
+            // ],
+            // });
             
             const computePipeline = device.createComputePipeline({
                 layout: device.createPipelineLayout({
-                    bindGroupLayouts: [bindGroupLayout],
+                    bindGroupLayouts: [], // bindGroupLayout
                 }),
                 compute: {
                     module: shaderModule,
@@ -1564,7 +1678,7 @@
             // @ts-ignore
             const passEncoder = commandEncoder.beginComputePass()
             passEncoder.setPipeline(computePipeline);
-            passEncoder.setBindGroup(0, bindGroup);
+            //passEncoder.setBindGroup(0, bindGroup);
             passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / 64));
 
             passEncoder.end();
@@ -1695,6 +1809,18 @@
 
         gpuFuncArgDef(args, util) {
             return "This is used to add input arguments to your gpu functions."
+        }
+
+        bindInput(args, util) {
+            return 0 // command
+        }
+
+        typeConstructor(args, util) {
+            return "This block lets you constructor types. You can put this block inside of itself(with a base type at the end) to create complex types, for example an array of vector2s of f32."
+        }
+
+        rootType(args, util) {
+            return "This can be used with the above block for a root type."
         }
     }
     // @ts-ignore
