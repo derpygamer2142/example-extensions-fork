@@ -64,7 +64,7 @@
                     {
                         opcode: "gpuFuncArgDef",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "Def GPU func arg [ARGNAME] type [ARGTYPE] next [NEXT]", // argtype may or may not do anything in the future, i need to learn more about wgpu
+                        text: "Def GPU func arg [ARGNAME] type [ARGTYPE] usage [USAGE] settings [SETTINGS] type [TYPE] next [NEXT]", // argtype may or may not do anything in the future, i need to learn more about wgpu
                         arguments: {
                             ARGNAME: {
                                 type: Scratch.ArgumentType.STRING,
@@ -73,7 +73,22 @@
                             ARGTYPE: {
                                 type: Scratch.ArgumentType.STRING,
                                 menu: "GPUFUNCARGTYPES",
-                                defaultValue: "placeholder"
+                                defaultValue: "buffer"
+                            },
+                            USAGE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            },
+                            SETTINGS: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: JSON.stringify({
+                                    size: 1000
+                                })
+                            },
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "BUFFERTYPE",
+                                defaultValue: "uniform"
                             },
                             NEXT: {
                                 type: Scratch.ArgumentType.STRING,
@@ -93,6 +108,28 @@
                         arguments: {
                             CODE: {
                                 type: Scratch.ArgumentType.STRING
+                            }
+                        }
+                    },
+
+                    {
+                        blockType: "label",
+                        text: "      "
+                    },
+
+                    {
+                        opcode: "bufferUsage",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Buffer usage [USAGE], next [NEXT]",
+                        arguments: {
+                            USAGE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "BUFFERUSAGE",
+                                defaultValue: "STORAGE"
+                            },
+                            NEXT: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
                             }
                         }
                     },
@@ -517,9 +554,7 @@
                     GPUFUNCARGTYPES: {
                         acceptReporters: true,
                         items: [
-                            "placeholder",
-                            "placeholder",
-                            "placeholder"
+                            "buffer"
                         ]
                     },
                     CONSTRUCTABLETYPES: {
@@ -529,6 +564,26 @@
                             "vector3",
                             "vector4",
                             "array"
+                        ]
+                    },
+                    BUFFERUSAGE: {
+                        acceptReporters: true,
+                        items: [
+                            "COPY_SRC",
+                            "COPY_DST",
+                            "MAP_READ",
+                            "MAP_WRITE",
+                            "QUERY_RESOLVE",
+                            "STORAGE",
+                            "UNIFORM"
+                        ]
+                    },
+                    BUFFERTYPE: { // why does one buffer need so much data man
+                        acceptReporters: true,
+                        items: [
+                            "read-only-storage",
+                            "storage",
+                            "uniform"
                         ]
                     }
                     
@@ -582,6 +637,14 @@
                 
                 case "gpusb3_menu_CONSTRUCTABLETYPES": {
                     return _blocks[blob.id].fields.CONSTRUCTABLETYPES.value
+                }
+
+                case "gpusb3_menu_BUFFERUSAGE": {
+                    return _blocks[blob.id].fields.BUFFERUSAGE.value
+                }
+
+                case "gpusb3_menu_BUFFERTYPE": {
+                    return _blocks[blob.id].fields.BUFFERTYPE.value
                 }
 
                 default: {
@@ -672,29 +735,58 @@
                 }
                 else {
                     if (isGeneratingArgumentsBecauseTheOtherThingITriedDidntWork) {
-                        console.log("thing")
                         if (typeof b === "object") {
                             //const op = b.block
 
                             switch (b.block) {
                                 case "gpusb3_gpuFuncArgDef": {
-                                    if (Array.isArray(blocks[i+1]) || Array.isArray(blocks[i+2])) {
+                                    if (Array.isArray(blocks[i+1]) || Array.isArray(blocks[i+2]) || !Array.isArray(blocks[i+3]) || Array.isArray(blocks[i+4])) {
                                         console.warn("Unexpected input for Def gpu func args block!")
                                         return "Unexpected input for Def gpu func args block!"
                                     }
                                     let argobj = {}
                                     argobj.name = this.textFromOp(util, blocks[i+1], false)
                                     argobj.type = this.textFromOp(util, blocks[i+2], false)
+                                    const usage = this.genWGSL(util, blocks[i+3], true, 0) // this generates an array from the usage. Technically the recursion depth isn't 0, but this is faster than rewriting some stuff.
+                                    argobj.usage = JSON.parse(usage)
+                                    let settings
+                                    try {
+                                        settings = JSON.parse(this.textFromOp(util, blocks[i+4], false))
+                                    }
+                                    catch {
+                                        console.warn("Invalid settings, defaulting to blank object!")
+                                        settings = {}
+                                    }
+                                    argobj.settings = settings
+
+                                    argobj.usagetype = this.textFromOp(util, blocks[i+5], false)
+
                                     code = code.concat(JSON.stringify(argobj))
-                                    if (Array.isArray(blocks[i+3])) {
+                                    if (Array.isArray(blocks[i+6])) {
                                         code = code.concat(",")
                                         console.log(recursionDepth)
-                                        code = code.concat(this.genWGSL(util,blocks[i+3],isGeneratingArgumentsBecauseTheOtherThingITriedDidntWork,recursionDepth+1))
+                                        code = code.concat(this.genWGSL(util,blocks[i+6],isGeneratingArgumentsBecauseTheOtherThingITriedDidntWork,recursionDepth+1))
                                         
                                     }
                                     
                                     
-                                    i += 3
+                                    i += 6
+                                    break;
+                                }
+
+                                case "gpusb3_bufferUsage": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        console.warn("Unexpected input for buffer usage!")
+                                        return "Unexpected input for buffer usage!"
+                                    }
+
+                                    code = code.concat(`\"${this.textFromOp(util, blocks[i+1], false)}\"`)
+                                    if (Array.isArray(blocks[i+2])) {
+                                        code = code.concat(",")
+                                        code = code.concat(this.genWGSL(util, blocks[i+2],true, recursionDepth+1))
+                                    }
+
+                                    i += 2
                                     break;
                                 }
 
@@ -1469,8 +1561,122 @@
                     // let farraycom = this.compile(util, t, t.blockContainer._blocks,t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block,true)
                     let farraycom = this.genInputTree(util, t, t.blockContainer._blocks, t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block, true) // farraycom = function array compiled
                     console.log(farraycom) 
-                    let funcargs = this.genWGSL(util, farraycom, true, 0)
+                    let funcargs = JSON.parse(this.genWGSL(util, farraycom, true, 0))
                     console.log(funcargs)
+
+                    const arraycompiled = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
+                    const compiled = this.genWGSL(util, arraycompiled, false, 0)
+                    const shaderModule = device.createShaderModule({
+                        code: compiled
+                    })
+
+
+                    if (Array.isArray(farraycom[1])) {
+                        console.warn("Function name cannot have inputs!")
+                    }
+                    else {
+
+                        let funcname = this.textFromOp(util, farraycom[1], false)
+                        shaders[funcname] = {}
+                        let shader = shaders[funcname]
+
+                        // this code is horrible and i don't fully remember what it does or how it works.
+                        shader.args = funcargs
+                        shader.inputs = []
+                        for (let i = 0; i < funcargs.length; i++) {
+                            const arg = funcargs[i]
+                            let settings = {}
+                            shader.inputs.push({
+                                binding: i,
+                                name: arg.name,
+                                arg: arg // pirate
+                            })
+                            switch (arg.type) {
+                                case "buffer": {
+                                    settings.size = arg?.size ?? 1000
+                                    if (arg.usage.length > 0) {
+                                        for (let j = 0; j < arg.usage.length; j++) {
+                                            if (j == 0) {
+                                                // @ts-ignore
+                                                settings.usage = GPUBufferUsage[arg.usage[0]]
+                                            }
+                                            else {
+                                                // @ts-ignore
+                                                settings.usage |= GPUBufferUsage[arg.usage[j]]
+                                            }
+                                        }
+                                    }
+                                    settings.label = arg.name
+                                    
+
+                                    const buffer = device.createBuffer(settings)
+                                    shader.inputs[i].input = buffer
+                                    shader.inputs[i].inputtype = "buffer"
+                                    break;
+                                }
+                                
+                                
+                            }
+
+                            
+                        }
+
+                        let entries = []
+                        let groupEntries = []
+                        shader.inputs.forEach((i) => {
+                            let obj = {
+                                binding: i.binding,
+                                // @ts-ignore
+                                visibility: GPUShaderStage.COMPUTE,
+                            }
+                            obj[i.inputtype] = {
+                                type: i.arg.usagetype
+                            }
+                            entries.push(obj)
+
+                            let groupobj = {
+                                binding: i.binding,
+                                resource: {
+                                    buffer: i.input // todo: make this work with multiple input types
+                                }
+                            }
+
+                            groupEntries.push(groupobj)
+                        })
+
+                        shader.bindGroupLayout = device.createBindGroupLayout({
+                            entries: entries
+                        })
+
+                        console.log(groupEntries)
+                        shader.bindGroup = device.createBindGroup({
+                            layout: shader.bindGroupLayout,
+                            entries: groupEntries
+                        })
+
+                        shader.computePipeline = device.createComputePipeline({ // todo: make this support multiple types of shaders
+                            layout: device.createPipelineLayout({
+                                bindGroupLayouts: [shader.bindGroupLayout]
+                            }),
+                            compute: {
+                                module: shaderModule,
+                                entryPoint: "computeShader"
+                            }
+
+                        })
+
+                        // todo: make this support running the functions(duh)
+                        shader.commandEncoder = device.createCommandEncoder()
+
+                        shader.passEncoder = shader.commandEncoder.beginComputePass()
+                        shader.passEncoder.setPipeline(shader.computePipeline)
+                        shader.passEncoder.setBindGroup(0, shader.bindGroup)
+                        shader.passEncoder.dispatchWorkgroups(1)
+                        shader.passEncoder.end()
+                        device.queue.submit([shader.commandEncoder.finish()])
+                        
+                        console.log("if you're seeing this then it ran without errors :)")
+                    }
                 })
 
                 console.log(util)
@@ -1480,7 +1686,7 @@
                 
                 console.log(e)
                 console.log(compiled)
-                const BUFFER_SIZE = 1000;
+                /*const BUFFER_SIZE = 1000;
 
 
                 const output = device.createBuffer({
@@ -1589,7 +1795,7 @@
                     const data = copyArrayBuffer.slice();
                     stagingBuffer.unmap();
                     console.log(new Float32Array(data));
-                });
+                });*/
             }
             
         }
@@ -1821,6 +2027,10 @@
 
         rootType(args, util) {
             return "This can be used with the above block for a root type."
+        }
+
+        bufferUsage(args, util) {
+            return "This is used by the def gpu func arg block to define inputs. It's different from the usage in the bind input block."
         }
     }
     // @ts-ignore
