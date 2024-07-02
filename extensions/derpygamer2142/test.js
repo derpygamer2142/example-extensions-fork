@@ -22,7 +22,13 @@
         throw Error("Failed to get WebGPU adapter.");
     }
     const device = await adapter.requestDevice();
+
+
+
     let shaders = {}
+    let arrayRefs = {}
+
+
     class DerpysExtension {
 
         getInfo() {
@@ -134,7 +140,23 @@
                         }
                     },
 
+                    {
+                        blockType: "label",
+                        text: "Function input blocks"
+                    },
 
+                    {
+                        opcode: "genF32",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "F32 array from array [ARRAY]",
+                        arguments: {
+                            ARRAY: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: JSON.stringify([1, 2, 3])
+                            }
+                        }
+                    },
+                    
                     {
                         blockType: "label",
                         text: "WGSL Blocks"
@@ -1565,7 +1587,10 @@
                     console.log(funcargs)
 
                     const arraycompiled = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
+                    console.log(arraycompiled)
                     const compiled = this.genWGSL(util, arraycompiled, false, 0)
+                    console.log(compiled)
+
                     const shaderModule = device.createShaderModule({
                         code: compiled
                     })
@@ -1681,11 +1706,11 @@
 
                 console.log(util)
                 //console.log(threads)
-                const e = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
-                const compiled = this.genWGSL(util, e, false, 0)
+                // const e = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
+                // const compiled = this.genWGSL(util, e, false, 0)
                 
-                console.log(e)
-                console.log(compiled)
+                // console.log(e)
+                // console.log(compiled)
                 /*const BUFFER_SIZE = 1000;
 
 
@@ -2031,6 +2056,18 @@
 
         bufferUsage(args, util) {
             return "This is used by the def gpu func arg block to define inputs. It's different from the usage in the bind input block."
+        }
+
+        genF32(args, util) {
+            let array
+            try {
+                array = JSON.parse(args.ARRAY)
+            }
+            catch {
+                array = []
+            }
+            arrayRefs[util.thread.target.id] = new Float32Array(array)
+            return util.thread.target.id // todo: make this less of a memory leak
         }
     }
     // @ts-ignore
