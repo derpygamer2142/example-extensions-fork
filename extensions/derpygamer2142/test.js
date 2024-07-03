@@ -26,7 +26,7 @@
 
 
     let shaders = {}
-    let arrayRefs = {}
+    let bufferRefs = {}
 
 
     class DerpysExtension {
@@ -51,6 +51,18 @@
                         // }
                     },
                     {
+                        opcode: "testBlock",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "another test block [NEXT]",
+                        arguments: {
+                            
+                        }
+
+                    
+
+                    },
+
+                    {
                         opcode: "compileHat",
                         blockType: Scratch.BlockType.EVENT,
                         text: "uhhh idk name [NAME] other thing [GPUARGS]",
@@ -58,7 +70,7 @@
                         arguments: {
                             NAME: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "myGPUFunction"
+                                defaultValue: "myGPUFunc"
                             },
                             GPUARGS: {
                                 type: Scratch.ArgumentType.STRING,
@@ -110,11 +122,32 @@
                     {
                         opcode: "runGPU",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Run [CODE] on the gpu",
+                        text: "Run function [GPUFUNC] with args [ARGS]",
                         arguments: {
-                            CODE: {
-                                type: Scratch.ArgumentType.STRING
+                            GPUFUNC: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myGPUFunc"
                             }
+                            // ARGS intentionally omitted
+                        }
+                    },
+
+                    {
+                        opcode: "gpuFuncArgInput",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Input of type [INPUTTYPE] bound to [BINDING], input [INPUT] next [NEXT]",
+                        arguments: {
+                            INPUTTYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "GPUFUNCARGTYPES",
+                                defaultValue: "buffer"
+                            },
+                            BINDING: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            // note: INPUT and NEXT are intentionally omitted
+                           
                         }
                     },
 
@@ -1395,11 +1428,25 @@
             return code
         }
 
+        getBlockId(util) {
+            // this function is by CST1229
+            if (util.thread.isCompiled) {
+                return util.thread.peekStack();
+            } else {
+                return util.thread.peekStackFrame().op.id;
+            }
+        }
+
         // make a hat block and get all the blocks under the script?
         ablock(args, util) {
             //console.log(Scratch, util, vm)
             util.thread.tryCompile()
             console.log(vm)
+            console.log(util)
+            console.log(args)
+            console.log(util.thread.peekStack())
+            // console.log(util.thread.peekStackFrame().op.id)
+            console.log(util.thread.blockContainer._blocks[util.thread.blockContainer._blocks[this.getBlockId(util)].parent ?? this.getBlockId(util)].opcode === "gpusb3_placeholder")
             let script = util.thread
             //console.log(script) // script[Object.getOwnPropertyNames(script)[0]].value.startingFunction
             return 1
@@ -1600,8 +1647,8 @@
                         console.warn("Function name cannot have inputs!")
                     }
                     else {
-
-                        let funcname = this.textFromOp(util, farraycom[1], false)
+                        let idkman = this.genInputTree(util, t, t.blockContainer._blocks, t.topBlock, true)
+                        let funcname = Array.isArray(idkman[1]) ? "Unexpected gpu func name input" : this.textFromOp(util,idkman[1],false)//this.textFromOp(util, farraycom[1], false)
                         shaders[funcname] = {}
                         let shader = shaders[funcname]
 
@@ -1634,8 +1681,8 @@
                                     settings.label = arg.name
                                     
 
-                                    const buffer = device.createBuffer(settings)
-                                    shader.inputs[i].input = buffer
+                                    //const buffer = device.createBuffer(settings)
+                                    shader.inputs[i].settings = settings
                                     shader.inputs[i].inputtype = "buffer"
                                     break;
                                 }
@@ -1647,7 +1694,6 @@
                         }
 
                         let entries = []
-                        let groupEntries = []
                         shader.inputs.forEach((i) => {
                             let obj = {
                                 binding: i.binding,
@@ -1659,25 +1705,25 @@
                             }
                             entries.push(obj)
 
-                            let groupobj = {
-                                binding: i.binding,
-                                resource: {
-                                    buffer: i.input // todo: make this work with multiple input types
-                                }
-                            }
+                            // let groupobj = {
+                            //     binding: i.binding,
+                            //     resource: {
+                            //         buffer: i.input // todo: make this work with multiple input types
+                            //     }
+                            // }
 
-                            groupEntries.push(groupobj)
+                            // groupEntries.push(groupobj)
                         })
 
                         shader.bindGroupLayout = device.createBindGroupLayout({
                             entries: entries
                         })
 
-                        console.log(groupEntries)
-                        shader.bindGroup = device.createBindGroup({
-                            layout: shader.bindGroupLayout,
-                            entries: groupEntries
-                        })
+                        // console.log(groupEntries)
+                        // shader.bindGroup = device.createBindGroup({
+                        //     layout: shader.bindGroupLayout,
+                        //     entries: groupEntries
+                        // })
 
                         shader.computePipeline = device.createComputePipeline({ // todo: make this support multiple types of shaders
                             layout: device.createPipelineLayout({
@@ -1691,14 +1737,14 @@
                         })
 
                         // todo: make this support running the functions(duh)
-                        shader.commandEncoder = device.createCommandEncoder()
+                        // shader.commandEncoder = device.createCommandEncoder()
 
-                        shader.passEncoder = shader.commandEncoder.beginComputePass()
-                        shader.passEncoder.setPipeline(shader.computePipeline)
-                        shader.passEncoder.setBindGroup(0, shader.bindGroup)
-                        shader.passEncoder.dispatchWorkgroups(1)
-                        shader.passEncoder.end()
-                        device.queue.submit([shader.commandEncoder.finish()])
+                        // shader.passEncoder = shader.commandEncoder.beginComputePass()
+                        // shader.passEncoder.setPipeline(shader.computePipeline)
+                        // shader.passEncoder.setBindGroup(0, shader.bindGroup)
+                        // shader.passEncoder.dispatchWorkgroups(1)
+                        // shader.passEncoder.end()
+                        // device.queue.submit([shader.commandEncoder.finish()])
                         
                         console.log("if you're seeing this then it ran without errors :)")
                     }
@@ -1824,12 +1870,11 @@
             }
             
         }
+        /*
+        compute shader reference implementation
 
         
-        
-        runGPU (args, util) {
-
-                // Define global buffer size
+            // Define global buffer size
             const BUFFER_SIZE = 1000;
 
             const shader = `
@@ -1969,7 +2014,7 @@
   
 
             // notes:
-            /*
+            
             most of this can stay the same across multiple modules, the only things that might change
             are the different input buffers and their usage, but that can probably be generated
             fairly easily
@@ -1977,7 +2022,67 @@
             this documentation is horrible, i'm fairly sure the writer forgot they were writing about
             compute shaders halfway through and then just decided to talk about render shaders
 
-            */
+            
+
+
+        */
+
+        
+        
+        runGPU (args, util) {
+            // things go here
+            if (!Object.prototype.hasOwnProperty.call(shaders,args.GPUFUNC)) {
+                console.log(shaders)
+                console.warn("Couldn't find function!")
+                return
+            }
+            let shader = shaders[args.GPUFUNC]
+            let groupEntries = []
+            let parsedInputs
+            try {
+                parsedInputs = JSON.parse(args.ARGS ?? "{}")
+            }
+            catch {
+                parsedInputs = {}
+            }
+
+
+            shader.inputs.forEach((i) => {
+                if (Object.prototype.hasOwnProperty.call(parsedInputs,i.binding)) {
+                    let input
+                    switch (parsedInputs[i.binding].type) {
+                        case "buffer": {
+                            input = device.createBuffer(i.settings);
+                            device.queue.writeBuffer(input,0,bufferRefs[parsedInputs.input])
+                            break;
+                        }
+                    }
+
+                    let groupobj = {
+                        binding: i.binding,
+                        resource: {
+                            buffer: input // todo: make this work with multiple input types
+                        }
+                    }
+
+                    groupEntries.push(groupobj)
+                }
+                
+            })
+
+            const bindGroup = device.createBindGroup({
+                    layout: shader.bindGroupLayout,
+                    entries: groupEntries
+            })
+
+            const commandEncoder = device.createCommandEncoder()
+
+            const passEncoder = shader.commandEncoder.beginComputePass()
+            passEncoder.setPipeline(shader.computePipeline)
+            passEncoder.setBindGroup(0, bindGroup)
+            passEncoder.dispatchWorkgroups(1)
+            passEncoder.end()
+            device.queue.submit([commandEncoder.finish()])
         }
 
         async compileHat(args, util) {
@@ -2066,8 +2171,44 @@
             catch {
                 array = []
             }
-            arrayRefs[util.thread.target.id] = new Float32Array(array)
-            return util.thread.target.id // todo: make this less of a memory leak
+            bufferRefs[util.thread.target.id] = new Float32Array(array)
+            return this.getBlockId(util) // todo: make this less of a memory leak
+        }
+
+        testBlock(args, util) {
+            console.log("NEXT:")
+            console.log(args.NEXT)
+            return args.NEXT
+        }
+
+        gpuFuncArgInput(args, util) {
+            //if (util.thread.blockContainer._blocks[util.thread.blockContainer._blocks[this.getBlockId(util)].parent ?? "amogus"].opcode === "gpusb3_gpuFuncArgInput")
+            if (!args.INPUT) {
+                    return "{}"
+            }
+
+            let returnobj
+
+            if (args.NEXT) {
+                try {
+                    returnobj = JSON.parse(args.INPUT)
+                }
+                catch {
+                    return "{}"
+                }
+            }
+            else {
+                returnobj = {}
+            }
+
+            returnobj[args.BINDING] = {
+                type: args.INPUTTYPE,
+                binding: args.BINDING,
+                input: args.INPUT
+            }
+
+            return JSON.stringify(returnobj)
+
         }
     }
     // @ts-ignore
