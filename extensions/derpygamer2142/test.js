@@ -248,6 +248,23 @@
                     },
 
                     {
+                        opcode: "variableUsage",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Variable usage [USAGE] next [NEXT]",
+                        arguments: {
+                            USAGE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "VARUSAGE",
+                                defaultValue: "read_write"
+                            },
+                            NEXT: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
+                        }
+                    },
+
+                    {
                         opcode: "varOp",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "Variable [VARNAME] [VAROP]  [INPUT]",
@@ -640,6 +657,26 @@
                             "storage",
                             "uniform"
                         ]
+                    },
+                    VARUSAGE: {
+                        acceptReporters: true,
+                        // https://www.w3.org/TR/WGSL/#var-and-value
+                        // https://www.w3.org/TR/WGSL/#enumerant
+                        // i hate this documentation so much
+                        // it took me 20 minutes to find any explanations of what these enumerators do
+                        // even then they're pretty bad and don't give a concrete answer for each one
+                        // some of these are just here in case someone wants them
+                        // who understands how they work better than i do
+                        items: [
+                            "read",
+                            "write",
+                            "read_write",
+                            "function",
+                            "private",
+                            "workgroup",
+                            "uniform",
+                            "storage"
+                        ]
                     }
                     
                 }
@@ -700,6 +737,10 @@
 
                 case "gpusb3_menu_BUFFERTYPE": {
                     return _blocks[blob.id].fields.BUFFERTYPE.value
+                }
+
+                case "gpusb3_menu_VARUSAGE": {
+                    return _blocks[blob.id].fields.VARUSAGE.value
                 }
 
                 default: {
@@ -1164,6 +1205,21 @@
                                     code = code.concat(this.textFromOp(util, blocks[i+1],false))
                                     code = code.concat(`(${Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2],false,recursionDepth+1) : this.textFromOp(util, blocks[i+2],false)})`)
                                     i += 2;
+                                    break;
+                                }
+
+                                case "gpusb3_variableUsage": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        console.warn("Unexpected input for variable usage!")
+                                        return "Unexpected input for variable usage!"
+                                    }
+                                    code = code.concat(this.textFromOp(util,blocks[i+1],false))
+                                    
+                                    if(Array.isArray(blocks[i+2])) {
+                                        code = code.concat(", ")
+                                        code = code.concat(this.genWGSL(util, blocks[i+2],false, recursionDepth+1))
+                                    }
+                                    i += 2
                                     break;
                                 }
 
@@ -1746,7 +1802,7 @@
                         // shader.passEncoder.end()
                         // device.queue.submit([shader.commandEncoder.finish()])
                         
-                        console.log("if you're seeing this then it ran without errors :)")
+                        console.log("if you're seeing this then the compiler ran without errors :)")
                     }
                 })
 
@@ -2083,6 +2139,7 @@
             passEncoder.dispatchWorkgroups(1)
             passEncoder.end()
             device.queue.submit([commandEncoder.finish()])
+            console.log("yay the function ran without errors =D")
         }
 
         async compileHat(args, util) {
@@ -2161,6 +2218,10 @@
 
         bufferUsage(args, util) {
             return "This is used by the def gpu func arg block to define inputs. It's different from the usage in the bind input block."
+        }
+
+        variableUsage(args, util) {
+            return "This block can be used in the special variable declaration block or the buffer binding usage block to describe how the variable will be used."
         }
 
         genF32(args, util) {
