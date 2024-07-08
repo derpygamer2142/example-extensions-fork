@@ -2086,7 +2086,6 @@
         
         
         runGPU (args, util) {
-            // things go here
             if (!Object.prototype.hasOwnProperty.call(shaders,args.GPUFUNC)) {
                 console.log(shaders)
                 console.warn("Couldn't find function!")
@@ -2109,6 +2108,7 @@
                     switch (parsedInputs[i.binding].type) {
                         case "buffer": {
                             input = device.createBuffer(i.settings);
+                            i.input = input
                             device.queue.writeBuffer(input,0,bufferRefs[parsedInputs.input])
                             break;
                         }
