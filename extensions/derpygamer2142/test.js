@@ -4,7 +4,6 @@
 // By: derpygamer2142 <https://scratch.mit.edu/users/insanetaco2000/>
 // License: MIT
 
-
 (async function(Scratch) {
     'use strict';
     let toAdd = document.createElement("script")
