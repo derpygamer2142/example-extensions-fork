@@ -27,6 +27,7 @@
 
     let shaders = {}
     let bufferRefs = {}
+    let readOutput = ""
 
 
     class DerpysExtension {
@@ -82,7 +83,7 @@
                     {
                         opcode: "gpuFuncArgDef",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "Def GPU func arg [ARGNAME] type [ARGTYPE] usage [USAGE] settings [SETTINGS] type [TYPE] next [NEXT]", // argtype may or may not do anything in the future, i need to learn more about wgpu
+                        text: "Def GPU func resource [ARGNAME] type [ARGTYPE] usage [USAGE] settings [SETTINGS] usage type [TYPE] next [NEXT]", // argtype may or may not do anything in the future, i need to learn more about wgpu
                         arguments: {
                             ARGNAME: {
                                 type: Scratch.ArgumentType.STRING,
@@ -100,7 +101,7 @@
                             SETTINGS: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: JSON.stringify({
-                                    size: 1000
+                                    size: 256
                                 })
                             },
                             TYPE: {
@@ -135,7 +136,7 @@
                     {
                         opcode: "gpuFuncArgInput",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "Input of type [INPUTTYPE] bound to [BINDING], input [INPUT] next [NEXT]",
+                        text: "Bind type [INPUTTYPE] to [BINDING], input [INPUT] next [NEXT]",
                         arguments: {
                             INPUTTYPE: {
                                 type: Scratch.ArgumentType.STRING,
@@ -151,12 +152,15 @@
                         }
                     },
 
+                    
+                    
                     {
                         blockType: "label",
-                        text: "      "
+                        text: "Data input blocks"
                     },
 
-                    {
+                    {   
+                        // https://www.w3.org/TR/webgpu/#buffer-usage
                         opcode: "bufferUsage",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "Buffer usage [USAGE], next [NEXT]",
@@ -173,10 +177,7 @@
                         }
                     },
 
-                    {
-                        blockType: "label",
-                        text: "Function input blocks"
-                    },
+                    
 
                     {
                         opcode: "genF32",
@@ -188,6 +189,90 @@
                                 defaultValue: JSON.stringify([1, 2, 3])
                             }
                         }
+                    },
+
+                    {   
+                        hideFromPalette: true,
+                        opcode: "copyBufferToBuffer",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Copy [NUMBYTES] bytes of data from buffer at binding [BUF1] in shader [SHADER1] at position [BUF1OFF] to buffer at binding [BUF2] in shader [SHADER2] at position [BUF2OFF]",
+                        arguments: {
+                            NUMBYTES: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 256
+                            },
+                            BUF1: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 1
+                            },
+                            SHADER1: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myGPUFunc"
+                            },
+                            BUF1OFF: {// IMPORTANT: THIS IS IN BYTES!!!!!!!!!
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            BUF2: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 1
+                            },
+                            SHADER2: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "anotherGPUFunc"
+                            },
+                            BUF2OFF: {// IMPORTANT: THIS IS IN BYTES!!!!!!!!!
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            }
+                        }
+                    },
+
+                    {   
+                        hideFromPalette: true,
+                        opcode: "clearBuffer",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Clear [NUMBYTES] bytes(-1 for all) of buffer at binding [BUFFER] in shader [SHADER] from offset [OFFSET]",
+                        arguments: {
+                            NUMBYTES: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 128
+                            },
+                            BUFFER: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            SHADER: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myGPUFunc"
+                            },
+                            OFFSET: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 128
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "readBuffer",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Read buffer at binding [BINDING] in shader [SHADER]",
+                        arguments: {
+                            BINDING: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            SHADER: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myGPUFunc"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "readBufOutput",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Buffer read output"
                     },
                     
                     {
@@ -655,7 +740,8 @@
                         items: [
                             "read-only-storage",
                             "storage",
-                            "uniform"
+                            "uniform",
+                            "NONE"
                         ]
                     },
                     VARUSAGE: {
@@ -848,6 +934,7 @@
                                     let settings
                                     try {
                                         settings = JSON.parse(this.textFromOp(util, blocks[i+4], false))
+                                        console.log(settings)
                                     }
                                     catch {
                                         console.warn("Invalid settings, defaulting to blank object!")
@@ -1495,6 +1582,7 @@
 
         // make a hat block and get all the blocks under the script?
         ablock(args, util) {
+            /*
             //console.log(Scratch, util, vm)
             util.thread.tryCompile()
             console.log(vm)
@@ -1506,6 +1594,31 @@
             let script = util.thread
             //console.log(script) // script[Object.getOwnPropertyNames(script)[0]].value.startingFunction
             return 1
+            */
+            
+            const buffer = device.createBuffer({
+                size: 16,
+                // @ts-ignore
+                usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+            });
+
+            let data
+            buffer.mapAsync(
+                // @ts-ignore
+                GPUMapMode.READ,
+                // 0,
+                // shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.size,
+            ).then((value) => {
+                let e = buffer.getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.size*/)
+                // @ts-ignore
+                data = new Float32Array(e)
+
+                readOutput = JSON.stringify(data)
+            },
+            (reason) => {
+                console.warn(reason)
+            })
+            
         }
 
         genInputTree(util,thread,blocks,check,addCheck) {
@@ -1705,14 +1818,18 @@
                     else {
                         let idkman = this.genInputTree(util, t, t.blockContainer._blocks, t.topBlock, true)
                         let funcname = Array.isArray(idkman[1]) ? "Unexpected gpu func name input" : this.textFromOp(util,idkman[1],false)//this.textFromOp(util, farraycom[1], false)
-                        shaders[funcname] = {}
+                        shaders[funcname] = {
+                            name: funcname
+                        }
                         let shader = shaders[funcname]
 
                         // this code is horrible and i don't fully remember what it does or how it works.
+                        // looking at this a week later i'm not sure why i decided "pirate" was more important than explaining what i was doing
                         shader.args = funcargs
                         shader.inputs = []
                         for (let i = 0; i < funcargs.length; i++) {
                             const arg = funcargs[i]
+                            console.log(arg)
                             let settings = {}
                             shader.inputs.push({
                                 binding: i,
@@ -1721,7 +1838,8 @@
                             })
                             switch (arg.type) {
                                 case "buffer": {
-                                    settings.size = arg?.size ?? 1000
+                                    console.log()
+                                    settings.size = arg.settings?.size ?? 404 // size not found
                                     if (arg.usage.length > 0) {
                                         for (let j = 0; j < arg.usage.length; j++) {
                                             if (j == 0) {
@@ -1751,27 +1869,32 @@
 
                         let entries = []
                         shader.inputs.forEach((i) => {
-                            let obj = {
+                            if (i.arg.usagetype !== "NONE") {
+                               let obj = {
                                 binding: i.binding,
                                 // @ts-ignore
                                 visibility: GPUShaderStage.COMPUTE,
-                            }
-                            obj[i.inputtype] = {
-                                type: i.arg.usagetype
-                            }
-                            entries.push(obj)
+                                }
+                                console.log(i.arg.usagetype)
+                                obj[i.inputtype] = {
+                                    type: i.arg.usagetype
+                                }
+                                entries.push(obj)
 
-                            // let groupobj = {
-                            //     binding: i.binding,
-                            //     resource: {
-                            //         buffer: i.input // todo: make this work with multiple input types
-                            //     }
-                            // }
+                                // let groupobj = {
+                                //     binding: i.binding,
+                                //     resource: {
+                                //         buffer: i.input // todo: make this work with multiple input types
+                                //     }
+                                // }
 
-                            // groupEntries.push(groupobj)
+                                // groupEntries.push(groupobj) 
+                            }
+                            
                         })
 
                         shader.bindGroupLayout = device.createBindGroupLayout({
+                            label: `${shader.name} bindgrouplayout`,
                             entries: entries
                         })
 
@@ -2102,26 +2225,31 @@
             }
 
 
-            shader.inputs.forEach((i) => {
+            shader.inputs.forEach((i, index) => {
                 if (Object.prototype.hasOwnProperty.call(parsedInputs,i.binding)) {
                     let input
                     switch (parsedInputs[i.binding].type) {
                         case "buffer": {
                             input = device.createBuffer(i.settings);
-                            i.input = input
-                            device.queue.writeBuffer(input,0,bufferRefs[parsedInputs.input])
+                            shader.inputs[index].input = input
+                            // console.log(input)
+                            // console.log(bufferRefs, parsedInputs, i.binding)
+                            console.log(parsedInputs[i.binding])
+                            if (parsedInputs[i.binding]) device.queue.writeBuffer(input,0,bufferRefs[parsedInputs[i.binding].input]) // if there isn't any input on the argument don't write data. It's probably an output buffer or something.
                             break;
                         }
                     }
-
-                    let groupobj = {
-                        binding: i.binding,
-                        resource: {
-                            buffer: input // todo: make this work with multiple input types
+                    if (i.arg.usagetype !== "NONE") {
+                        let groupobj = {
+                            binding: i.binding,
+                            resource: {
+                                buffer: input // todo: make this work with multiple input types
+                            }
                         }
-                    }
 
-                    groupEntries.push(groupobj)
+                        groupEntries.push(groupobj)
+                    }
+                    
                 }
                 
             })
@@ -2133,7 +2261,7 @@
 
             const commandEncoder = device.createCommandEncoder()
 
-            const passEncoder = shader.commandEncoder.beginComputePass()
+            const passEncoder = commandEncoder.beginComputePass()
             passEncoder.setPipeline(shader.computePipeline)
             passEncoder.setBindGroup(0, bindGroup)
             passEncoder.dispatchWorkgroups(1)
@@ -2232,7 +2360,7 @@
             catch {
                 array = []
             }
-            bufferRefs[util.thread.target.id] = new Float32Array(array)
+            bufferRefs[this.getBlockId(util)] = new Float32Array(array)
             return this.getBlockId(util) // todo: make this less of a memory leak
         }
 
@@ -2244,15 +2372,15 @@
 
         gpuFuncArgInput(args, util) {
             //if (util.thread.blockContainer._blocks[util.thread.blockContainer._blocks[this.getBlockId(util)].parent ?? "amogus"].opcode === "gpusb3_gpuFuncArgInput")
-            if (!args.INPUT) {
-                    return "{}"
-            }
+            // if (!args.INPUT) {
+            //         return "{}"
+            // }
 
             let returnobj
 
             if (args.NEXT) {
                 try {
-                    returnobj = JSON.parse(args.INPUT)
+                    returnobj = JSON.parse(args.NEXT)
                 }
                 catch {
                     return "{}"
@@ -2270,6 +2398,81 @@
 
             return JSON.stringify(returnobj)
 
+        }
+
+        copyBufferToBuffer(args, util) {
+            if ((Scratch.Cast.toNumber(args.NUMBYTES) >= 0) || (Scratch.Cast.toNumber(args.BUF1) === Scratch.Cast.toNumber(args.BUF2)) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER1)) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER2))) {
+                return
+            }
+            if ((shaders[args.SHADER1].inputs.length < Scratch.Cast.toNumber(args.BUF1)) || (shaders[args.SHADER2].inputs.length < Scratch.Cast.toNumber(args.BUF2))) {
+                return
+            }
+            device.copyBufferToBuffer(
+                shaders[args.SHADER1].inputs[Scratch.Cast.toNumber(args.BUF1)].input,
+                Scratch.Cast.toNumber(args.BUF1OFF),
+                shaders[args.SHADER2].inputs[Scratch.Cast.toNumber(args.BUF2)].input,
+                Scratch.Cast.toNumber(args.BUF2OFF),
+                Scratch.Cast.toNumber(args.NUMBYTES)
+            )
+        }
+
+        clearBuffer(args, util) {
+            if ((Scratch.Cast.toNumber(args.NUMBYTES) >= 0) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER))) {
+                return
+            }
+            if ((shaders[args.SHADER].inputs.length < Scratch.Cast.toNumber(args.BUFFER))) {
+                return
+            }
+            if (Scratch.Cast.toNumber(args.NUMBYTES) === -1) {
+                device.clearBuffer(shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input)
+            }
+            else {
+                device.clearBuffer(
+                    shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input,
+                    Scratch.Cast.toNumber(args.OFFSET),
+                    Scratch.Cast.toNumber(args.NUMBYTES)
+                
+                )
+            }
+        }
+        
+        readBuffer(args, util) {
+            // copy_src, storage to write to internally, then copy_dst, map_read to copy and read from?
+            if (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER)) {
+                return
+            }
+            if ((shaders[args.SHADER].inputs.length < Scratch.Cast.toNumber(args.BUFFER))) {
+                return
+            }
+            // WARNING:
+            // MAY CONTAIN BAD IDEA JUICE
+            // i wrote this code like 4 weeks ago and i don't fully remember what it does. GPUMadMode.READ assumes no writing will be done.
+            let data = ["you done messed up"]
+            console.log(shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)])
+            shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.mapAsync(
+                // @ts-ignore
+                GPUMapMode.READ,
+                // 0,
+                // shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.size,
+            ).then((value) => {
+                const copyArrayBuffer = shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.size*/)
+                data = copyArrayBuffer.slice()
+                shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.unmap();
+                
+                // @ts-ignore
+                readOutput = JSON.stringify(new Float32Array(data));
+            },
+            (reason) => {
+                console.log(reason)
+            })
+            
+            
+            
+            
+        }
+
+        readBufOutput(args, util) {
+            return readOutput
         }
     }
     // @ts-ignore
