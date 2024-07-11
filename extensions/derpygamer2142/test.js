@@ -193,7 +193,7 @@
                     },
 
                     {   
-                        hideFromPalette: true,
+                        //hideFromPalette: true,
                         opcode: "copyBufferToBuffer",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "Copy [NUMBYTES] bytes of data from buffer at binding [BUF1] in shader [SHADER1] at position [BUF1OFF] to buffer at binding [BUF2] in shader [SHADER2] at position [BUF2OFF]",
@@ -389,14 +389,63 @@
                     },
 
                     {
+                        opcode: "indexArray",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "In array [ARRAY] get [INDEX]",
+                        arguments: {
+                            ARRAY: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someArray"
+                            },
+                            INDEX: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "swizzle",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "From vector [VECTOR] get component(s) [COMPONENTS]",
+                        arguments: {
+                            VECTOR: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            },
+                            COMPONENTS: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "zxy"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "constructFromType",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Construct type [TYPE] with values [VALUES]",
+                        arguments: {
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "RAWTYPES",
+                                defaultValue: "f32"
+                            },
+                            VALUES: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
+                        }
+                    },
+
+                    {
                         opcode: "typeConstructor",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "Create [TYPE] of [SUBTYPE]",
+                        text: "Create type [TYPE] of [SUBTYPE]",
                         arguments: {
                             TYPE: {
                                 type: Scratch.ArgumentType.STRING,
                                 menu: "CONSTRUCTABLETYPES",
-                                defaultValue: "vector3"
+                                defaultValue: "vec3"
                             },
                             SUBTYPE: {
                                 type: Scratch.ArgumentType.STRING,
@@ -487,6 +536,33 @@
                             }
                         },
                         branchCount: 1
+                    },
+
+                    {
+                        opcode: "wgslWhileLoop",
+                        blockType: Scratch.BlockType.CONDITIONAL, // this isn't a conditional :trol:
+                        text: "While [COND]",
+                        arguments: {
+                            COND: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "this is a string for versatility"
+                            }
+                        },
+                        branchCount: 1
+                    },
+
+                    {
+                        opcode: "break",
+                        blockType: Scratch.BlockType.COMMAND,
+                        isTerminal: true,
+                        text: "break"
+                    },
+
+                    {
+                        opcode: "continue",
+                        blockType: Scratch.BlockType.COMMAND,
+                        isTerminal: true,
+                        text: "continue"
                     },
 
                     {
@@ -718,9 +794,9 @@
                     CONSTRUCTABLETYPES: {
                         acceptReporters: true,
                         items: [
-                            "vector2",
-                            "vector3",
-                            "vector4",
+                            "vec2",
+                            "vec3",
+                            "vec4",
                             "array"
                         ]
                     },
@@ -1237,6 +1313,23 @@
                                     i += 1
                                     break;
                                 }
+                                case "gpusb3_constructFromType": {
+                                    code = code.concat(`${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, recursionDepth+1) : this.textFromOp(util, blocks[i+1], false)}(${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)})`)
+                                    i += 2
+                                    break;
+                                }
+
+                                case "gpusb3_swizzle": {
+                                    code = code.concat(`${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, recursionDepth+1) : this.textFromOp(util, blocks[i+1], false)}.${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)}`)
+                                    i += 2
+                                    break;
+                                }
+
+                                case "gpusb3_indexArray": {
+                                    code = code.concat(`${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, recursionDepth+1) : this.textFromOp(util, blocks[i+1], false)}[${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)}]`)
+                                    i += 2
+                                    break;
+                                }
 
                                 case "gpusb3_typeConstructor": {
                                     if (Array.isArray(blocks[i+1])) {
@@ -1263,11 +1356,11 @@
                                         console.warn("Unexpectecd input for function args definition!")
                                         return "Unexpectecd input for function args definition!"
                                     }
-                                    if (Array.isArray(blocks[i+2])) {
-                                        console.warn("Unexpected input for function args type!")
-                                        return "Unexpected input for function args type!"
-                                    }
-                                    code = code.concat(`${this.textFromOp(util,blocks[i+1],false)}: ${this.textFromOp(util, blocks[i+2],false)}`)
+                                    // if (Array.isArray(blocks[i+2])) {
+                                    //     console.warn("Unexpected input for function args type!")
+                                    //     return "Unexpected input for function args type!"
+                                    // }
+                                    code = code.concat(`${this.textFromOp(util,blocks[i+1],false)}: ${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2],false)}`)
                                     if (Array.isArray(blocks[i+3])) {
                                         code = code.concat(`, ${this.genWGSL(util,blocks[i+3],false,recursionDepth+1)}`)
                                     }
@@ -1373,7 +1466,7 @@
                                     code = code.concat(Array.isArray(blocks[i+1]) ? "var" : this.textFromOp(util,blocks[i+1],false))
                                     code = code.concat(" ")
                                     code = code.concat(Array.isArray(blocks[i+2]) ? "_" : this.textFromOp(util,blocks[i+2],false))
-                                    const t = Array.isArray(blocks[i+4]) ? "auto" : this.textFromOp(util,blocks[i+4],false)
+                                    const t = Array.isArray(blocks[i+4]) ? this.genWGSL(util, blocks[i+4], false, recursionDepth+1) : this.textFromOp(util,blocks[i+4],false)
                                     if (t !== "auto") {
                                         code = code.concat(": ")
                                         code = code.concat(t)
@@ -1386,15 +1479,15 @@
                                 }
 
                                 case "gpusb3_varOp": {
-                                    if (Array.isArray(blocks[i+1])) {
-                                        console.warn("Unexpected input for variable name!")
-                                        return "Unexpected input for variable name!"
-                                    }
+                                    // if (Array.isArray(blocks[i+1])) {
+                                    //     console.warn("Unexpected input for variable name!")
+                                    //     return "Unexpected input for variable name!"
+                                    // }
                                     if (Array.isArray(blocks[i+2])) {
                                         console.warn("Unexpected input for variable operation!")
                                         return "Unexpected input for variable operation!"
                                     }
-                                    code = code.concat(this.textFromOp(util, blocks[i+1],false))
+                                    code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, recursionDepth+1) : this.textFromOp(util, blocks[i+1],false))
                                     code = code.concat(` ${this.textFromOp(util, blocks[i+2],false)} ${Array.isArray(blocks[i+3]) ? this.genWGSL(util,blocks[i+3],false,recursionDepth+1) : this.textFromOp(util, blocks[i+3],false)};\n`)
 
                                     i += 3
@@ -1446,15 +1539,14 @@
                                         return "Unexpected input for variable!"
                                     }
                                     code = code.concat(`
-    var ${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)} = ${this.resolveInput(util, blocks[i+2])};
-    loop {
-    ${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)}++;
-    if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)} > ${this.resolveInput(util,blocks[i+3])}) {
-    break;
-    };
+var ${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)} = ${this.resolveInput(util, blocks[i+2])};
+loop {
+if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)} > ${this.resolveInput(util,blocks[i+3])}) {
+break;
+};
 
-    ` // GOD FUCKING DAMN IT "break if (condition)" IS IN THE OFFICIAL SPEC WHY THE HELL IS IT INVALID THIS IS BULLSHIT
-    // I HAD TO GO OUT OF MY WAY AND SPEND 15 SECONDS CHANGING THIS CODE
+` // GOD FUCKING DAMN IT "break if (condition)" IS IN THE OFFICIAL SPEC WHY THE HELL IS IT INVALID THIS IS BULLSHIT
+// I HAD TO GO OUT OF MY WAY AND SPEND 15 SECONDS CHANGING THIS CODE
                                     )
                                         if (blocks[i+4].length > 0) {
                                             code = code.concat(this.genWGSL(util,blocks[i+4],false,recursionDepth+1))
@@ -1463,24 +1555,37 @@
                                             code = code.concat("break;\n")
                                         }
                                         
-                                        code = code.concat("}\n") // newlines for some semblance of readability
+                                        code = code.concat(`${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)}++;}\n`) // newlines for some semblance of readability
                                         i += 4
                                         break;
-                                        // did i spell that right
-                                        /*
-                                        expected output:
-                                        @compute @workgroup_size(workgroup size) fn computeShader(
-                                        @builtin(workgroup_id) workgroup_id : vec3<u32>,
-                                        @builtin(local_invocation_id) local_invocation_id : vec3<u32>,
-                                        @builtin(global_invocation_id) global_invocation_id : vec3<u32>,
-                                        @builtin(local_invocation_index) local_invocation_index: u32,
-                                        @builtin(num_workgroups) num_workgroups: vec3<u32>
-                                        ) {
+                                        
+                                }
 
-                                        code
+                                case "gpusb3_wgslWhileLoop": {
+                                    code = code.concat(`
+while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, recursionDepth+1) : this.textFromOp(util, blocks[i+1],false)}) {
 
+`
+                                    )
+                                        if (blocks[i+4].length > 0) {
+                                            code = code.concat(this.genWGSL(util,blocks[i+2],false,recursionDepth+1))
                                         }
-                                        */
+                                        else {
+                                            code = code.concat("break;\n")
+                                        }
+                                        
+                                        code = code.concat(`}\n`) // newlines for some semblance of readability
+                                        i += 2
+                                        break;
+                                        
+                                }
+                                // probably the 2 most simple blocks
+                                case "gpusb3_break": {
+                                    code = code.concat("break;\n")
+                                }
+
+                                case "gpusb3_continue": {
+                                    code = code.concat("continue;\n")
                                 }
 
                                 case "gpusb3_bindInput": {
@@ -1503,10 +1608,10 @@
                                         console.warn("Unexpected input for function name!")
                                         return "Unexpected input for function name!"
                                     }
-                                    if (Array.isArray(blocks[i+2])) {
-                                        console.warn("Unexpected input for function return type!")
-                                        return "Unexpected input for function return type!"
-                                    }
+                                    // if (Array.isArray(blocks[i+2])) {
+                                    //     console.warn("Unexpected input for function return type!")
+                                    //     return "Unexpected input for function return type!"
+                                    // }
                                     code = code.concat(`fn ${this.textFromOp(util, blocks[i+1],false)}(`)
                                     if (blocks[i+3] !== null) {
                                         if (Array.isArray(blocks[i+3])) {
@@ -1521,7 +1626,7 @@
                                         code = code.concat(this.genWGSL(util,blocks[i+4],false,recursionDepth+1))
                                     }
                                     else {
-                                        code = code.concat(`return ${this.textFromOp(util, blocks[i+2],false) === "void" ? "" : this.textFromOp(util, blocks[i+2],false)}();\n`) // return a constructor for whatever type it should return
+                                        code = code.concat(`return ${this.textFromOp(util, blocks[i+2],false) === "void" ? "" : (Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2],false))}();\n`) // return a constructor for whatever type it should return
                                     }
                                     
                                     code = code.concat("}\n") // newlines for some semblance of readability
@@ -2233,10 +2338,7 @@
                         case "buffer": {
                             input = device.createBuffer(i.settings);
                             shader.inputs[index].input = input
-                            // console.log(input)
-                            // console.log(bufferRefs, parsedInputs, i.binding)
-                            console.log(parsedInputs[i.binding])
-                            if (parsedInputs[i.binding]) device.queue.writeBuffer(input,0,bufferRefs[parsedInputs[i.binding].input]) // if there isn't any input on the argument don't write data. It's probably an output buffer or something.
+                            if (parsedInputs[i.binding].input) device.queue.writeBuffer(input,0,bufferRefs[parsedInputs[i.binding].input]) // if there isn't any input on the argument don't write data. It's probably an output buffer or something.
                             break;
                         }
                     }
@@ -2268,7 +2370,7 @@
             passEncoder.dispatchWorkgroups(1)
             passEncoder.end()
             device.queue.submit([commandEncoder.finish()])
-            console.log("yay the function ran without errors =D")
+            //console.log("yay the function ran without errors =D")
         }
 
         async compileHat(args, util) {
@@ -2338,7 +2440,7 @@
         }
 
         typeConstructor(args, util) {
-            return "This block lets you constructor types. You can put this block inside of itself(with a base type at the end) to create complex types, for example an array of vector2s of f32."
+            return "This block lets you constructor types. You can put this block inside of itself(with a base type at the end) to create complex types, for example an array of vec2s of f32."
         }
 
         rootType(args, util) {
@@ -2351,6 +2453,18 @@
 
         variableUsage(args, util) {
             return "This block can be used in the special variable declaration block or the buffer binding usage block to describe how the variable will be used."
+        }
+
+        indexArray(args, util) {
+            return "This block can be used to index into an array. You can modify the returned value by putting it as the variable value in the \"variable (operation) (value)\" block"
+        }
+
+        swizzle(args, util) {
+            return "This block returns a vector made up of the components you got from the vector."
+        }
+
+        constructFromType(args, util) {
+            return "This block is used to create something out of whatever type you defined."
         }
 
         genF32(args, util) {
@@ -2369,6 +2483,18 @@
             console.log("NEXT:")
             console.log(args.NEXT)
             return args.NEXT
+        }
+
+        wgslWhileLoop(args, util) {
+            return;
+        }
+
+        break(args, util) {
+            return
+        }
+
+        continue(args, util) {
+            return
         }
 
         gpuFuncArgInput(args, util) {
@@ -2394,7 +2520,7 @@
             returnobj[args.BINDING] = {
                 type: args.INPUTTYPE,
                 binding: args.BINDING,
-                input: args.INPUT
+                input: args.INPUT ?? null
             }
 
             return JSON.stringify(returnobj)
@@ -2402,19 +2528,26 @@
         }
 
         copyBufferToBuffer(args, util) {
-            if ((Scratch.Cast.toNumber(args.NUMBYTES) >= 0) || (Scratch.Cast.toNumber(args.BUF1) === Scratch.Cast.toNumber(args.BUF2)) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER1)) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER2))) {
+            if ((Scratch.Cast.toNumber(args.NUMBYTES) <= 0) || (Scratch.Cast.toNumber(args.BUF1) === Scratch.Cast.toNumber(args.BUF2)) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER1)) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER2))) {
+                console.warn("copy buffer failed!")
                 return
             }
             if ((shaders[args.SHADER1].inputs.length < Scratch.Cast.toNumber(args.BUF1)) || (shaders[args.SHADER2].inputs.length < Scratch.Cast.toNumber(args.BUF2))) {
+                console.warn("copy buffer failed!")
                 return
             }
-            device.copyBufferToBuffer(
+            const commandEncoder = device.createCommandEncoder({
+                label: "copyBuffer encoder"
+            })
+
+            commandEncoder.copyBufferToBuffer(
                 shaders[args.SHADER1].inputs[Scratch.Cast.toNumber(args.BUF1)].input,
                 Scratch.Cast.toNumber(args.BUF1OFF),
                 shaders[args.SHADER2].inputs[Scratch.Cast.toNumber(args.BUF2)].input,
                 Scratch.Cast.toNumber(args.BUF2OFF),
                 Scratch.Cast.toNumber(args.NUMBYTES)
             )
+            device.queue.submit([commandEncoder.finish()]);
         }
 
         clearBuffer(args, util) {
@@ -2442,23 +2575,22 @@
             if (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER)) {
                 return
             }
-            if ((shaders[args.SHADER].inputs.length < Scratch.Cast.toNumber(args.BUFFER))) {
+            if ((shaders[args.SHADER].inputs.length < Scratch.Cast.toNumber(args.BINDING))) {
                 return
             }
             // WARNING:
             // MAY CONTAIN BAD IDEA JUICE
             // i wrote this code like 4 weeks ago and i don't fully remember what it does. GPUMadMode.READ assumes no writing will be done.
             let data = ["you done messed up"]
-            console.log(shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)])
-            shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.mapAsync(
+            shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.mapAsync(
                 // @ts-ignore
                 GPUMapMode.READ,
                 // 0,
-                // shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.size,
+                // shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size,
             ).then((value) => {
-                const copyArrayBuffer = shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.size*/)
+                const copyArrayBuffer = shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size*/)
                 data = copyArrayBuffer.slice()
-                shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.unmap();
+                shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.unmap();
                 
                 // @ts-ignore
                 readOutput = JSON.stringify(new Float32Array(data));
