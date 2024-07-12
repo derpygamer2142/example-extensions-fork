@@ -43,6 +43,7 @@
                 color3: "#032966",
                 blocks: [
                     {
+                        hideFromPalette: true,
                         opcode: "ablock",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "test block",
@@ -53,6 +54,7 @@
                         // }
                     },
                     {
+                        hideFromPalette: true,
                         opcode: "testBlock",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "another test block [NEXT]",
@@ -67,7 +69,7 @@
                     {
                         opcode: "compileHat",
                         blockType: Scratch.BlockType.EVENT,
-                        text: "uhhh idk name [NAME] other thing [GPUARGS]",
+                        text: "Define shader [NAME] with inputs [GPUARGS]",
                         isEdgeActivated: false,
                         arguments: {
                             NAME: {
@@ -76,7 +78,7 @@
                             },
                             GPUARGS: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "placeholder"
+                                defaultValue: ""
                             }
                         }
                     },
@@ -119,18 +121,30 @@
                     {
                         opcode: "compileStart",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "run the compiley thingy "
+                        text: "compile shaders "
                     },
                     {
                         opcode: "runGPU",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Run function [GPUFUNC] with args [ARGS]",
+                        text: "Run function [GPUFUNC] with args [ARGS] dimensions x: [X] y: [Y] z: [Z]",
                         arguments: {
                             GPUFUNC: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "myGPUFunc"
-                            }
+                            },
                             // ARGS intentionally omitted
+                            X: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 1
+                            },
+                            Y: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 1
+                            },
+                            Z: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 1
+                            }
                         }
                     },
 
@@ -545,7 +559,7 @@
                         arguments: {
                             COND: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "this is a string for versatility"
+                                defaultValue: ""
                             }
                         },
                         branchCount: 1
@@ -2367,7 +2381,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, rec
             const passEncoder = commandEncoder.beginComputePass()
             passEncoder.setPipeline(shader.computePipeline)
             passEncoder.setBindGroup(0, bindGroup)
-            passEncoder.dispatchWorkgroups(1)
+            passEncoder.dispatchWorkgroups(Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y),Scratch.Cast.toNumber(args.Z))
             passEncoder.end()
             device.queue.submit([commandEncoder.finish()])
             //console.log("yay the function ran without errors =D")
