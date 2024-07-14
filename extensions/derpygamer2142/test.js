@@ -15,11 +15,13 @@
     }
     // @ts-ignore
     if (!navigator.gpu) { // why angry red lines >: (
+        alert("WebGPU is not supported.")
         throw new Error("WebGPU is not supported.")
     }
     // @ts-ignore
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) {
+        alert("Failed to get WebGPU adapter.")
         throw Error("Failed to get WebGPU adapter.");
     }
     const device = await adapter.requestDevice();
@@ -41,6 +43,7 @@
                 color1: "#4287f5",
                 color2: "#166af2",
                 color3: "#032966",
+                docsURI: 'https://derpygamer2142-extensions.pages.dev/docs/gpusb3',
                 blocks: [
                     {
                         hideFromPalette: true,
@@ -74,7 +77,7 @@
                         arguments: {
                             NAME: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "myGPUFunc"
+                                defaultValue: "myShader"
                             },
                             GPUARGS: {
                                 type: Scratch.ArgumentType.STRING,
@@ -86,7 +89,7 @@
                     {
                         opcode: "gpuFuncArgDef",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "Def GPU func resource [ARGNAME] type [ARGTYPE] usage [USAGE] settings [SETTINGS] usage type [TYPE] next [NEXT]", // argtype may or may not do anything in the future, i need to learn more about wgpu
+                        text: "Def shader resource [ARGNAME] type [ARGTYPE] usage [USAGE] settings [SETTINGS] usage type [TYPE] next [NEXT]", // argtype may or may not do anything in the future, i need to learn more about wgpu
                         arguments: {
                             ARGNAME: {
                                 type: Scratch.ArgumentType.STRING,
@@ -126,11 +129,11 @@
                     {
                         opcode: "runGPU",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Run function [GPUFUNC] with args [ARGS] dimensions x: [X] y: [Y] z: [Z]",
+                        text: "Run shader [GPUFUNC] with args [ARGS] dimensions x: [X] y: [Y] z: [Z]",
                         arguments: {
                             GPUFUNC: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "myGPUFunc"
+                                defaultValue: "myShader"
                             },
                             // ARGS intentionally omitted
                             X: {
@@ -222,7 +225,7 @@
                             },
                             SHADER1: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "myGPUFunc"
+                                defaultValue: "myShader"
                             },
                             BUF1OFF: {// IMPORTANT: THIS IS IN BYTES!!!!!!!!!
                                 type: Scratch.ArgumentType.NUMBER,
@@ -234,7 +237,7 @@
                             },
                             SHADER2: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "anotherGPUFunc"
+                                defaultValue: "anotherShader"
                             },
                             BUF2OFF: {// IMPORTANT: THIS IS IN BYTES!!!!!!!!!
                                 type: Scratch.ArgumentType.NUMBER,
@@ -259,7 +262,7 @@
                             },
                             SHADER: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "myGPUFunc"
+                                defaultValue: "myShader"
                             },
                             OFFSET: {
                                 type: Scratch.ArgumentType.NUMBER,
@@ -279,7 +282,7 @@
                             },
                             SHADER: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "myGPUFunc"
+                                defaultValue: "myShader"
                             }
                         }
                     },
@@ -454,7 +457,7 @@
                     {
                         opcode: "typeConstructor",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "Create type [TYPE] of [SUBTYPE]",
+                        text: "Create type [TYPE] of [SUBTYPE], length(array only!) [LENGTH]",
                         arguments: {
                             TYPE: {
                                 type: Scratch.ArgumentType.STRING,
@@ -463,6 +466,10 @@
                             },
                             SUBTYPE: {
                                 type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            },
+                            LENGTH: {
+                                type: Scratch.ArgumentType.NUMBER,
                                 defaultValue: ""
                             }
                         }
@@ -1014,8 +1021,8 @@
                             switch (b.block) {
                                 case "gpusb3_gpuFuncArgDef": {
                                     if (Array.isArray(blocks[i+1]) || Array.isArray(blocks[i+2]) || !Array.isArray(blocks[i+3]) || Array.isArray(blocks[i+4])) {
-                                        console.warn("Unexpected input for Def gpu func args block!")
-                                        return "Unexpected input for Def gpu func args block!"
+                                        console.warn("Unexpected input for Def shader args block!")
+                                        return "Unexpected input for Def shader args block!"
                                     }
                                     let argobj = {}
                                     argobj.name = this.textFromOp(util, blocks[i+1], false)
@@ -1300,6 +1307,9 @@
                                     }
                                     code = code.concat(Array.isArray(blocks[i+1]) ? "error!" : this.textFromOp(util,blocks[i+1],false))
                                     code = code.concat("(")
+                                    if (this.textFromOp(util,blocks[i+1],false) === "arrayLength") {
+                                        code = code.concat("&") // idk why you need this
+                                    }
                                     code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2],false,recursionDepth+1) : this.textFromOp(util, blocks[i+2],false))
                                     code = code.concat(")")
                                     i += 2
@@ -1350,8 +1360,15 @@
                                         console.warn("Unexpected input for construction type!")
                                         return "Unexpected input for construction type!"
                                     }
-                                    code = code.concat(`${this.textFromOp(util, blocks[i+1], false)}<${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)}>`)
-                                    i += 2
+                                    code = code.concat(`${this.textFromOp(util, blocks[i+1], false)}<${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)}`)
+                                    if (Array.isArray(blocks[i+3])) {
+                                        code = code.concat(`, ${this.genWGSL(util, blocks[i+3],false, recursionDepth+1)}`)
+                                    }
+                                    else if (Scratch.Cast.toString(this.textFromOp(util, blocks[i+3], false)) !== "") {
+                                        code = code.concat(`, ${this.textFromOp(util, blocks[i+3], false)}`)
+                                    }
+                                    code = code.concat(">")
+                                    i += 3
                                     break;
                                 }
 
@@ -2394,7 +2411,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, rec
         }
 
         getVar(args, util) {
-            return "This block lets you get variables in your function."
+            return "This block lets you get variables in your shader."
         }
 
         declareVar (args, util) {
@@ -2446,7 +2463,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, rec
         }
 
         gpuFuncArgDef(args, util) {
-            return "This is used to add input arguments to your gpu functions."
+            return "This is used to add input arguments to your shaders."
         }
 
         bindInput(args, util) {
@@ -2462,7 +2479,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, rec
         }
 
         bufferUsage(args, util) {
-            return "This is used by the def gpu func arg block to define inputs. It's different from the usage in the bind input block."
+            return "This is used by the def shader arg block to define inputs. It's different from the usage in the bind input block."
         }
 
         variableUsage(args, util) {
