@@ -13,6 +13,9 @@
     if (!Scratch.extensions.unsandboxed) {
         throw new Error("This extension must run unsandboxed.")
     }
+    
+    let error = {}
+
     // @ts-ignore
     if (!navigator.gpu) { // why angry red lines >: (
         alert("WebGPU is not supported.")
@@ -31,9 +34,11 @@
     let shaders = {}
     let bufferRefs = {}
     let readOutput = ""
+    
 
+    
 
-    class DerpysExtension {
+    class GPUSb3 {
 
         getInfo() {
             return {
@@ -72,7 +77,7 @@
                     {
                         opcode: "compileHat",
                         blockType: Scratch.BlockType.EVENT,
-                        text: "Define shader [NAME] with inputs [GPUARGS]",
+                        text: "Define shader [NAME] with resources [GPUARGS]",
                         isEdgeActivated: false,
                         arguments: {
                             NAME: {
@@ -121,15 +126,48 @@
                             }
                         }
                     },
+                    
+                    {   
+                        // https://www.w3.org/TR/webgpu/#buffer-usage
+                        opcode: "bufferUsage",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Buffer usage [USAGE], next [NEXT]",
+                        arguments: {
+                            USAGE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "BUFFERUSAGE",
+                                defaultValue: "STORAGE"
+                            },
+                            NEXT: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
+                        }
+                    },
+
                     {
                         opcode: "compileStart",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "compile shaders "
                     },
+
+                    {
+                        opcode: "onError",
+                        blockType: Scratch.BlockType.EVENT,
+                        text: "when error thrown",
+                        isEdgeActivated: false
+                    },
+
+                    {
+                        opcode: "error",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Error"
+                    },
+
                     {
                         opcode: "runGPU",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Run shader [GPUFUNC] with args [ARGS] dimensions x: [X] y: [Y] z: [Z]",
+                        text: "Run shader [GPUFUNC] with resources [ARGS] dimensions x: [X] y: [Y] z: [Z]",
                         arguments: {
                             GPUFUNC: {
                                 type: Scratch.ArgumentType.STRING,
@@ -177,23 +215,7 @@
                         text: "Data input blocks"
                     },
 
-                    {   
-                        // https://www.w3.org/TR/webgpu/#buffer-usage
-                        opcode: "bufferUsage",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "Buffer usage [USAGE], next [NEXT]",
-                        arguments: {
-                            USAGE: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "BUFFERUSAGE",
-                                defaultValue: "STORAGE"
-                            },
-                            NEXT: {
-                                type: Scratch.ArgumentType.STRING,
-                                defaultValue: ""
-                            }
-                        }
-                    },
+                    
 
                     
 
@@ -213,7 +235,7 @@
                         //hideFromPalette: true,
                         opcode: "copyBufferToBuffer",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Copy [NUMBYTES] bytes of data from buffer at binding [BUF1] in shader [SHADER1] at position [BUF1OFF] to buffer at binding [BUF2] in shader [SHADER2] at position [BUF2OFF]",
+                        text: "Copy [NUMBYTES] bytes of data from buffer at binding [BUF1] in shader [SHADER1] from  position [BUF1OFF] to buffer at binding [BUF2] in shader [SHADER2] at position [BUF2OFF]",
                         arguments: {
                             NUMBYTES: {
                                 type: Scratch.ArgumentType.NUMBER,
@@ -329,7 +351,7 @@
                     {
                         opcode: "bindInput",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Bind shader input # [BINDNUM] to variable [VARNAME] with settings [SETTINGS] type [INPUTTYPE]",
+                        text: "Bind shader resource # [BINDNUM] to variable [VARNAME] with settings [SETTINGS] type [INPUTTYPE]",
                         arguments: {
                             BINDNUM: {
                                 type: Scratch.ArgumentType.NUMBER,
@@ -422,17 +444,17 @@
                     },
 
                     {
-                        opcode: "swizzle",
+                        opcode: "getProp",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "From vector [VECTOR] get component(s) [COMPONENTS]",
+                        text: "In object [OBJECT] get property [PROP]",
                         arguments: {
-                            VECTOR: {
+                            OBJECT: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someObject"
+                            },
+                            PROP: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: ""
-                            },
-                            COMPONENTS: {
-                                type: Scratch.ArgumentType.STRING,
-                                defaultValue: "zxy"
                             }
                         }
                     },
@@ -532,7 +554,7 @@
                         arguments: {
                             WGSIZE: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: JSON.stringify([2, 3, 4])
+                                defaultValue: JSON.stringify([1])
                             }
                         },
                         branchCount: 1
@@ -586,6 +608,29 @@
                         text: "continue"
                     },
 
+                    
+
+                    {
+                        opcode: "defFunc",
+                        blockType: Scratch.BlockType.CONDITIONAL,
+                        text: "Def function [FUNCNAME] that returns type [TYPE] with args [ARGS]",
+                        arguments: {
+                            FUNCNAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myFunc"
+                            },
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "FUNCTYPES",
+                                defaultValue: "void"
+                            }/*,
+                            ARGS: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }*/
+                        }
+                    },
+                    
                     {
                         opcode: "defFuncArgs",
                         blockType: Scratch.BlockType.REPORTER,
@@ -608,30 +653,9 @@
                     },
 
                     {
-                        opcode: "defFunc",
-                        blockType: Scratch.BlockType.CONDITIONAL,
-                        text: "Def function [FUNCNAME] that returns type [TYPE] with args [ARGS]",
-                        arguments: {
-                            FUNCNAME: {
-                                type: Scratch.ArgumentType.STRING,
-                                defaultValue: "myFunc"
-                            },
-                            TYPE: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "FUNCTYPES",
-                                defaultValue: "void"
-                            }/*,
-                            ARGS: {
-                                type: Scratch.ArgumentType.STRING,
-                                defaultValue: ""
-                            }*/
-                        }
-                    },
-
-                    {
                         opcode: "getFuncArg",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "Function arg [ARGNAME]",
+                        text: "Get function arg [ARGNAME]",
                         arguments: {
                             ARGNAME: {
                                 type: Scratch.ArgumentType.STRING,
@@ -868,7 +892,25 @@
 
         }
 
+        throwError(errorname, errorbody, errorsource, full, util) {
+            error = {
+                name: errorname ?? "Undefined. This is an error, please report it!",
+                body: errorbody ?? "Undefined. This is an error, please report it!",
+                source: errorsource ?? "Undefined. This is an error, please report it!",
+                full: full ?? "Undefined. This is an error, please report it!"
+            }
+    
+            if (util) {
+                util.startHats("gpusb3_onError")
+            }
+            else {
+                Scratch.vm.runtime.startHats("gpusb3_onError")
+            }
+        }
+        
+
         textFromOp(util, blob, unsafe) {
+            
             // i can't remember if blocks is _blocks, so i'm just getting it again
             const _blocks = util.thread.blockContainer._blocks
             switch (blob.block) {
@@ -1186,6 +1228,7 @@
                                     code = code.concat(this.resolveInput(util,blocks[i+1]))
                                     code = code.concat(" % ")
                                     code = code.concat(this.resolveInput(util,blocks[i+2]))
+                                    code = code.concat(") ")
                                     i += 2
                                     break;
                                 }
@@ -1343,8 +1386,12 @@
                                     break;
                                 }
 
-                                case "gpusb3_swizzle": {
-                                    code = code.concat(`${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, recursionDepth+1) : this.textFromOp(util, blocks[i+1], false)}.${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)}`)
+                                case "gpusb3_getProp": {
+                                    if (Array.isArray(blocks.i+2)) {
+                                        console.warn("Unexpected input for property name!")
+                                        return "Unexpected input for property name!"
+                                    }
+                                    code = code.concat(`${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, recursionDepth+1) : this.textFromOp(util, blocks[i+1], false)}.${this.textFromOp(util, blocks[i+2], false)}`)
                                     i += 2
                                     break;
                                 }
@@ -1570,9 +1617,9 @@
                                         return "Unexpected input for variable!"
                                     }
                                     code = code.concat(`
-var ${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)} = ${this.resolveInput(util, blocks[i+2])};
+var ${this.textFromOp(util, blocks[i+1],false)} = ${this.resolveInput(util, blocks[i+2])};
 loop {
-if (${Array.isArray(blocks[i+1]) ? "Error!" : this.textFromOp(util, blocks[i+1],false)} > ${this.resolveInput(util,blocks[i+3])}) {
+if (${this.textFromOp(util, blocks[i+1],false)} > ${this.resolveInput(util,blocks[i+3])}) {
 break;
 };
 
@@ -1652,7 +1699,12 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, rec
                                             code = code.concat(this.textFromOp(util, blocks[i+3],false))
                                         }
                                     }
-                                    code = code.concat(this.textFromOp(util, blocks[i+2],false) === "void" ? ") {\n" : `) -> ${this.textFromOp(util, blocks[i+2],false)} {\n`)
+                                    if (Array.isArray(blocks[i+2])) {
+                                        code = code.concat(`) -> ${this.genWGSL(util, blocks[i+2])}`)
+                                    }
+                                    else {
+                                        code = code.concat(this.textFromOp(util, blocks[i+2],false) === "void" ? ") {\n" : `) -> ${this.textFromOp(util, blocks[i+2],false)} {\n`)
+                                    }
                                     if (blocks[i+4].length > 0) {
                                         code = code.concat(this.genWGSL(util,blocks[i+4],false,recursionDepth+1))
                                     }
@@ -2490,8 +2542,8 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, rec
             return "This block can be used to index into an array. You can modify the returned value by putting it as the variable value in the \"variable (operation) (value)\" block"
         }
 
-        swizzle(args, util) {
-            return "This block returns a vector made up of the components you got from the vector."
+        getProp(args, util) {
+            return "This can be used to get a component from a struct, or swizzle a vector."
         }
 
         constructFromType(args, util) {
@@ -2638,7 +2690,13 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, rec
         readBufOutput(args, util) {
             return readOutput
         }
+
+        error(args, util) {
+            return JSON.stringify(error)
+        }
+
+
     }
     // @ts-ignore
-    Scratch.extensions.register(new DerpysExtension())
+    Scratch.extensions.register(new GPUSb3())
 })(Scratch);
