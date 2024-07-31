@@ -417,9 +417,9 @@
                     },
 
                     {
-                        opcode: "indexArray",
+                        opcode: "indexObject",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "In array [ARRAY] get [INDEX]",
+                        text: "In object [ARRAY] get index [INDEX]",
                         arguments: {
                             ARRAY: {
                                 type: Scratch.ArgumentType.STRING,
@@ -482,6 +482,22 @@
                             LENGTH: {
                                 type: Scratch.ArgumentType.NUMBER,
                                 defaultValue: ""
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "matrixType",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Matrix type with [COLUMNS] columns and [ROWS] rows",
+                        arguments: {
+                            COLUMNS: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 2
+                            },
+                            ROWS: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 2
                             }
                         }
                     },
@@ -1407,18 +1423,16 @@
                                     break;
                                 }
 
-                                case "gpusb3_indexArray": {
+                                case "gpusb3_indexObject": {
+                                    // https://www.w3.org/TR/WGSL/#matrix-access-expr
                                     code = code.concat(`${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, recursionDepth+1) : this.textFromOp(util, blocks[i+1], false)}[${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)}]`)
                                     i += 2
                                     break;
                                 }
 
                                 case "gpusb3_typeConstructor": {
-                                    if (Array.isArray(blocks[i+1])) {
-                                        this.throwError("unexpectedInput", "Unexpected input in block input!", "TypeConstructorBlock", "Unexpected input in Type Constructor block!", util)
-                                        return code + "Error! - compilation stopped"
-                                    }
-                                    code = code.concat(`${this.textFromOp(util, blocks[i+1], false)}<${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)}`)
+                                    
+                                    code = code.concat(`${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, recursionDepth+1) : this.textFromOp(util, blocks[i+1], false)}<${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], false, recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)}`)
                                     if (Array.isArray(blocks[i+3])) {
                                         code = code.concat(`, ${this.genWGSL(util, blocks[i+3],false, recursionDepth+1)}`)
                                     }
@@ -1437,6 +1451,16 @@
                                     }
                                     code = code.concat(this.textFromOp(util, blocks[i+1], false))
                                     i += 1
+                                    break;
+                                }
+
+                                case "gpusb3_matrixType": {
+                                    if (Array.isArray(blocks[i+1]) || Array.isArray(blocks[i+2])) {
+                                        this.throwError("unexpectedInput", "Unexpected input in block input!", "MatrixTypeBlock", "Unexpected input in Root type block!", util)
+                                        return code + "Error! - compilation stopped"
+                                    }
+                                    code = code.concat(`mat${this.textFromOp(util, blocks[i+1], false)}x${this.textFromOp(util, blocks[i+2], false)}`)
+                                    i += 2
                                     break;
                                 }
 
@@ -1550,7 +1574,7 @@
                                 }
 
                                 case "gpusb3_declareVar": {
-                                    code = code.concat(Array.isArray(blocks[i+1]) ? "var" : this.textFromOp(util,blocks[i+1],false))
+                                    code = code.concat(Array.isArray(blocks[i+1]) ? (`var<${this.genWGSL(util,blocks[i+1],false,recursionDepth+1)}>`) : this.textFromOp(util,blocks[i+1],false))
                                     code = code.concat(" ")
                                     code = code.concat(Array.isArray(blocks[i+2]) ? "_" : this.textFromOp(util,blocks[i+2],false))
                                     const t = Array.isArray(blocks[i+4]) ? this.genWGSL(util, blocks[i+4], false, recursionDepth+1) : this.textFromOp(util,blocks[i+4],false)
@@ -2578,7 +2602,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], false, rec
             return "This block can be used in the special variable declaration block or the buffer binding usage block to describe how the variable will be used."
         }
 
-        indexArray(args, util) {
+        indexObject(args, util) {
             return "This block can be used to index into an array. You can modify the returned value by putting it as the variable value in the \"variable (operation) (value)\" block"
         }
 
