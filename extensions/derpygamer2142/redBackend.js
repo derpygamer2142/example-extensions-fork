@@ -42,6 +42,8 @@ function pointrect(x1,y1,x2,y2,px,py) {
     class Backend {
         constructor() {
             this.windows = {}
+            this.windowIds = []
+            this.nextWindowIds = []
 
             this.events = {
                 tick: []
@@ -62,6 +64,8 @@ function pointrect(x1,y1,x2,y2,px,py) {
             })
 
             this.settings = this.readFile("/system/settings/settings.json")
+
+            // backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawCircle(0,Math.sin(Date.now() / 1000)*50,50,255,0,0,1,windowId);})
         }
 
         newWindow(x, y, width, height, id) {
@@ -87,6 +91,8 @@ function pointrect(x1,y1,x2,y2,px,py) {
                 oldw: -1,
                 oldh: -1
             }
+            this.windowIds.unshift(id)
+            //this.nextWindowIds = this.windowIds.slice()
 
             return id
         }
@@ -163,6 +169,11 @@ function pointrect(x1,y1,x2,y2,px,py) {
                 b,
                 a
             ])
+        }
+
+        clearShapes(id) {
+            this.windows[id].contents = []
+            this.windows[id].commands = []
         }
 
         onEvent(event, func, id) {
@@ -347,11 +358,25 @@ function pointrect(x1,y1,x2,y2,px,py) {
             this.settings[setting] = value
             this.writeFile("/system/settings/settings.json",this.settings)
         }
+
+        focusWindow(id) {
+            this.nextWindowIds.splice(this.nextWindowIds.indexOf(id),1)
+            this.nextWindowIds.unshift(id)
+        }
+
+        killWindow(id) {
+            const i = this.nextWindowIds.indexOf(Scratch.Cast.toString(id))
+            //console.log(this.nextWindowIds, this.windowIds, i)
+            this.nextWindowIds.splice(i,1)
+            //console.log(this.nextWindowIds, this.windowIds)
+            //delete this.windows[id]
+        }
     }
 
     const backend = new Backend()
     let windowData = undefined;
     let drawCommand = undefined
+    let windowUpdated = false
 
     class RedBackend {
 
@@ -634,13 +659,39 @@ function pointrect(x1,y1,x2,y2,px,py) {
 
         forWindow(args, util) {
             // loop from Extra-Controls by sharkpool
-            if (typeof util.stackFrame.loopCounter === "undefined") util.stackFrame.loopCounter = Object.keys(backend.windows).length
-            util.stackFrame.loopCounter--;
             
-            windowData = backend.windows[Object.keys(backend.windows)[util.stackFrame.loopCounter]]
+            if (typeof util.stackFrame.loopCounter === "undefined") {
+                backend.nextWindowIds = backend.windowIds.slice()
+                windowUpdated = false
+                util.stackFrame.loopCounter = backend.windowIds.length //Object.keys(backend.windows).length
+            }
+            util.stackFrame.loopCounter--;
 
-            if (util.stackFrame.loopCounter >= 0) util.startBranch(1, true);
+            
 
+            if (util.stackFrame.loopCounter >= 0) {
+                windowData = backend.windows[Scratch.Cast.toString(backend.windowIds[util.stackFrame.loopCounter])]
+                util.startBranch(1, true);
+            }
+            else {
+                const a = JSON.stringify(backend.windowIds)
+                const b = JSON.stringify(backend.nextWindowIds)
+                //if (a !== b) console.log(backend.windowIds, backend.nextWindowIds.slice())
+                if (a !== b) backend.windowIds = backend.nextWindowIds.slice()
+
+
+                // const toRemove = backend.windowIds.filter((i) => !Object.prototype.hasOwnProperty.call(backend.windows,i))
+                // toRemove.forEach((i) => {
+                //     console.log(i)
+                //     backend.windowIds.splice(backend.windowIds.indexOf(i),1)
+                // })
+
+                const toRemove = Object.keys(backend.windows)
+                for (let i = 0; i < toRemove.length; i++) {
+                    if (!backend.windowIds.includes(toRemove[i])) delete backend.windows[toRemove[i]]
+                }
+                
+            }
             
         }
 
@@ -665,54 +716,74 @@ function pointrect(x1,y1,x2,y2,px,py) {
         }
 
         updateWindowStuff(args, util) {
-            const wx = backend.windows[Scratch.Cast.toString(args.WINDOW)].x
-            const wy = backend.windows[Scratch.Cast.toString(args.WINDOW)].y
-            const ww = backend.windows[Scratch.Cast.toString(args.WINDOW)].width
-            const wh = backend.windows[Scratch.Cast.toString(args.WINDOW)].height
+            args.WINDOW = Scratch.Cast.toString(args.WINDOW)
+            const wx = backend.windows[args.WINDOW].x
+            const wy = backend.windows[args.WINDOW].y
+            const ww = backend.windows[args.WINDOW].width
+            const wh = backend.windows[args.WINDOW].height
             args.X = Scratch.Cast.toNumber(args.X)
             args.Y = Scratch.Cast.toNumber(args.Y)
             args.DOWN = Scratch.Cast.toBoolean(args.DOWN)
             args.LAST = Scratch.Cast.toBoolean(args.LAST)
-            //console.log(((args.X > wx + (ww*0.3)) && (args.X < wx + (ww*0.5))/* && (args.Y < wy - (wh*0.3)) && (args.Y > wy - (wh/2))*/))
-            if ((backend.windows[Scratch.Cast.toString(args.WINDOW)].held && args.DOWN) || (args.DOWN && !args.LAST && ((args.X > wx - (ww/2)) && (args.X < wx + (ww/2)) && (args.Y < wy + (wh/2)) && (args.Y > wy + (wh*0.5) - 35)))) {
-                backend.moveWindow(Scratch.Cast.toNumber(args.DX),Scratch.Cast.toNumber(args.DY),args.WINDOW)
-                backend.windows[Scratch.Cast.toString(args.WINDOW)].held = true
-            }
-            else if ((backend.windows[Scratch.Cast.toString(args.WINDOW)].sizing && args.DOWN) || (args.DOWN && !args.LAST && ((args.X > wx + (ww/2) - 15) && (args.X < wx + (ww/2)) && (args.Y <( wy - (wh*0.5)) + 15) && (args.Y > wy - (wh/2))))) {
-                backend.resizeWindow(Scratch.Cast.toNumber(args.DX),Scratch.Cast.toNumber(args.DY),args.WINDOW)
-                backend.windows[Scratch.Cast.toString(args.WINDOW)].sizing = true
-            }
-            else {
-                backend.windows[Scratch.Cast.toString(args.WINDOW)].held = false
-                backend.windows[Scratch.Cast.toString(args.WINDOW)].sizing = false
-            }
 
-            if (pointrect((wx - (ww / 2) + 20) - 15, (wy + (wh / 2) - 17.5) - 15,(wx - (ww / 2) + 20) + 15, (wy + (wh / 2) - 17.5) + 15,args.X,args.Y) && args.DOWN && !args.LAST) { // minify button
-                backend.windows[Scratch.Cast.toString(args.WINDOW)].minimized = true
+
+            if (!windowUpdated && pointrect((wx - (ww / 2) + 20) - 15, (wy + (wh / 2) - 17.5) - 15,(wx - (ww / 2) + 20) + 15, (wy + (wh / 2) - 17.5) + 15,args.X,args.Y) && args.DOWN && !args.LAST) { // minify button
+                backend.windows[args.WINDOW].minimized = true
+                windowUpdated = true
             }
-            else if (pointrect((wx - (ww / 2) + 40) - 15, (wy + (wh / 2) - 17.5) - 15,(wx - (ww / 2) + 40) + 15, (wy + (wh / 2) - 17.5) + 15,args.X,args.Y) && args.DOWN && !args.LAST) { // minify button
-                if (backend.windows[Scratch.Cast.toString(args.WINDOW)].maximized) {
-                    backend.windows[Scratch.Cast.toString(args.WINDOW)].maximized = false
-                    backend.windows[Scratch.Cast.toString(args.WINDOW)].width = backend.windows[Scratch.Cast.toString(args.WINDOW)].oldw
-                    backend.windows[Scratch.Cast.toString(args.WINDOW)].height = backend.windows[Scratch.Cast.toString(args.WINDOW)].oldh
+            else if (!windowUpdated && pointrect((wx - (ww / 2) + 40) - 15, (wy + (wh / 2) - 17.5) - 15,(wx - (ww / 2) + 40) + 15, (wy + (wh / 2) - 17.5) + 15,args.X,args.Y) && args.DOWN && !args.LAST) { // minify button
+                windowUpdated = true
+                if (backend.windows[args.WINDOW].maximized) {
+                    backend.windows[args.WINDOW].maximized = false
+                    backend.windows[args.WINDOW].width = backend.windows[args.WINDOW].oldw
+                    backend.windows[args.WINDOW].height = backend.windows[args.WINDOW].oldh
+                    backend.focusWindow(args.WINDOW)
+                    
                 }
                 else {
-                    backend.windows[Scratch.Cast.toString(args.WINDOW)].maximized = true
-                    backend.windows[Scratch.Cast.toString(args.WINDOW)].oldw = backend.windows[Scratch.Cast.toString(args.WINDOW)].width
-                    backend.windows[Scratch.Cast.toString(args.WINDOW)].oldh = backend.windows[Scratch.Cast.toString(args.WINDOW)].height
-                    backend.windows[Scratch.Cast.toString(args.WINDOW)].width = runtime.stageWidth
-                    backend.windows[Scratch.Cast.toString(args.WINDOW)].height = runtime.stageHeight
-                    backend.windows[Scratch.Cast.toString(args.WINDOW)].x = 0
-                    backend.windows[Scratch.Cast.toString(args.WINDOW)].y = 0
+                    backend.windows[args.WINDOW].maximized = true
+                    backend.windows[args.WINDOW].oldw = backend.windows[args.WINDOW].width
+                    backend.windows[args.WINDOW].oldh = backend.windows[args.WINDOW].height
+                    backend.windows[args.WINDOW].width = runtime.stageWidth
+                    backend.windows[args.WINDOW].height = runtime.stageHeight
+                    backend.windows[args.WINDOW].x = 0
+                    backend.windows[args.WINDOW].y = 0
+                    backend.focusWindow(args.WINDOW)
                 }
                 
             }
-            else if (pointrect((wx - (ww / 2) + 60) - 15, (wy + (wh / 2) - 17.5) - 15,(wx - (ww / 2) + 60) + 15, (wy + (wh / 2) - 17.5) + 15,args.X,args.Y) && args.DOWN && !args.LAST) { // minify button
+            else if (!windowUpdated && pointrect((wx - (ww / 2) + 60) - 15, (wy + (wh / 2) - 17.5) - 15,(wx - (ww / 2) + 60) + 15, (wy + (wh / 2) - 17.5) + 15,args.X,args.Y) && args.DOWN && !args.LAST) { // minify button
                 Object.keys(backend.events).forEach((e) => {
-                    backend.events[e] = backend.events[e].filter((i) => i.src != Scratch.Cast.toString(args.WINDOW))
+                    backend.events[e] = backend.events[e].filter((i) => i.src != args.WINDOW)
                 })
-                delete backend.windows[Scratch.Cast.toString(args.WINDOW)]
+                //backend.windowIds.splice(backend.windowIds.indexOf(args.WINDOW), 1)
+                //delete backend.windows[args.WINDOW]
+                backend.killWindow(args.WINDOW)
+                windowUpdated = true
+                //console.log(args.WINDOW)
+                return
             }
+            
+            
+
+            if (!windowUpdated && (backend.windows[args.WINDOW].held && args.DOWN) || (args.DOWN && !args.LAST && ((args.X > wx - (ww/2)) && (args.X < wx + (ww/2)) && (args.Y < wy + (wh/2)) && (args.Y > wy + (wh*0.5) - 35)))) {
+                backend.moveWindow(Scratch.Cast.toNumber(args.DX),Scratch.Cast.toNumber(args.DY),args.WINDOW)
+                backend.windows[args.WINDOW].held = true
+                backend.focusWindow(args.WINDOW)
+                windowUpdated = true
+            }
+            else if (!windowUpdated && (backend.windows[args.WINDOW].sizing && args.DOWN) || (args.DOWN && !args.LAST && ((args.X > wx + (ww/2) - 15) && (args.X < wx + (ww/2)) && (args.Y <( wy - (wh*0.5)) + 15) && (args.Y > wy - (wh/2))))) {
+                backend.resizeWindow(Scratch.Cast.toNumber(args.DX),Scratch.Cast.toNumber(args.DY),args.WINDOW)
+                backend.windows[args.WINDOW].sizing = true
+                backend.focusWindow(args.WINDOW)
+                windowUpdated = true
+            }
+            else {
+                backend.windows[args.WINDOW].held = false
+                backend.windows[args.WINDOW].sizing = false
+            }
+
+            
         }
 
         triggerEvent(args, util) {
@@ -745,11 +816,14 @@ function pointrect(x1,y1,x2,y2,px,py) {
         }
 
         debug(args) {
-            console.log(backend.fs)
+            //console.log(backend.fs)
+            console.log(backend.windowIds, backend.windows)
         }
 
         killAllWindows() {
             backend.windows = {}
+            backend.windowIds = []
+            backend.nextWindowIds = []
         }
 
         appLoaded(args) {
