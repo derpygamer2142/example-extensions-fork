@@ -7,9 +7,10 @@
 
 /*
 TODO:
-file system, methods for accessing
-apps, methods for accessing/launching
+file system, methods for accessing - done?
+apps, methods for accessing/launching - done?
 settings, methods for accessing
+desktop
 
 */
 
@@ -38,10 +39,21 @@ settings, methods for accessing
                 tick: []
             }
 
-            this.fs = {
-                // stuff goes here
-                
-            }
+            this.fs = this.newDirPoint()
+
+            
+            this.mkdir("/system/apps")
+            
+            this.apps = {}
+
+            this.mkdir("/system/settings")
+            this.writeFile("/system/settings/settings.json",{
+                ligma: "balls",
+                skibidi: "ohio",
+                aaa: "bbb"
+            })
+
+            this.settings = this.readFile("/system/settings/settings.json")
         }
 
         newWindow(x, y, width, height, id) {
@@ -145,7 +157,6 @@ settings, methods for accessing
             let section = this.fs
             try {
                 path.split("/").forEach((p) => {
-                    console.log(section, p)
                     if (Object.prototype.hasOwnProperty.call(section, p)) {
                         section = section[p]
                     }
@@ -191,7 +202,6 @@ settings, methods for accessing
                 const apath = path.split("/")
                 apath.pop()
                 apath.forEach((p) => {
-                    console.log(section, p)
                     if (Object.prototype.hasOwnProperty.call(section, p)) {
                         section = section[p]
                     }
@@ -200,7 +210,7 @@ settings, methods for accessing
                     }
                 })
                 if (path === "") {
-                    this.fs = {} // :trol:
+                    this.fs = this.newDirPoint() // :trol:
                 }
                 else {
                     const s = path.split("/")
@@ -217,16 +227,15 @@ settings, methods for accessing
             if (path[0] === "/") path = path.slice(1)
             if (path[path.length - 1] === "/") path = path.slice(0, path.length - 1)
             const apath = path.split("/")
+            const object = this.fs[apath[0]] ?? this.newDirPoint()
             apath.shift()
-            const object = this.newDirPoint()
             let bobject = object // ~~bob ject~~ b object
             apath.forEach((p) => {
                 if (p[0] === "_") throw new Error("Invalid")
-                bobject[p] = this.newDirPoint()
+                if (!Object.prototype.hasOwnProperty.call(bobject,p)) bobject[p] = this.newDirPoint()
                 bobject = bobject[p]
                 
             })
-            console.log(path.split("/")[0])
             this.fs[path.split("/")[0]] = object
         }
         
@@ -269,6 +278,48 @@ settings, methods for accessing
             }
         }
 
+
+        loadApp(appData) {
+            if (
+                typeof appData?.name === "string" &&
+                typeof appData?.desktopIcon === "string" &&
+                typeof appData?.code === "string" &&
+                typeof appData?.id === "string" &&
+                (appData?.name ?? [0])[0] !== "_" && // app won't conflict with reserved words
+                !Object.prototype.hasOwnProperty.call(this.fs.system.apps, appData?.id ?? "") // app doesn't already exist
+            ) {
+                // probably valid ¯\_(ツ)_/¯
+                const appPath = "/system/apps/" + appData.id
+                this.mkdir(appPath)
+                this.writeFile(appPath + "/app.json", appData)
+                // note to self: if we add assets in the future add it here
+
+                this.apps[appData.id] = appData
+            }
+            else {
+                throw new Error("Invalid app!")
+            }
+        }
+
+        deleteApp(id) {
+            this.rm("/system/apps/" + id)
+            delete this.apps[id]
+        }
+
+        loadOsFromFs(fs) {
+            this.windows = {}
+            this.apps = {}
+            this.fs = fs
+            this.events = {
+                tick: []
+            }
+
+        }
+
+        updateSetting(setting, value) {
+            this.settings[setting] = value
+            this.writeFile("/system/settings/settings.json",this.settings)
+        }
     }
 
     const backend = new Backend()
@@ -286,6 +337,44 @@ settings, methods for accessing
                 color2: "#166af2",
                 color3: "#032966",
                 blocks: [
+
+                    {   
+                        opcode: "loadApp",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Load app from data [APPDATA]",
+                        arguments: {
+                            APPDATA: {
+                                type: Scratch.ArgumentType.STRING,
+                                // defaultValue of example goes here
+                            }
+                        }
+
+                    },
+
+                    {
+                        opcode: "deleteApp",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Delete app [ID]",
+                        arguments: {
+                            ID: {
+                                type: Scratch.ArgumentType.STRING
+                            }
+                        }
+                    },
+
+                    {   
+                        opcode: "debugApp",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Make a debug app from code [APP]",
+                        arguments: {
+                            APP: {
+                                type: Scratch.ArgumentType.STRING,
+                            }
+                        }
+
+                    },
+
+
                     {   
                         opcode: "runApp",
                         blockType: Scratch.BlockType.COMMAND,
@@ -293,7 +382,7 @@ settings, methods for accessing
                         arguments: {
                             APP: {
                                 type: Scratch.ArgumentType.STRING,
-                                // defaultValue of example goes here
+                                defaultValue: "skibidi"
                             }
                         }
 
@@ -455,12 +544,29 @@ settings, methods for accessing
 
         runApp(args, util) {
             const windowId = backend.newWindow(0, 0, 100, 100)
-            const appFunction = new Function("windowId", "backend", args.APP)
+            const appFunction = new Function("windowId", "backend", backend.apps[args.APP].code)
             
             appFunction(windowId, backend)
             /*
                 sandboxing is cringe, who needs that
             */
+        }
+
+        loadApp(args, util) {
+            backend.loadApp(JSON.parse(args.APPDATA))
+        }
+
+        debugApp(args, util) {
+            return JSON.stringify({
+                code: args.APP,
+                desktopIcon: "ligma",
+                name: "balls",
+                id: "skibidi"
+            })
+        }
+
+        deleteApp(args) {
+            backend.deleteApp(Scratch.Cast.toString(args.ID))
         }
 
         forWindow(args, util) {
