@@ -14,6 +14,14 @@ desktop
 
 */
 
+function clamp(a,b,c) {
+    return Math.min(Math.max(a,b),c)
+}
+
+function pointrect(x1,y1,x2,y2,px,py) {
+    return (Math.min(Math.max(px,x1),x2) === px && Math.min(Math.max(py,y1),y2) === py)
+}
+
 (async function(Scratch) {
     'use strict';
     
@@ -72,23 +80,39 @@ desktop
                 contents: [],
                 commands: [],
                 id: id,
-                held: false
+                held: false,
+                sizing: false,
+                minimized: false,
+                maximized: false,
+                oldw: -1,
+                oldh: -1
             }
 
             return id
         }
 
         resizeWindow(dw, dh, id) {
-            this.windows[id].x -= dw/2
-            this.windows[id].y -= dh/2
+            this.windows[id].x += dw/2
+            this.windows[id].y += dh/2
 
             this.windows[id].width += dw
-            this.windows[id].height += dh
+            this.windows[id].height -= dh
+
+            if (this.windows[id].width < 320) {
+                this.windows[id].x += (320 - this.windows[id].width) / 2
+                this.windows[id].width = 320
+            }
+            if (this.windows[id].height < 180) {
+                this.windows[id].y -= (180 - this.windows[id].height) / 2
+                this.windows[id].height = 180
+            }
+            // this.windows[id].width = Math.max(this.windows[id].width, 320)
+            // this.windows[id].height = Math.max(this.windows[id].height, 180)
         }
 
         moveWindow(dx, dy, id) {
             this.windows[id].x += dx
-            this.windows[dy].y += dy
+            this.windows[id].y += dy
         }
 
 
@@ -113,10 +137,10 @@ desktop
             this.windows[id].contents = this.windows[id].contents.concat([
                 "LINE",
                 10,
-                x1,
-                y1,
-                x2,
-                y2,
+                clamp(x1,this.windows[id].x - this.windows[id].width/2, this.windows[id].x - this.windows[id].width/2),
+                clamp(y1,this.windows[id].y - this.windows[id].height/2, this.windows[id].y - this.windows[id].height/2),
+                clamp(x2,this.windows[id].x - this.windows[id].width/2, this.windows[id].x - this.windows[id].width/2),
+                clamp(y2,this.windows[id].y - this.windows[id].height/2, this.windows[id].y - this.windows[id].height/2),
                 weight,
                 r,
                 g,
@@ -125,15 +149,15 @@ desktop
             ])
         }
         
-        drawRect(x, y, width, height, r, g, b, a, id) {
+        drawRect(x1, y1, x2, y2, r, g, b, a, id) {
             this.windows[id].commands.push(this.windows[id].commands.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "RECT",
                 9,
-                x,
-                y,
-                width,
-                height,
+                clamp(x1,this.windows[id].x - this.windows[id].width/2, this.windows[id].x + this.windows[id].width/2),
+                clamp(y1,this.windows[id].y - this.windows[id].height/2, this.windows[id].y + this.windows[id].height/2),
+                clamp(x2,this.windows[id].x - this.windows[id].width/2, this.windows[id].x + this.windows[id].width/2),
+                clamp(y2,this.windows[id].y - this.windows[id].height/2, this.windows[id].y + this.windows[id].height/2),
                 r,
                 g,
                 b,
@@ -141,10 +165,13 @@ desktop
             ])
         }
 
-        onEvent(event, func) {
+        onEvent(event, func, id) {
             switch (event) {
                 case "tick": {
-                    this.events.tick.push(func)
+                    this.events.tick.push({
+                        func: func,
+                        src: id
+                    })
 
                     break;
                 }
@@ -269,10 +296,10 @@ desktop
         newFilePoint(fileName, content) {
             const split = fileName.split(".")
             const type = (split[split.length - 1] ?? "").includes(" ") ? "" : (split[split.length - 1] ?? "")
-            
+            const s = fileName.split("/")
             return {
                 _isDir: false,
-                _name: split[split.length - 1],
+                _name: s[s.length - 1],
                 _content: content,
                 _type: type
             }
@@ -285,8 +312,8 @@ desktop
                 typeof appData?.desktopIcon === "string" &&
                 typeof appData?.code === "string" &&
                 typeof appData?.id === "string" &&
-                (appData?.name ?? [0])[0] !== "_" && // app won't conflict with reserved words
-                !Object.prototype.hasOwnProperty.call(this.fs.system.apps, appData?.id ?? "") // app doesn't already exist
+                (appData?.name ?? [0])[0] !== "_"// && // app won't conflict with reserved words
+                //!Object.prototype.hasOwnProperty.call(this.fs.system.apps, appData?.id ?? "") // app doesn't already exist
             ) {
                 // probably valid ¯\_(ツ)_/¯
                 const appPath = "/system/apps/" + appData.id
@@ -389,6 +416,36 @@ desktop
                     },
 
                     {
+                        opcode: "appLoaded",
+                        blockType: Scratch.BlockType.BOOLEAN,
+                        text: "App [APP] loaded?",
+                        arguments: {
+                            APP: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "skibidi"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "appRunning",
+                        blockType: Scratch.BlockType.BOOLEAN,
+                        text: "App [APP] running?",
+                        arguments: {
+                            APP: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "skibidi"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "killAllWindows",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Kill all windows"
+                    },
+
+                    {
                         opcode: "forWindow",
                         blockType: Scratch.BlockType.LOOP,
                         text: "For each window",
@@ -452,6 +509,12 @@ desktop
                                 defaultValue: 0
                             }
                         }
+                    },
+
+                    {
+                        opcode: "clearListeners",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Clear all event listeners"
                     },
 
                     {
@@ -543,7 +606,7 @@ desktop
         }
 
         runApp(args, util) {
-            const windowId = backend.newWindow(0, 0, 100, 100)
+            const windowId = backend.newWindow(0, 0, 320, 180)
             const appFunction = new Function("windowId", "backend", backend.apps[args.APP].code)
             
             appFunction(windowId, backend)
@@ -608,23 +671,53 @@ desktop
             const wh = backend.windows[Scratch.Cast.toString(args.WINDOW)].height
             args.X = Scratch.Cast.toNumber(args.X)
             args.Y = Scratch.Cast.toNumber(args.Y)
-
-            if (backend.windows[Scratch.Cast.toString(args.WINDOW)].held || (Scratch.Cast.toBoolean(args.DOWN) && !Scratch.Cast.toBoolean(args.LAST) && ((args.X > wx - (ww/2)) && (args.X < wx + (ww/2)) && (args.Y > wy - (wh/2)) && (args.Y > wy - (wh*0.4))))) {
+            args.DOWN = Scratch.Cast.toBoolean(args.DOWN)
+            args.LAST = Scratch.Cast.toBoolean(args.LAST)
+            //console.log(((args.X > wx + (ww*0.3)) && (args.X < wx + (ww*0.5))/* && (args.Y < wy - (wh*0.3)) && (args.Y > wy - (wh/2))*/))
+            if ((backend.windows[Scratch.Cast.toString(args.WINDOW)].held && args.DOWN) || (args.DOWN && !args.LAST && ((args.X > wx - (ww/2)) && (args.X < wx + (ww/2)) && (args.Y < wy + (wh/2)) && (args.Y > wy + (wh*0.5) - 35)))) {
                 backend.moveWindow(Scratch.Cast.toNumber(args.DX),Scratch.Cast.toNumber(args.DY),args.WINDOW)
                 backend.windows[Scratch.Cast.toString(args.WINDOW)].held = true
             }
-            else if (backend.windows[Scratch.Cast.toString(args.WINDOW)].held || (Scratch.Cast.toBoolean(args.DOWN) && !Scratch.Cast.toBoolean(args.LAST) && ((args.X > wx + (ww*0.48)) && (args.X < wx + (ww/2)) && (args.Y > wy + (wh*0.48)) && (args.Y > wy + (wh/2))))) {
+            else if ((backend.windows[Scratch.Cast.toString(args.WINDOW)].sizing && args.DOWN) || (args.DOWN && !args.LAST && ((args.X > wx + (ww/2) - 15) && (args.X < wx + (ww/2)) && (args.Y <( wy - (wh*0.5)) + 15) && (args.Y > wy - (wh/2))))) {
                 backend.resizeWindow(Scratch.Cast.toNumber(args.DX),Scratch.Cast.toNumber(args.DY),args.WINDOW)
-                backend.windows[Scratch.Cast.toString(args.WINDOW)].held = true
+                backend.windows[Scratch.Cast.toString(args.WINDOW)].sizing = true
             }
             else {
                 backend.windows[Scratch.Cast.toString(args.WINDOW)].held = false
+                backend.windows[Scratch.Cast.toString(args.WINDOW)].sizing = false
+            }
+
+            if (pointrect((wx - (ww / 2) + 20) - 15, (wy + (wh / 2) - 17.5) - 15,(wx - (ww / 2) + 20) + 15, (wy + (wh / 2) - 17.5) + 15,args.X,args.Y) && args.DOWN && !args.LAST) { // minify button
+                backend.windows[Scratch.Cast.toString(args.WINDOW)].minimized = true
+            }
+            else if (pointrect((wx - (ww / 2) + 40) - 15, (wy + (wh / 2) - 17.5) - 15,(wx - (ww / 2) + 40) + 15, (wy + (wh / 2) - 17.5) + 15,args.X,args.Y) && args.DOWN && !args.LAST) { // minify button
+                if (backend.windows[Scratch.Cast.toString(args.WINDOW)].maximized) {
+                    backend.windows[Scratch.Cast.toString(args.WINDOW)].maximized = false
+                    backend.windows[Scratch.Cast.toString(args.WINDOW)].width = backend.windows[Scratch.Cast.toString(args.WINDOW)].oldw
+                    backend.windows[Scratch.Cast.toString(args.WINDOW)].height = backend.windows[Scratch.Cast.toString(args.WINDOW)].oldh
+                }
+                else {
+                    backend.windows[Scratch.Cast.toString(args.WINDOW)].maximized = true
+                    backend.windows[Scratch.Cast.toString(args.WINDOW)].oldw = backend.windows[Scratch.Cast.toString(args.WINDOW)].width
+                    backend.windows[Scratch.Cast.toString(args.WINDOW)].oldh = backend.windows[Scratch.Cast.toString(args.WINDOW)].height
+                    backend.windows[Scratch.Cast.toString(args.WINDOW)].width = runtime.stageWidth
+                    backend.windows[Scratch.Cast.toString(args.WINDOW)].height = runtime.stageHeight
+                    backend.windows[Scratch.Cast.toString(args.WINDOW)].x = 0
+                    backend.windows[Scratch.Cast.toString(args.WINDOW)].y = 0
+                }
+                
+            }
+            else if (pointrect((wx - (ww / 2) + 60) - 15, (wy + (wh / 2) - 17.5) - 15,(wx - (ww / 2) + 60) + 15, (wy + (wh / 2) - 17.5) + 15,args.X,args.Y) && args.DOWN && !args.LAST) { // minify button
+                Object.keys(backend.events).forEach((e) => {
+                    backend.events[e] = backend.events[e].filter((i) => i.src != Scratch.Cast.toString(args.WINDOW))
+                })
+                delete backend.windows[Scratch.Cast.toString(args.WINDOW)]
             }
         }
 
         triggerEvent(args, util) {
             backend.events[Scratch.Cast.toString(args.EVENT)].forEach((e) => {
-                e()
+                e.func()
             })
         }
 
@@ -653,6 +746,28 @@ desktop
 
         debug(args) {
             console.log(backend.fs)
+        }
+
+        killAllWindows() {
+            backend.windows = {}
+        }
+
+        appLoaded(args) {
+            return Object.prototype.hasOwnProperty.call(backend.apps, Scratch.Cast.toString(args.APP))
+        }
+
+        appRunning(args) {
+            const keys = Object.keys(backend.events)
+            for (let i = 0; i < keys.length; i++) {
+                if (backend.events[keys[i]].filter((e) => e.src === Scratch.Cast.toString(args.APP))) return true
+            }
+            return false
+        }
+
+        clearListeners() {
+            Object.keys(backend.events).forEach((e) => {
+                backend.events[e] = []
+            })
         }
     }
     // @ts-ignore
