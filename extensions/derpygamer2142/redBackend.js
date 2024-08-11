@@ -66,6 +66,10 @@ function pointrect(x1,y1,x2,y2,px,py) {
             this.settings = this.readFile("/system/settings/settings.json")
 
             // backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawCircle(0,Math.sin(Date.now() / 1000)*50,50,255,0,0,1,windowId);})
+            // backend.onEvent("tick", ()=>{backend.clearShapes(windowId);backend.drawEllipse(0,Math.sin(Date.now() / 100)*50,100,50,255,0,0,1,windowId);},windowId);
+            // backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawCircle(-65,-100,50,255,0,0,1,windowId);backend.drawCircle(65,-100,50,255,0,0,1,windowId);backend.drawLine(0,-100,0,100,35,255,0,0,1,windowId);},windowId);
+            //backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawLine(0,-100,0,100,25,255,0,0,1,windowId);},windowId);
+            //backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawCircle(-65,-100,50,255,0,0,1,windowId);backend.drawCircle(65,-100,50,255,0,0,1,windowId);backend.drawLine(0,-100,0,100,35,255,0,0,1,windowId);backend.drawText("red os best os",-100,110,100,1,0,255,255,255,windowId);},windowId);
         }
 
         newWindow(x, y, width, height, id) {
@@ -123,7 +127,7 @@ function pointrect(x1,y1,x2,y2,px,py) {
 
 
         drawCircle(x, y, radius, r, g, b, a, id) {
-            this.windows[id].commands.push(this.windows[id].commands.length)
+            this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "CIRCLE",
                 8,
@@ -139,14 +143,18 @@ function pointrect(x1,y1,x2,y2,px,py) {
         }
 
         drawLine(x1, y1, x2, y2, weight, r, g, b, a, id) {
-            this.windows[id].commands.push(this.windows[id].commands.length)
+            this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "LINE",
                 10,
-                clamp(x1,this.windows[id].x - this.windows[id].width/2, this.windows[id].x - this.windows[id].width/2),
-                clamp(y1,this.windows[id].y - this.windows[id].height/2, this.windows[id].y - this.windows[id].height/2),
-                clamp(x2,this.windows[id].x - this.windows[id].width/2, this.windows[id].x - this.windows[id].width/2),
-                clamp(y2,this.windows[id].y - this.windows[id].height/2, this.windows[id].y - this.windows[id].height/2),
+                //clamp(x1,this.windows[id].x - this.windows[id].width/2, this.windows[id].x - this.windows[id].width/2),
+                //clamp(y1,this.windows[id].y - this.windows[id].height/2, this.windows[id].y - this.windows[id].height/2),
+                //clamp(x2,this.windows[id].x - this.windows[id].width/2, this.windows[id].x - this.windows[id].width/2),
+                //clamp(y2,this.windows[id].y - this.windows[id].height/2, this.windows[id].y - this.windows[id].height/2),
+                clamp(x1,-320,320),
+                clamp(y1,-180,180),
+                clamp(x2,-320,320),
+                clamp(y2,-180,180),
                 weight,
                 r,
                 g,
@@ -156,7 +164,7 @@ function pointrect(x1,y1,x2,y2,px,py) {
         }
         
         drawRect(x1, y1, x2, y2, r, g, b, a, id) {
-            this.windows[id].commands.push(this.windows[id].commands.length)
+            this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "RECT",
                 9,
@@ -170,6 +178,41 @@ function pointrect(x1,y1,x2,y2,px,py) {
                 a
             ])
         }
+
+        drawEllipse(x, y, r1, r2, r, g, b, a, id) {
+            this.windows[id].commands.push(this.windows[id].contents.length)
+            this.windows[id].contents = this.windows[id].contents.concat([
+                "ELLIPSE",
+                9,
+                x,
+                y,
+                r1,
+                r2,
+                r,
+                g,
+                b,
+                a
+            ])
+        }
+
+        drawText(text, x, y, size, spacing, bold, r, g, b, id) {
+            this.windows[id].commands.push(this.windows[id].contents.length)
+            this.windows[id].contents = this.windows[id].contents.concat([
+                "TEXT",
+                11,
+                text,
+                x,
+                y,
+                r,
+                g,
+                b,
+                size,
+                spacing,
+                bold,
+            ])
+        }
+
+        
 
         clearShapes(id) {
             this.windows[id].contents = []
