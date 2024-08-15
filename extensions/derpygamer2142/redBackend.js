@@ -70,6 +70,79 @@ function pointrect(x1,y1,x2,y2,px,py) {
             // backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawCircle(-65,-100,50,255,0,0,1,windowId);backend.drawCircle(65,-100,50,255,0,0,1,windowId);backend.drawLine(0,-100,0,100,35,255,0,0,1,windowId);},windowId);
             //backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawLine(0,-100,0,100,25,255,0,0,1,windowId);},windowId);
             //backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawCircle(-65,-100,50,255,0,0,1,windowId);backend.drawCircle(65,-100,50,255,0,0,1,windowId);backend.drawLine(0,-100,0,100,35,255,0,0,1,windowId);backend.drawText("red os best os",-100,110,100,1,0,255,255,255,windowId);},windowId);
+            // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);backend.onEvent("tick", ()=>{backend.clearShapes(windowId);backend.drawImage("find-ethan",0,0,100,100,windowId);backend.drawRect(-50,-50,50,50,255,0,0,1,windowId);})
+            // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);
+            
+            // const b = new backend.Button(100,-60,150,-30,255,0,0,1,windowId,backend, ()=>{console.log("click")},()=>{console.log("release")});
+            // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);
+            // backend.onEvent("tick", () => {
+            //     backend.clearShapes(windowId);
+            //     backend.drawImage("find-ethan",0,0,300,300,windowId);
+            //     b.update(vm.runtime.ioDevices["mouse"]._scratchX,vm.runtime.ioDevices["mouse"]._scratchY,vm.runtime.ioDevices["mouse"]._isDown);
+            //     b.render();
+            // })
+
+
+            // const b = new backend.Button(100,-60,150,-30,255,0,0,1,windowId,backend, ()=>{console.log("click")},()=>{console.log("release")});
+            // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);
+            // backend.onEvent("tick", () => {
+            //     backend.clearShapes(windowId);
+            //     backend.drawImage("find-ethan",0,0,300,300,windowId);
+            //     b.render();
+            // })
+
+
+            // backend.onEvent("tick",()=>{backend.drawRect(-100,-100,100,100,255,0,0,1,windowId)},windowId)
+
+            //["IMAGE",6,0,0,300,300,"find-ethan","RECT",9,100,-60,150,-30,255,0,0,1]
+
+            this.Button = class {
+                constructor(x1, y1, x2, y2, r, g, b, a, id, backend, onTrigger, offTrigger) {
+                    this.x1 = x1
+                    this.y1 = y1
+                    this.x2 = x2
+                    this.y2 = y2
+                    this.r = r
+                    this.g = g
+                    this.b = b
+                    this.a = a
+                    this.id = id
+
+                    this.backend = backend
+
+                    this.triggered = false
+                    this.onTrigger = onTrigger
+                    this.offTrigger = offTrigger
+
+                    this.lastMouse = false
+                }
+
+                toLocal(x, wx, ww, dim) {
+                    return wx + ((x / (runtime[dim] / 2)) * ww)
+                }
+                
+                update(mouseX, mouseY, mouseDown) {
+                    console.log(clamp(mouseX, this.toLocal(this.x1, this.backend.windows[this.id].x, this.backend.windows[this.id].width, "stageWidth"), this.toLocal(this.x2, this.backend.windows[this.id].x, this.backend.windows[this.id].width, "stageWidth")) === mouseX)
+                    const t = ((clamp(mouseX, this.toLocal(this.x1, this.backend.windows[this.id].x, this.backend.windows[this.id].width, "stageWidth"), this.toLocal(this.x2, this.backend.windows[this.id].x, this.backend.windows[this.id].width, "stageWidth")) === mouseX) && (clamp(mouseY,this.toLocal(this.y1, this.backend.windows[this.id].y, this.backend.windows[this.id].height, "stageHeight"),this.toLocal(this.y2, this.backend.windows[this.id].y, this.backend.windows[this.id].height, "stageHeight")) === mouseY) && mouseDown && !this.lastMouse && !this.triggered)
+                    if (t) {
+                        this.onTrigger(this)
+                        this.triggered = true
+                    }
+                    else if (!t && this.triggered) {
+                        this.offTrigger(this)
+                        this.triggered = false
+                    }
+                    else {
+                        this.triggered = false
+                    }
+
+                    this.lastMouse = mouseDown
+                }
+
+                render() {
+                    this.backend.drawRect(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a, this.id)
+                }
+            }
         }
 
         newWindow(x, y, width, height, id) {
@@ -130,7 +203,7 @@ function pointrect(x1,y1,x2,y2,px,py) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "CIRCLE",
-                8,
+                9,
                 x,
                 y,
                 radius,
@@ -146,7 +219,7 @@ function pointrect(x1,y1,x2,y2,px,py) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "LINE",
-                10,
+                11,
                 //clamp(x1,this.windows[id].x - this.windows[id].width/2, this.windows[id].x - this.windows[id].width/2),
                 //clamp(y1,this.windows[id].y - this.windows[id].height/2, this.windows[id].y - this.windows[id].height/2),
                 //clamp(x2,this.windows[id].x - this.windows[id].width/2, this.windows[id].x - this.windows[id].width/2),
@@ -167,7 +240,7 @@ function pointrect(x1,y1,x2,y2,px,py) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "RECT",
-                9,
+                10,
                 clamp(x1,this.windows[id].x - this.windows[id].width/2, this.windows[id].x + this.windows[id].width/2),
                 clamp(y1,this.windows[id].y - this.windows[id].height/2, this.windows[id].y + this.windows[id].height/2),
                 clamp(x2,this.windows[id].x - this.windows[id].width/2, this.windows[id].x + this.windows[id].width/2),
@@ -183,7 +256,7 @@ function pointrect(x1,y1,x2,y2,px,py) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "ELLIPSE",
-                9,
+                10,
                 x,
                 y,
                 r1,
@@ -199,7 +272,7 @@ function pointrect(x1,y1,x2,y2,px,py) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "TEXT",
-                11,
+                12,
                 text,
                 x,
                 y,
@@ -212,7 +285,28 @@ function pointrect(x1,y1,x2,y2,px,py) {
             ])
         }
 
-        
+        drawImage(name, x, y, width, height, id) {
+            this.windows[id].commands.push(this.windows[id].contents.length)
+            this.windows[id].contents = this.windows[id].contents.concat([
+                "IMAGE",
+                7,
+                x,
+                y,
+                width,
+                height,
+                name
+            ])
+        }
+
+        loadImage(url, name,id) {
+            this.windows[id].commands.push(this.windows[id].contents.length)
+            this.windows[id].contents = this.windows[id].contents.concat([
+                "LOAD",
+                4,
+                url,
+                name
+            ])
+        }
 
         clearShapes(id) {
             this.windows[id].contents = []
@@ -719,7 +813,6 @@ function pointrect(x1,y1,x2,y2,px,py) {
             else {
                 const a = JSON.stringify(backend.windowIds)
                 const b = JSON.stringify(backend.nextWindowIds)
-                //if (a !== b) console.log(backend.windowIds, backend.nextWindowIds.slice())
                 if (a !== b) backend.windowIds = backend.nextWindowIds.slice()
 
 
@@ -742,10 +835,12 @@ function pointrect(x1,y1,x2,y2,px,py) {
             if (typeof util.stackFrame.loopCounter === "undefined") util.stackFrame.loopCounter = backend.windows[Scratch.Cast.toString(args.ID)].commands.length
             util.stackFrame.loopCounter--;
 
-            const a = backend.windows[Scratch.Cast.toString(args.ID)].commands[util.stackFrame.loopCounter]
-            drawCommand = backend.windows[Scratch.Cast.toString(args.ID)].contents.slice(a, a + backend.windows[Scratch.Cast.toString(args.ID)].contents[a+1] + 1)
-
-            if (util.stackFrame.loopCounter >= 0) util.startBranch(1, true);
+           
+            if (util.stackFrame.loopCounter >= 0) {
+                const a = backend.windows[Scratch.Cast.toString(args.ID)].commands[(backend.windows[Scratch.Cast.toString(args.ID)].commands.length - 1) - util.stackFrame.loopCounter]
+                drawCommand = backend.windows[Scratch.Cast.toString(args.ID)].contents.slice(a, a + backend.windows[Scratch.Cast.toString(args.ID)].contents[a+1])
+                util.startBranch(1, true);
+            }
 
         }
 
@@ -826,7 +921,6 @@ function pointrect(x1,y1,x2,y2,px,py) {
                 backend.windows[args.WINDOW].sizing = false
             }
 
-            
         }
 
         triggerEvent(args, util) {
