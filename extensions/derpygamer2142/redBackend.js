@@ -83,7 +83,7 @@ function pointrect(x1,y1,x2,y2,px,py) {
             // })
 
 
-            // const b = new backend.Button(100,-60,150,-30,255,0,0,1,windowId,backend, ()=>{console.log("click")},()=>{console.log("release")});
+            // const b = new backend.Button(100,-60,150,-30,5, 255,0,0,1,windowId,backend, ()=>{console.log("click")},()=>{console.log("release")});
             // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);
             // backend.onEvent("tick", () => {
             //     backend.clearShapes(windowId);
@@ -91,17 +91,33 @@ function pointrect(x1,y1,x2,y2,px,py) {
             //     b.render();
             // })
 
+            // let e = false;
+            // const b = new backend.Button(50,-90,110,-30,5, 255,0,0,1,windowId,backend, ()=>{e=true;console.log("click");},()=>{console.log("release")});
+            // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);
+            // backend.onEvent("tick", () => {
+            //     backend.clearShapes(windowId);
+            //     backend.drawImage("find-ethan",0,0,300,300,windowId);
+            //     b.update();
+            //     if (e) {
+            //         console.log("draw");
+            //         backend.drawText("yay you found ethan good job", 0, 120, 0, 0, 0, 1, 35, 1, true, "center", 250, windowId);
+            //     }
+            //     /*b.render();*/
+            // }, windowId)
 
+            
+            
             // backend.onEvent("tick",()=>{backend.drawRect(-100,-100,100,100,255,0,0,1,windowId)},windowId)
 
             //["IMAGE",6,0,0,300,300,"find-ethan","RECT",9,100,-60,150,-30,255,0,0,1]
 
             this.Button = class {
-                constructor(x1, y1, x2, y2, r, g, b, a, id, backend, onTrigger, offTrigger) {
+                constructor(x1, y1, x2, y2, radius, r, g, b, a, id, backend, onTrigger, offTrigger) {
                     this.x1 = x1
                     this.y1 = y1
                     this.x2 = x2
                     this.y2 = y2
+                    this.radius = radius
                     this.r = r
                     this.g = g
                     this.b = b
@@ -121,8 +137,10 @@ function pointrect(x1,y1,x2,y2,px,py) {
                     return wx + ((x / (runtime[dim] / 2)) * ww)
                 }
                 
-                update(mouseX, mouseY, mouseDown) {
-                    console.log(clamp(mouseX, this.toLocal(this.x1, this.backend.windows[this.id].x, this.backend.windows[this.id].width, "stageWidth"), this.toLocal(this.x2, this.backend.windows[this.id].x, this.backend.windows[this.id].width, "stageWidth")) === mouseX)
+                update(/*mouseX, mouseY, mouseDown*/) {
+                    const mouseX = vm.runtime.ioDevices["mouse"]._scratchX;
+                    const mouseY = vm.runtime.ioDevices["mouse"]._scratchY;
+                    const mouseDown = vm.runtime.ioDevices["mouse"]._isDown
                     const t = ((clamp(mouseX, this.toLocal(this.x1, this.backend.windows[this.id].x, this.backend.windows[this.id].width, "stageWidth"), this.toLocal(this.x2, this.backend.windows[this.id].x, this.backend.windows[this.id].width, "stageWidth")) === mouseX) && (clamp(mouseY,this.toLocal(this.y1, this.backend.windows[this.id].y, this.backend.windows[this.id].height, "stageHeight"),this.toLocal(this.y2, this.backend.windows[this.id].y, this.backend.windows[this.id].height, "stageHeight")) === mouseY) && mouseDown && !this.lastMouse && !this.triggered)
                     if (t) {
                         this.onTrigger(this)
@@ -140,7 +158,7 @@ function pointrect(x1,y1,x2,y2,px,py) {
                 }
 
                 render() {
-                    this.backend.drawRect(this.x1, this.y1, this.x2, this.y2, this.r, this.g, this.b, this.a, this.id)
+                    this.backend.drawRect(this.x1, this.y1, this.x2, this.y2, this.radius, this.r, this.g, this.b, this.a, this.id)
                 }
             }
         }
@@ -236,11 +254,11 @@ function pointrect(x1,y1,x2,y2,px,py) {
             ])
         }
         
-        drawRect(x1, y1, x2, y2, r, g, b, a, id) {
+        drawRect(x1, y1, x2, y2, radius, r, g, b, a, id) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "RECT",
-                10,
+                11,
                 clamp(x1,this.windows[id].x - this.windows[id].width/2, this.windows[id].x + this.windows[id].width/2),
                 clamp(y1,this.windows[id].y - this.windows[id].height/2, this.windows[id].y + this.windows[id].height/2),
                 clamp(x2,this.windows[id].x - this.windows[id].width/2, this.windows[id].x + this.windows[id].width/2),
@@ -248,7 +266,8 @@ function pointrect(x1,y1,x2,y2,px,py) {
                 r,
                 g,
                 b,
-                a
+                a,
+                radius
             ])
         }
 
@@ -268,20 +287,23 @@ function pointrect(x1,y1,x2,y2,px,py) {
             ])
         }
 
-        drawText(text, x, y, size, spacing, bold, r, g, b, id) {
+        drawText(text, x, y, r, g, b, a, size, spacing, bold, align, maxWidth, id) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "TEXT",
-                12,
+                14,
                 text,
                 x,
                 y,
                 r,
                 g,
                 b,
+                a,
                 size,
                 spacing,
-                bold,
+                Scratch.Cast.toBoolean(bold),
+                align,
+                maxWidth
             ])
         }
 
