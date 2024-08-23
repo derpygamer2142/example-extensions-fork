@@ -22,6 +22,8 @@ function pointrect(x1,y1,x2,y2,px,py) {
     return (Math.min(Math.max(px,x1),x2) === px && Math.min(Math.max(py,y1),y2) === py)
 }
 
+const AsyncFunction = async function () {}.constructor;
+
 (async function(Scratch) {
     'use strict';
     
@@ -791,7 +793,8 @@ function pointrect(x1,y1,x2,y2,px,py) {
 
         runApp(args, util) {
             const windowId = backend.newWindow(0, 0, 320, 180)
-            const appFunction = new Function("windowId", "backend", backend.apps[args.APP].code)
+            // @ts-ignore
+            const appFunction = new AsyncFunction("windowId", "backend", backend.apps[args.APP].code)
             
             appFunction(windowId, backend)
             /*
@@ -945,9 +948,9 @@ function pointrect(x1,y1,x2,y2,px,py) {
 
         }
 
-        triggerEvent(args, util) {
-            backend.events[Scratch.Cast.toString(args.EVENT)].forEach((e) => {
-                e.func()
+        async triggerEvent(args, util) {
+            backend.events[Scratch.Cast.toString(args.EVENT)].forEach(async (e) => {
+                await e.func()
             })
         }
 
