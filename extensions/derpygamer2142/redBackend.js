@@ -22,17 +22,33 @@ function pointrect(x1,y1,x2,y2,px,py) {
     return (Math.min(Math.max(px,x1),x2) === px && Math.min(Math.max(py,y1),y2) === py)
 }
 
+
+
 const AsyncFunction = async function () {}.constructor;
+
+
+/**
+ * A window ID used by the backend
+ * @typedef {String} WindowId
+ */
 
 (async function(Scratch) {
     'use strict';
     
     const vm = Scratch.vm
+    
     const runtime = vm.runtime;
     const renderer = vm.renderer
+    const gl = renderer._gl
     if (!Scratch.extensions.unsandboxed) {
         throw new Error("This extension must run unsandboxed.")
     }
+
+    //Pen+ Addon API
+    // @ts-ignore
+    let penPlus; Scratch.vm.runtime.on("EXTENSION_ADDED", () => {penPlus = Scratch.vm.runtime.ext_obviousalexc_penPlus;})
+    // @ts-ignore
+    //let penPlusCostumeLibrary = penPlus.penPlusCostumeLibrary
 
     // if (!Scratch.vm.extensionManager.isExtensionLoaded("redrender")) {
     //     runtime.extensionManager.loadExtensionURL("https://raw.githubusercontent.com/derpygamer2142/example-extensions-fork/master/extensions/derpygamer2142/redRender.js");
@@ -46,74 +62,44 @@ const AsyncFunction = async function () {}.constructor;
             this.windows = {}
             this.windowIds = []
             this.nextWindowIds = []
-
+    
             this.events = {
                 tick: []
             }
-
+    
             this.fs = this.newDirPoint()
-
+    
             
             this.mkdir("/system/apps")
             
             this.apps = {}
-
+    
             this.mkdir("/system/settings")
             this.writeFile("/system/settings/settings.json",{
                 ligma: "balls",
                 skibidi: "ohio",
                 aaa: "bbb"
             })
-
+    
             this.settings = this.readFile("/system/settings/settings.json")
-
-            // backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawCircle(0,Math.sin(Date.now() / 1000)*50,50,255,0,0,1,windowId);})
-            // backend.onEvent("tick", ()=>{backend.clearShapes(windowId);backend.drawEllipse(0,Math.sin(Date.now() / 100)*50,100,50,255,0,0,1,windowId);},windowId);
-            // backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawCircle(-65,-100,50,255,0,0,1,windowId);backend.drawCircle(65,-100,50,255,0,0,1,windowId);backend.drawLine(0,-100,0,100,35,255,0,0,1,windowId);},windowId);
-            //backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawLine(0,-100,0,100,25,255,0,0,1,windowId);},windowId);
-            //backend.onEvent("tick",()=>{backend.clearShapes(windowId);backend.drawCircle(-65,-100,50,255,0,0,1,windowId);backend.drawCircle(65,-100,50,255,0,0,1,windowId);backend.drawLine(0,-100,0,100,35,255,0,0,1,windowId);backend.drawText("red os best os",-100,110,100,1,0,255,255,255,windowId);},windowId);
-            // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);backend.onEvent("tick", ()=>{backend.clearShapes(windowId);backend.drawImage("find-ethan",0,0,100,100,windowId);backend.drawRect(-50,-50,50,50,255,0,0,1,windowId);})
-            // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);
-            
-            // const b = new backend.Button(100,-60,150,-30,255,0,0,1,windowId,backend, ()=>{console.log("click")},()=>{console.log("release")});
-            // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);
-            // backend.onEvent("tick", () => {
-            //     backend.clearShapes(windowId);
-            //     backend.drawImage("find-ethan",0,0,300,300,windowId);
-            //     b.update(vm.runtime.ioDevices["mouse"]._scratchX,vm.runtime.ioDevices["mouse"]._scratchY,vm.runtime.ioDevices["mouse"]._isDown);
-            //     b.render();
-            // })
-
-
-            // const b = new backend.Button(100,-60,150,-30,5, 255,0,0,1,windowId,backend, ()=>{console.log("click")},()=>{console.log("release")});
-            // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);
-            // backend.onEvent("tick", () => {
-            //     backend.clearShapes(windowId);
-            //     backend.drawImage("find-ethan",0,0,300,300,windowId);
-            //     b.render();
-            // })
-
-            // let e = false;
-            // const b = new backend.Button(50,-90,110,-30,5, 255,0,0,1,windowId,backend, ()=>{e=true;console.log("click");},()=>{console.log("release")});
-            // backend.loadImage("https://i.ibb.co/qMBFBG9/find-ethan.jpg","find-ethan",windowId);
-            // backend.onEvent("tick", () => {
-            //     backend.clearShapes(windowId);
-            //     backend.drawImage("find-ethan",0,0,300,300,windowId);
-            //     b.update();
-            //     if (e) {
-            //         console.log("draw");
-            //         backend.drawText("yay you found ethan good job", 0, 120, 0, 0, 0, 1, 35, 1, true, "center", 250, windowId);
-            //     }
-            //     /*b.render();*/
-            // }, windowId)
-
-            
-            
-            // backend.onEvent("tick",()=>{backend.drawRect(-100,-100,100,100,255,0,0,1,windowId)},windowId)
-
-            //["IMAGE",6,0,0,300,300,"find-ethan","RECT",9,100,-60,150,-30,255,0,0,1]
-
+            this._devEnvImages = {}
             this.Button = class {
+                /**
+                 * 
+                 * @param {Number} x1 Left
+                 * @param {Number} y1 Bottom
+                 * @param {Number} x2 Right
+                 * @param {Number} y2 Top
+                 * @param {Number} radius Rectangle bezel
+                 * @param {Number} r Red
+                 * @param {Number} g Green
+                 * @param {Number} b Blue
+                 * @param {Number} a Alpha. 0-1, unlike the rgb which is 0-255
+                 * @param {WindowId} id The window ID to draw to
+                 * @param {Backend} backend Backend object
+                 * @param {Function} onTrigger Function to be triggered when the button is clicked
+                 * @param {Function} offTrigger Function to be triggered after the button is released.
+                 */
                 constructor(x1, y1, x2, y2, radius, r, g, b, a, id, backend, onTrigger, offTrigger) {
                     this.x1 = x1
                     this.y1 = y1
@@ -125,53 +111,86 @@ const AsyncFunction = async function () {}.constructor;
                     this.b = b
                     this.a = a
                     this.id = id
-
+    
+                    this.mx = 0
+                    this.my = 0
+    
                     this.backend = backend
-
+    
                     this.triggered = false
+                    this.held = false
+                    this.hover = false
                     this.onTrigger = onTrigger
                     this.offTrigger = offTrigger
-
+    
                     this.lastMouse = false
                 }
-
+                /**
+                 * 
+                 * @param {Number} x Value to be converted.
+                 * @param {Number} wx  Absolute pos
+                 * @param {Number} ww Scale for value to be converted to
+                 * @param {Number} dim Scale x uses
+                 * @returns {Number}
+                 */
                 toLocal(x, wx, ww, dim) {
                     return wx + ((x / (runtime[dim] / 2)) * ww)
                 }
-                
-                update(/*mouseX, mouseY, mouseDown*/) {
-                    const mouseX = vm.runtime.ioDevices["mouse"]._scratchX;
-                    const mouseY = vm.runtime.ioDevices["mouse"]._scratchY;
+                /**
+                 * Updates the button's trigger states and events as needed.
+                 */
+                async update(/*mouseX, mouseY, mouseDown*/) {
+                    const mouseX =  vm.runtime.ioDevices["mouse"]._scratchX;
+                    const mouseY =  vm.runtime.ioDevices["mouse"]._scratchY;
+                    this.mx = mouseX
+                    this.my = mouseY
                     const mouseDown = vm.runtime.ioDevices["mouse"]._isDown
-                    const t = ((clamp(mouseX, this.toLocal(this.x1, this.backend.windows[this.id].x, this.backend.windows[this.id].width, "stageWidth"), this.toLocal(this.x2, this.backend.windows[this.id].x, this.backend.windows[this.id].width, "stageWidth")) === mouseX) && (clamp(mouseY,this.toLocal(this.y1, this.backend.windows[this.id].y, this.backend.windows[this.id].height, "stageHeight"),this.toLocal(this.y2, this.backend.windows[this.id].y, this.backend.windows[this.id].height, "stageHeight")) === mouseY) && mouseDown && !this.lastMouse && !this.triggered)
+                    this.hover = clamp(mouseX, (this.x1/runtime.stageWidth)*this.backend.windows[this.id].width, (this.x2/runtime.stageWidth)*this.backend.windows[this.id].width) === mouseX && (clamp(mouseY,(this.y1/runtime.stageHeight)*this.backend.windows[this.id].height,(this.y2/runtime.stageHeight)*this.backend.windows[this.id].height) === mouseY)
+                    const a = this.hover && mouseDown
+                    const t = (a && !this.lastMouse && !this.triggered)
                     if (t) {
-                        this.onTrigger(this)
                         this.triggered = true
+                        await this.onTrigger(this)
+                        
                     }
                     else if (!t && this.triggered) {
-                        this.offTrigger(this)
                         this.triggered = false
+                        await this.offTrigger(this)
+                    }
+                    else if (a) {
+                        this.held = true
                     }
                     else {
                         this.triggered = false
+                        this.held = false
                     }
-
+    
                     this.lastMouse = mouseDown
                 }
-
+                /**
+                 * Renders the button.
+                 */
                 render() {
                     this.backend.drawRect(this.x1, this.y1, this.x2, this.y2, this.radius, this.r, this.g, this.b, this.a, this.id)
                 }
             }
         }
-
+        /**
+         * Creates a new window
+         * @param {Number} x X position
+         * @param {Number} y Y position
+         * @param {Number} width Window width
+         * @param {Number} height Window height
+         * @param {String} [id] Window ID to use, if undefined one will be created
+         * @returns {WindowId} The ID of the window that was created 
+         */
         newWindow(x, y, width, height, id) {
             if (typeof id === "undefined") {
                 let testid = 0
                 while (Object.prototype.hasOwnProperty.call(this.windows, testid)) {
                     testid += 1
                 }
-                id = Scratch.Cast.toString(testid)
+                id = String(testid)
             }
             this.windows[id] = {
                 x: x,
@@ -190,17 +209,22 @@ const AsyncFunction = async function () {}.constructor;
             }
             this.windowIds.unshift(id)
             //this.nextWindowIds = this.windowIds.slice()
-
+    
             return id
         }
-
+        /**
+         * Resizes a window
+         * @param {Number} dw Change in width
+         * @param {Number} dh Change in height
+         * @param {WindowId} id Window to change
+         */
         resizeWindow(dw, dh, id) {
             this.windows[id].x += dw/2
             this.windows[id].y += dh/2
-
+    
             this.windows[id].width += dw
             this.windows[id].height -= dh
-
+    
             if (this.windows[id].width < 320) {
                 this.windows[id].x += (320 - this.windows[id].width) / 2
                 this.windows[id].width = 320
@@ -212,13 +236,28 @@ const AsyncFunction = async function () {}.constructor;
             // this.windows[id].width = Math.max(this.windows[id].width, 320)
             // this.windows[id].height = Math.max(this.windows[id].height, 180)
         }
-
+        /**
+         * Move a window
+         * @param {Number} dx Change in x position
+         * @param {Number} dy Change in y position
+         * @param {WindowId} id Window to move
+         */
         moveWindow(dx, dy, id) {
             this.windows[id].x += dx
             this.windows[id].y += dy
         }
-
-
+    
+        /**
+         * Draws a circle on the window.
+         * @param {Number} x X position
+         * @param {Number} y Y position
+         * @param {Number} radius Radius
+         * @param {Number} r Red
+         * @param {Number} g Green
+         * @param {Number} b Blue
+         * @param {Number} a Alpha
+         * @param {WindowId} id Window to draw the circle on
+         */
         drawCircle(x, y, radius, r, g, b, a, id) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
@@ -234,7 +273,19 @@ const AsyncFunction = async function () {}.constructor;
             ])
             
         }
-
+        /**
+         * Draws a line
+         * @param {Number} x1 x of point 1
+         * @param {Number} y1 y of point 1
+         * @param {Number} x2 x of point 2
+         * @param {Number} y2 y of point 2
+         * @param {Number} weight How thick the line should be
+         * @param {Number} r Red
+         * @param {Number} g Green
+         * @param {Number} b Blue
+         * @param {Number} a Alpha
+         * @param {WindowId} id Window to draw the line to
+         */
         drawLine(x1, y1, x2, y2, weight, r, g, b, a, id) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
@@ -256,15 +307,30 @@ const AsyncFunction = async function () {}.constructor;
             ])
         }
         
+        tolocal(a,b,c) { return (a/b) * c}
+    
+        /**
+         * Draws a rectangle
+         * @param {Number} x1 Left side 
+         * @param {Number} y1 Bottom side
+         * @param {Number} x2 Right side
+         * @param {Number} y2 Top side
+         * @param {Number} radius Rect bezel
+         * @param {Number} r Red
+         * @param {Number} g Green
+         * @param {Number} b Blue
+         * @param {Number} a Alpha
+         * @param {WindowId} id Window to draw to
+         */
         drawRect(x1, y1, x2, y2, radius, r, g, b, a, id) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
                 "RECT",
                 11,
-                clamp(x1,this.windows[id].x - this.windows[id].width/2, this.windows[id].x + this.windows[id].width/2),
-                clamp(y1,this.windows[id].y - this.windows[id].height/2, this.windows[id].y + this.windows[id].height/2),
-                clamp(x2,this.windows[id].x - this.windows[id].width/2, this.windows[id].x + this.windows[id].width/2),
-                clamp(y2,this.windows[id].y - this.windows[id].height/2, this.windows[id].y + this.windows[id].height/2),
+                clamp(x1, -320, 320),
+                clamp(y1, -180, 180),
+                clamp(x2, -320, 320),
+                clamp(y2, -180, 180),
                 r,
                 g,
                 b,
@@ -272,7 +338,18 @@ const AsyncFunction = async function () {}.constructor;
                 radius
             ])
         }
-
+        /**
+         * Draws an ellipse
+         * @param {Number} x X position
+         * @param {Number} y Y position
+         * @param {Number} r1 Radius 1
+         * @param {Number} r2 Radius 2
+         * @param {Number} r Red
+         * @param {Number} g Green
+         * @param {Number} b Blue
+         * @param {Number} a Alpha
+         * @param {WindowId} id Window to draw to
+         */
         drawEllipse(x, y, r1, r2, r, g, b, a, id) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
@@ -288,7 +365,23 @@ const AsyncFunction = async function () {}.constructor;
                 a
             ])
         }
-
+    
+        /**
+         * Writes text
+         * @param {String} text Text to write
+         * @param {Number} x X position, what the text will be centered around
+         * @param {Number} y Y position, starting y of the text
+         * @param {Number} r Red
+         * @param {Number} g Green
+         * @param {Number} b Blue
+         * @param {Number} a Alpha
+         * @param {Number} size Size scale in scratch size. In this dev environment it's the size in pixels.
+         * @param {Number} spacing Spacing multiplier. In this dev environment does nothing.
+         * @param {Boolean} bold Whether the text will be bold
+         * @param {"center" | "left" | "right"} align Alignment of the text
+         * @param {Number} maxWidth Max width of text, will wrap if this is exceeded
+         * @param {WindowId} id Window to draw to
+         */
         drawText(text, x, y, r, g, b, a, size, spacing, bold, align, maxWidth, id) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
@@ -303,12 +396,20 @@ const AsyncFunction = async function () {}.constructor;
                 a,
                 size,
                 spacing,
-                Scratch.Cast.toBoolean(bold),
+                Boolean(bold),
                 align,
                 maxWidth
             ])
         }
-
+        /**
+         * Draws an image
+         * @param {String} name Window name, must be loaded by backend.loadImage
+         * @param {Number} x X position
+         * @param {Number} y Y position
+         * @param {Number} width Width
+         * @param {Number} height Height
+         * @param {WindowId} id Window to draw to
+         */
         drawImage(name, x, y, width, height, id) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
@@ -321,7 +422,14 @@ const AsyncFunction = async function () {}.constructor;
                 name
             ])
         }
-
+    
+        /**
+         * Loads an image to be used by drawImage. WARNING: This is asynchronus in the dev environment, but not in the project! 
+         * @param {URL} url Url to the image
+         * @param {String} name Image name. Outside of the dev environment this adds the image to the pen+ library, but here it adds it to a json file.
+         * @param {WindowId} id Window to draw to
+         * @returns {void} Returns void in red os, returns a promise here! Make sure to convert your code
+         */
         loadImage(url, name,id) {
             this.windows[id].commands.push(this.windows[id].contents.length)
             this.windows[id].contents = this.windows[id].contents.concat([
@@ -331,12 +439,21 @@ const AsyncFunction = async function () {}.constructor;
                 name
             ])
         }
-
+        /**
+         * Clears all shapes from the window
+         * @param {WindowId} id Window to clear
+         */
         clearShapes(id) {
             this.windows[id].contents = []
             this.windows[id].commands = []
         }
-
+    
+        /**
+         * Adds an event listener
+         * @param {"tick"} event Event type
+         * @param {Function} func Function to be called when event is fired
+         * @param {WindowId} id Window's id, must be provided so the process is stopped when the window closes!
+         */
         onEvent(event, func, id) {
             switch (event) {
                 case "tick": {
@@ -344,12 +461,16 @@ const AsyncFunction = async function () {}.constructor;
                         func: func,
                         src: id
                     })
-
+    
                     break;
                 }
             }
         }
-
+        /**
+         * Reads the file contents from a path
+         * @param {String} path Path to the file
+         * @returns {* | undefined}
+         */
         readFile(path) {
             if (path[0] === "/") path = path.slice(1)
             if (path[path.length - 1] === "/") path = path.slice(0, path.length - 1)
@@ -366,11 +487,16 @@ const AsyncFunction = async function () {}.constructor;
                 return section?._content ?? section
             }
             catch {
-                return "Invalid"
+                return undefined
             }
             
         }
-
+        /**
+         * Writes to a file, will not create a path but will create the file if it doesn't exist
+         * @param {String} path Path to write to
+         * @param {*} content Content to write to the file
+         * @returns {undefined | void}
+         */
         writeFile(path, content) {
             if (path[0] === "/") path = path.slice(1)
             if (path[path.length - 1] === "/") path = path.slice(0, path.length - 1)
@@ -389,10 +515,14 @@ const AsyncFunction = async function () {}.constructor;
                 section[path.split("/")[apath.length]] = this.newFilePoint(path, content)
             }
             catch {
-                return "Invalid"
+                return undefined
             }
         }
-
+        /**
+         * Recursively removes a directory
+         * @param {String} path Directory to remove
+         * @returns {void}
+         */
         rm(path) {
             if (path[0] === "/") path = path.slice(1)
             if (path[path.length - 1] === "/") path = path.slice(0, path.length - 1)
@@ -421,7 +551,10 @@ const AsyncFunction = async function () {}.constructor;
                 return
             }
         }
-
+        /**
+         * Will create a path and all roots up to the path if they don't exist
+         * @param {String} path Path to create
+         */
         mkdir(path) {
             if (path[0] === "/") path = path.slice(1)
             if (path[path.length - 1] === "/") path = path.slice(0, path.length - 1)
@@ -455,16 +588,24 @@ const AsyncFunction = async function () {}.constructor;
                 return Object.keys(section).filter((i) => !ignoreKeys.includes(i))
             }
             catch {
-                return "Invalid"
+                return undefined
             }
         }
-
+        /**
+         * Directory point. Not for you!
+         * @returns {Object}
+         */
         newDirPoint() {
             return {
                 _isDir: true // more stuff goes here
             }
         }
-
+        /**
+         * Creates a file point. Not for you!
+         * @param {String} fileName File name, must include a file extension
+         * @param {*} content Content to put in the file point
+         * @returns {Object}
+         */
         newFilePoint(fileName, content) {
             const split = fileName.split(".")
             const type = (split[split.length - 1] ?? "").includes(" ") ? "" : (split[split.length - 1] ?? "")
@@ -476,8 +617,11 @@ const AsyncFunction = async function () {}.constructor;
                 _type: type
             }
         }
-
-
+    
+        /**
+         * Loads an app. Not for you!
+         * @param {Object} appData App data object
+         */
         loadApp(appData) {
             if (
                 typeof appData?.name === "string" &&
@@ -492,19 +636,25 @@ const AsyncFunction = async function () {}.constructor;
                 this.mkdir(appPath)
                 this.writeFile(appPath + "/app.json", appData)
                 // note to self: if we add assets in the future add it here
-
+    
                 this.apps[appData.id] = appData
             }
             else {
                 throw new Error("Invalid app!")
             }
         }
-
+        /**
+         * Deletes an app. You shouldn't need to use this.
+         * @param {String} id App id
+         */
         deleteApp(id) {
             this.rm("/system/apps/" + id)
             delete this.apps[id]
         }
-
+        /**
+         * Loads the OS from a file system. Not for you!
+         * @param {Object} fs File system
+         */
         loadOsFromFs(fs) {
             this.windows = {}
             this.apps = {}
@@ -512,21 +662,31 @@ const AsyncFunction = async function () {}.constructor;
             this.events = {
                 tick: []
             }
-
+    
         }
-
+        /**
+         * Sets a setting to a value
+         * @param {String} setting Setting name
+         * @param {*} value Value to set it to
+         */
         updateSetting(setting, value) {
             this.settings[setting] = value
             this.writeFile("/system/settings/settings.json",this.settings)
         }
-
+        /**
+         * Moves a window to the top. You shouldn't need to use this.
+         * @param {WindowId} id Window to focus
+         */
         focusWindow(id) {
             this.nextWindowIds.splice(this.nextWindowIds.indexOf(id),1)
             this.nextWindowIds.unshift(id)
         }
-
+        /**
+         * Kills a window.
+         * @param {WindowId} id Window to kill.
+         */
         killWindow(id) {
-            const i = this.nextWindowIds.indexOf(Scratch.Cast.toString(id))
+            const i = this.nextWindowIds.indexOf(String(id))
             //console.log(this.nextWindowIds, this.windowIds, i)
             this.nextWindowIds.splice(i,1)
             //console.log(this.nextWindowIds, this.windowIds)
@@ -948,9 +1108,9 @@ const AsyncFunction = async function () {}.constructor;
 
         }
 
-        async triggerEvent(args, util) {
-            backend.events[Scratch.Cast.toString(args.EVENT)].forEach(async (e) => {
-                await e.func()
+        triggerEvent(args, util) {
+            backend.events[Scratch.Cast.toString(args.EVENT)].forEach((e) => {
+                e.func()
             })
         }
 
@@ -979,7 +1139,7 @@ const AsyncFunction = async function () {}.constructor;
 
         debug(args) {
             //console.log(backend.fs)
-            console.log(backend.windowIds, backend.windows)
+            console.log(backend.windowIds, backend.windows,backend.events)
         }
 
         killAllWindows() {
@@ -995,7 +1155,7 @@ const AsyncFunction = async function () {}.constructor;
         appRunning(args) {
             const keys = Object.keys(backend.events)
             for (let i = 0; i < keys.length; i++) {
-                if (backend.events[keys[i]].filter((e) => e.src === Scratch.Cast.toString(args.APP))) return true
+                if (backend.events[keys[i]].filter((e) => e.src === Scratch.Cast.toString(args.APP)).length > 0) return true
             }
             return false
         }
@@ -1005,6 +1165,25 @@ const AsyncFunction = async function () {}.constructor;
                 backend.events[e] = []
             })
         }
+
+        // createPenPlusTextureInfo(url, name, clamp) {
+        //     const texture = penPlusCostumeLibrary[name]
+        //       ? penPlusCostumeLibrary[name].texture
+        //       : gl.createTexture();
+        //     gl.bindTexture(gl.TEXTURE_2D, texture);
+        //     // Fill the texture with a 1x1 blue pixel.
+        //     gl.texImage2D(
+        //       gl.TEXTURE_2D,
+        //       0,
+        //       gl.RGBA,
+        //       1,
+        //       1,
+        //       0,
+        //       gl.RGBA,
+        //       gl.UNSIGNED_BYTE,
+        //       new Uint8Array([0, 0, 255, 255])
+        //     );
+        // }
     }
     // @ts-ignore
     Scratch.extensions.register(new RedBackend())
