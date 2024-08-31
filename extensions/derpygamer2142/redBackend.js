@@ -46,9 +46,9 @@ const AsyncFunction = async function () {}.constructor;
 
     //Pen+ Addon API
     // @ts-ignore
-    let penPlus; Scratch.vm.runtime.on("EXTENSION_ADDED", () => {penPlus = Scratch.vm.runtime.ext_obviousalexc_penPlus;})
+    let penPlus; let penPlusCostumeLibrary; Scratch.vm.runtime.on("EXTENSION_ADDED", () => {penPlus = Scratch.vm.runtime.ext_obviousalexc_penPlus; penPlusCostumeLibrary = penPlus.penPlusCostumeLibrary})
     // @ts-ignore
-    //let penPlusCostumeLibrary = penPlus.penPlusCostumeLibrary
+    
 
     // if (!Scratch.vm.extensionManager.isExtensionLoaded("redrender")) {
     //     runtime.extensionManager.loadExtensionURL("https://raw.githubusercontent.com/derpygamer2142/example-extensions-fork/master/extensions/derpygamer2142/redRender.js");
@@ -136,6 +136,7 @@ const AsyncFunction = async function () {}.constructor;
                 toLocal(x, wx, ww, dim) {
                     return wx + ((x / (runtime[dim] / 2)) * ww)
                 }
+                tlc(a,b,c,d) { return (a/b)*c + d}
                 /**
                  * Updates the button's trigger states and events as needed.
                  */
@@ -145,7 +146,11 @@ const AsyncFunction = async function () {}.constructor;
                     this.mx = mouseX
                     this.my = mouseY
                     const mouseDown = vm.runtime.ioDevices["mouse"]._isDown
-                    this.hover = clamp(mouseX, (this.x1/runtime.stageWidth)*this.backend.windows[this.id].width, (this.x2/runtime.stageWidth)*this.backend.windows[this.id].width) === mouseX && (clamp(mouseY,(this.y1/runtime.stageHeight)*this.backend.windows[this.id].height,(this.y2/runtime.stageHeight)*this.backend.windows[this.id].height) === mouseY)
+                    const win = this.backend.windows[this.id]
+                    this.hover = clamp(mouseX, this.tlc(clamp(this.x1,-320,320),runtime.stageWidth/2,win.width,win.x), this.tlc(clamp(this.x2,-320,320),runtime.stageWidth/2,win.width,win.x)) === mouseX && (clamp(mouseY,this.tlc(this.y1,runtime.stageHeight/2,win.height,win.y),this.tlc(this.y2,runtime.stageHeight/2,win.height,win.y)) === mouseY)
+                    // if ((this.x1+this.x2)/2 === 0) {
+                    //     console.log(mouseX,
+                    // }
                     const a = this.hover && mouseDown
                     const t = (a && !this.lastMouse && !this.triggered)
                     if (t) {
@@ -424,20 +429,25 @@ const AsyncFunction = async function () {}.constructor;
         }
     
         /**
-         * Loads an image to be used by drawImage. WARNING: This is asynchronus in the dev environment, but not in the project! 
+         * Loads an image to be used by drawImage, returns a promise that is resolved when the image is loaded.
          * @param {URL} url Url to the image
          * @param {String} name Image name. Outside of the dev environment this adds the image to the pen+ library, but here it adds it to a json file.
          * @param {WindowId} id Window to draw to
-         * @returns {void} Returns void in red os, returns a promise here! Make sure to convert your code
+         * @returns {Promise} A promise that will be resolved when the image is loaded.
          */
-        loadImage(url, name,id) {
-            this.windows[id].commands.push(this.windows[id].contents.length)
-            this.windows[id].contents = this.windows[id].contents.concat([
-                "LOAD",
-                4,
+        async loadImage(url, name,id) {
+            // this.windows[id].commands.push(this.windows[id].contents.length)
+            // this.windows[id].contents = this.windows[id].contents.concat([
+            //     "LOAD",
+            //     4,
+            //     url,
+            //     name
+            // ])
+            return this.createPenPlusTextureInfo(
                 url,
-                name
-            ])
+                "!" + name,
+                gl.CLAMP_TO_EDGE
+            )
         }
         /**
          * Clears all shapes from the window
@@ -518,6 +528,62 @@ const AsyncFunction = async function () {}.constructor;
                 return undefined
             }
         }
+
+        // yikkity yoinked from pen+ for my own convenience <3
+        // ObviousAlexC Pen+ V7, MIT license
+        createPenPlusTextureInfo(url, name, clamp) {
+            const texture = penPlusCostumeLibrary[name]
+                ? penPlusCostumeLibrary[name].texture
+                : gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            // Fill the texture with a 1x1 blue pixel.
+            gl.texImage2D(
+                gl.TEXTURE_2D,
+                0,
+                gl.RGBA,
+                1,
+                1,
+                0,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                new Uint8Array([0, 0, 255, 255])
+            );
+
+            // Let's assume all images are not a power of 2
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, clamp);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, clamp);
+            return new Promise((resolve, reject) => {
+                Scratch.canFetch(url).then((allowed) => {
+                if (!allowed) {
+                    reject(false);
+                }
+                // Permission is checked earlier.
+                // eslint-disable-next-line no-restricted-syntax
+                const image = new Image();
+                image.onload = function () {
+                    gl.bindTexture(gl.TEXTURE_2D, texture);
+                    gl.texImage2D(
+                    gl.TEXTURE_2D,
+                    0,
+                    gl.RGBA,
+                    gl.RGBA,
+                    gl.UNSIGNED_BYTE,
+                    image
+                    );
+                    penPlusCostumeLibrary[name] = {
+                    texture: texture,
+                    width: image.width,
+                    height: image.height,
+                    };
+                    resolve(texture);
+                };
+                image.crossOrigin = "anonymous";
+                image.src = url;
+                });
+            });
+        }
+
+        
         /**
          * Recursively removes a directory
          * @param {String} path Directory to remove
@@ -1165,25 +1231,6 @@ const AsyncFunction = async function () {}.constructor;
                 backend.events[e] = []
             })
         }
-
-        // createPenPlusTextureInfo(url, name, clamp) {
-        //     const texture = penPlusCostumeLibrary[name]
-        //       ? penPlusCostumeLibrary[name].texture
-        //       : gl.createTexture();
-        //     gl.bindTexture(gl.TEXTURE_2D, texture);
-        //     // Fill the texture with a 1x1 blue pixel.
-        //     gl.texImage2D(
-        //       gl.TEXTURE_2D,
-        //       0,
-        //       gl.RGBA,
-        //       1,
-        //       1,
-        //       0,
-        //       gl.RGBA,
-        //       gl.UNSIGNED_BYTE,
-        //       new Uint8Array([0, 0, 255, 255])
-        //     );
-        // }
     }
     // @ts-ignore
     Scratch.extensions.register(new RedBackend())
