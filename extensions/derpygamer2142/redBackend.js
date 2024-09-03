@@ -36,7 +36,7 @@ const AsyncFunction = async function () {}.constructor;
     'use strict';
     
     const vm = Scratch.vm
-    
+    let frame = 0
     const runtime = vm.runtime;
     const renderer = vm.renderer
     const gl = renderer._gl
@@ -141,6 +141,9 @@ const AsyncFunction = async function () {}.constructor;
                  * Updates the button's trigger states and events as needed.
                  */
                 async update(/*mouseX, mouseY, mouseDown*/) {
+                    if (windowUpdated) {
+                        return
+                    }
                     const mouseX =  vm.runtime.ioDevices["mouse"]._scratchX;
                     const mouseY =  vm.runtime.ioDevices["mouse"]._scratchY;
                     this.mx = mouseX
@@ -212,7 +215,7 @@ const AsyncFunction = async function () {}.constructor;
                 oldw: -1,
                 oldh: -1
             }
-            this.windowIds.unshift(id)
+            this.windowIds.push(id)
             //this.nextWindowIds = this.windowIds.slice()
     
             return id
@@ -744,8 +747,12 @@ const AsyncFunction = async function () {}.constructor;
          * @param {WindowId} id Window to focus
          */
         focusWindow(id) {
+            //console.log("window focused - " + id + ", frame " + String(frame) + ", updated: " + windowUpdated)
+            //console.log("old: ",this.windowIds,this.nextWindowIds)
             this.nextWindowIds.splice(this.nextWindowIds.indexOf(id),1)
-            this.nextWindowIds.unshift(id)
+            //this.nextWindowIds.unshift(id)
+            this.nextWindowIds.push(id)
+            //console.log("new: ",this.windowIds,this.nextWindowIds)
         }
         /**
          * Kills a window.
@@ -762,8 +769,10 @@ const AsyncFunction = async function () {}.constructor;
 
     const backend = new Backend()
     let windowData = undefined;
+    let renderWindowData = undefined
     let drawCommand = undefined
     let windowUpdated = false
+    let topWindow = undefined
 
     class RedBackend {
 
@@ -868,6 +877,12 @@ const AsyncFunction = async function () {}.constructor;
                         opcode: "windowData",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "Current window's data"
+                    },
+
+                    {
+                        opcode: "renderWindowData",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Current render window's data"
                     },
 
                     {
@@ -1052,19 +1067,22 @@ const AsyncFunction = async function () {}.constructor;
                 backend.nextWindowIds = backend.windowIds.slice()
                 windowUpdated = false
                 util.stackFrame.loopCounter = backend.windowIds.length //Object.keys(backend.windows).length
+                frame++
+                topWindow = undefined
             }
             util.stackFrame.loopCounter--;
-
+            
             
 
             if (util.stackFrame.loopCounter >= 0) {
-                windowData = backend.windows[Scratch.Cast.toString(backend.windowIds[util.stackFrame.loopCounter])]
+                renderWindowData = backend.windows[Scratch.Cast.toString(backend.windowIds[(backend.windowIds.length-1) - util.stackFrame.loopCounter])]
+                windowData = backend.windows[Scratch.Cast.toString(backend.windowIds[/*(backend.windowIds.length-1) - */util.stackFrame.loopCounter])]
                 util.startBranch(1, true);
             }
             else {
                 const a = JSON.stringify(backend.windowIds)
                 const b = JSON.stringify(backend.nextWindowIds)
-                if (a !== b) backend.windowIds = backend.nextWindowIds.slice()
+                if (a !== b) backend.windowIds = structuredClone(backend.nextWindowIds)
 
 
                 // const toRemove = backend.windowIds.filter((i) => !Object.prototype.hasOwnProperty.call(backend.windows,i))
@@ -1099,6 +1117,10 @@ const AsyncFunction = async function () {}.constructor;
             return JSON.stringify(windowData)
         }
 
+        renderWindowData(args, util) {
+            return JSON.stringify(renderWindowData)
+        }
+
         drawCommand(args, util) {
             return JSON.stringify(drawCommand)
 
@@ -1114,7 +1136,7 @@ const AsyncFunction = async function () {}.constructor;
             args.Y = Scratch.Cast.toNumber(args.Y)
             args.DOWN = Scratch.Cast.toBoolean(args.DOWN)
             args.LAST = Scratch.Cast.toBoolean(args.LAST)
-
+            const oUpdate = windowUpdated
 
             if (!windowUpdated && pointrect((wx - (ww / 2) + 20) - 15, (wy + (wh / 2) - 17.5) - 15,(wx - (ww / 2) + 20) + 15, (wy + (wh / 2) - 17.5) + 15,args.X,args.Y) && args.DOWN && !args.LAST) { // minify button
                 backend.windows[args.WINDOW].minimized = true
@@ -1155,23 +1177,32 @@ const AsyncFunction = async function () {}.constructor;
             
             
 
-            if (!windowUpdated && (backend.windows[args.WINDOW].held && args.DOWN) || (args.DOWN && !args.LAST && ((args.X > wx - (ww/2)) && (args.X < wx + (ww/2)) && (args.Y < wy + (wh/2)) && (args.Y > wy + (wh*0.5) - 35)))) {
+
+            if ((!windowUpdated) && ((backend.windows[args.WINDOW].held && args.DOWN) || (args.DOWN && !args.LAST && ((args.X > wx - (ww/2)) && (args.X < wx + (ww/2)) && (args.Y < wy + (wh/2)) && (args.Y > wy + (wh*0.5) - 35))))) { // top bar
                 backend.moveWindow(Scratch.Cast.toNumber(args.DX),Scratch.Cast.toNumber(args.DY),args.WINDOW)
                 backend.windows[args.WINDOW].held = true
                 backend.focusWindow(args.WINDOW)
                 windowUpdated = true
+                
             }
-            else if (!windowUpdated && (backend.windows[args.WINDOW].sizing && args.DOWN) || (args.DOWN && !args.LAST && ((args.X > wx + (ww/2) - 15) && (args.X < wx + (ww/2)) && (args.Y <( wy - (wh*0.5)) + 15) && (args.Y > wy - (wh/2))))) {
+            else if ((!windowUpdated) && ((backend.windows[args.WINDOW].sizing && args.DOWN) || (args.DOWN && !args.LAST && ((args.X > wx + (ww/2) - 15) && (args.X < wx + (ww/2)) && (args.Y <( wy - (wh*0.5)) + 15) && (args.Y > wy - (wh/2)))))) { // resizing
                 backend.resizeWindow(Scratch.Cast.toNumber(args.DX),Scratch.Cast.toNumber(args.DY),args.WINDOW)
                 backend.windows[args.WINDOW].sizing = true
                 backend.focusWindow(args.WINDOW)
                 windowUpdated = true
+            }
+            else if ((!windowUpdated) && pointrect((wx - (ww / 2)), (wy - (wh / 2)),(wx + (ww / 2)), (wy + (wh / 2)),args.X,args.Y) && (args.DOWN && !args.LAST)) { // full window focusing
+                backend.focusWindow(args.WINDOW)
+                windowUpdated = true
+                console.log("full window focus")
             }
             else {
                 backend.windows[args.WINDOW].held = false
                 backend.windows[args.WINDOW].sizing = false
             }
 
+            if (windowUpdated && !oUpdate) topWindow = backend.windows[args.WINDOW].id // if the window was just updated then it's the top window
+            
         }
 
         triggerEvent(args, util) {
