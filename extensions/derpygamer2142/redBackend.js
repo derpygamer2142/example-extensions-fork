@@ -34,7 +34,7 @@ const AsyncFunction = async function () {}.constructor;
 
 (async function(Scratch) {
     'use strict';
-    
+    let topWindow = null
     const vm = Scratch.vm
     let frame = 0
     const runtime = vm.runtime;
@@ -158,6 +158,7 @@ const AsyncFunction = async function () {}.constructor;
                     const t = (a && !this.lastMouse && !this.triggered)
                     if (t) {
                         this.triggered = true
+                        console.log("click, ", windowUpdated, topWindow, this.id)
                         await this.onTrigger(this)
                         
                     }
@@ -772,7 +773,7 @@ const AsyncFunction = async function () {}.constructor;
     let renderWindowData = undefined
     let drawCommand = undefined
     let windowUpdated = false
-    let topWindow = undefined
+    
 
     class RedBackend {
 
@@ -1068,7 +1069,8 @@ const AsyncFunction = async function () {}.constructor;
                 windowUpdated = false
                 util.stackFrame.loopCounter = backend.windowIds.length //Object.keys(backend.windows).length
                 frame++
-                topWindow = undefined
+                topWindow = null
+                console.log("reset")
             }
             util.stackFrame.loopCounter--;
             
@@ -1201,7 +1203,10 @@ const AsyncFunction = async function () {}.constructor;
                 backend.windows[args.WINDOW].sizing = false
             }
 
-            if (windowUpdated && !oUpdate) topWindow = backend.windows[args.WINDOW].id // if the window was just updated then it's the top window
+            if (windowUpdated !== oUpdate) {
+                topWindow = args.WINDOW
+                console.log("just updated", windowUpdated, oUpdate, topWindow)
+            } // if the window was just updated then it's the top window
             
         }
 
