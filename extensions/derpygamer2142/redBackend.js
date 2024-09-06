@@ -140,8 +140,8 @@ const AsyncFunction = async function () {}.constructor;
                 /**
                  * Updates the button's trigger states and events as needed.
                  */
-                async update(/*mouseX, mouseY, mouseDown*/) {
-                    if (windowUpdated) {
+                update(/*mouseX, mouseY, mouseDown*/) {
+                    if (this.backend.windows[this.id].windowUpdated) {
                         return
                     }
                     const mouseX =  vm.runtime.ioDevices["mouse"]._scratchX;
@@ -159,12 +159,12 @@ const AsyncFunction = async function () {}.constructor;
                     if (t) {
                         this.triggered = true
                         console.log("click, ", windowUpdated, topWindow, this.id)
-                        await this.onTrigger(this)
+                        this.onTrigger(this)
                         
                     }
                     else if (!t && this.triggered) {
                         this.triggered = false
-                        await this.offTrigger(this)
+                        this.offTrigger(this)
                     }
                     else if (a) {
                         this.held = true
@@ -214,7 +214,8 @@ const AsyncFunction = async function () {}.constructor;
                 minimized: false,
                 maximized: false,
                 oldw: -1,
-                oldh: -1
+                oldh: -1,
+                windowUpdated: false // this is for app usage, it doesn't tell whether THIS window has been updated
             }
             this.windowIds.push(id)
             //this.nextWindowIds = this.windowIds.slice()
@@ -1212,7 +1213,9 @@ const AsyncFunction = async function () {}.constructor;
 
         triggerEvent(args, util) {
             backend.events[Scratch.Cast.toString(args.EVENT)].forEach((e) => {
-                e.func()
+                backend.windows[e.src].windowUpdated = windowUpdated
+                console.log("window update state: ", windowUpdated, backend.windows[e.src].windowUpdated)
+                e.func(frame)
             })
         }
 
