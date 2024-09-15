@@ -37,6 +37,7 @@ const AsyncFunction = async function () {}.constructor;
     let topWindow = null
     const vm = Scratch.vm
     let frame = 0
+    let lastMouse = false
     const runtime = vm.runtime;
     const renderer = vm.renderer
     const gl = renderer._gl
@@ -62,6 +63,7 @@ const AsyncFunction = async function () {}.constructor;
             this.windows = {}
             this.windowIds = []
             this.nextWindowIds = []
+            this.windowIdSources = {}
     
             this.events = {
                 tick: []
@@ -80,6 +82,19 @@ const AsyncFunction = async function () {}.constructor;
                 skibidi: "ohio",
                 aaa: "bbb"
             })
+            this.mkdir("/system/apps/local")
+            this.mkdir("/system/apps/widgets")
+            this.mkdir("/system/preferences/taskbar/")
+            this.writeFile("/system/preferences/taskbar/pinned.json", [
+                // stuff goes here
+                // format:
+                /*{
+                    icon: "someImageURL",
+                    name: "some app name",
+                    path: "system/apps/appPath.json", // don't worry about this right now, it's where the app will get data from if needed
+                    id: "someAppID"
+                  }*/
+            ])
     
             this.settings = this.readFile("/system/settings/settings.json")
             this._devEnvImages = {}
@@ -183,6 +198,9 @@ const AsyncFunction = async function () {}.constructor;
                     this.backend.drawRect(this.x1, this.y1, this.x2, this.y2, this.radius, this.r, this.g, this.b, this.a, this.id)
                 }
             }
+
+
+
         }
         /**
          * Creates a new window
@@ -499,7 +517,7 @@ const AsyncFunction = async function () {}.constructor;
                         throw new Error("Invalid")
                     }
                 })
-                return section?._content ?? section
+                return structuredClone(section?._content ?? section)
             }
             catch {
                 return undefined
@@ -516,6 +534,7 @@ const AsyncFunction = async function () {}.constructor;
             if (path[0] === "/") path = path.slice(1)
             if (path[path.length - 1] === "/") path = path.slice(0, path.length - 1)
             let section = this.fs
+            content = structuredClone(content)
             try {
                 const apath = path.split("/")
                 apath.pop()
@@ -699,7 +718,7 @@ const AsyncFunction = async function () {}.constructor;
                 typeof appData?.desktopIcon === "string" &&
                 typeof appData?.code === "string" &&
                 typeof appData?.id === "string" &&
-                (appData?.name ?? [0])[0] !== "_"// && // app won't conflict with reserved words
+                (appData?.name ?? [0])[0] !== "_"// && // app won't conflict with reserved words. this shouldn't happen if the app is downloaded from the app store but who knows.
                 //!Object.prototype.hasOwnProperty.call(this.fs.system.apps, appData?.id ?? "") // app doesn't already exist
             ) {
                 // probably valid ¯\_(ツ)_/¯
@@ -764,14 +783,35 @@ const AsyncFunction = async function () {}.constructor;
             const i = this.nextWindowIds.indexOf(String(id))
             //console.log(this.nextWindowIds, this.windowIds, i)
             this.nextWindowIds.splice(i,1)
+            delete this.windowIdSources[String(id)]
             //console.log(this.nextWindowIds, this.windowIds)
             //delete this.windows[id]
+        }
+
+        createTaskbarIcon(app) {
+            const c = this.readFile("/system/preferences/taskbar/pinned.json")
+            const appData = this.readFile("/system/apps/" + app + "/app.json")
+            console.log(appData)
+            /*{
+                icon: "someImageURL",
+                name: "some app name",
+                path: "system/apps/appPath.json", // don't worry about this right now, it's where the app will get data from if needed
+                id: "someAppID"
+            }*/
+           c.push({
+            icon: appData.desktopIcon,
+            name: appData.name,
+            path: "system/apps/" + app,
+            id: appData.id
+           })
+           this.writeFile("/system/preferences/taskbar/pinned.json",c)
         }
     }
 
     const backend = new Backend()
     let windowData = undefined;
     let renderWindowData = undefined
+    let iconData = undefined
     let drawCommand = undefined
     let windowUpdated = false
     
@@ -956,6 +996,37 @@ const AsyncFunction = async function () {}.constructor;
                             }
                         }
                     },
+
+                    {
+                        opcode: "initialTaskbarUpdate",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Initial taskbar update"
+                    },
+
+                    {
+                        opcode: "forTaskbarIcon",
+                        blockType: Scratch.BlockType.LOOP,
+                        text: "For each taskbar icon",
+                        branchCount: 1
+                    },
+
+                    {
+                        opcode: "iconData",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Current taskbar icon data"
+                    },
+
+                    {
+                        opcode: "updateIcon",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Update taskbar icon with index [ICON]",
+                        arguments: {
+                            ICON: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: ""
+                            }
+                        }
+                    },
                     
                     {
                         opcode: "mkdir",
@@ -1036,6 +1107,7 @@ const AsyncFunction = async function () {}.constructor;
 
         runApp(args, util) {
             const windowId = backend.newWindow(0, 0, 320, 180)
+            backend.windowIdSources[windowId] = args.APP
             // @ts-ignore
             const appFunction = new AsyncFunction("windowId", "backend", backend.apps[args.APP].code)
             
@@ -1052,8 +1124,8 @@ const AsyncFunction = async function () {}.constructor;
         debugApp(args, util) {
             return JSON.stringify({
                 code: args.APP,
-                desktopIcon: "ligma",
-                name: "balls",
+                desktopIcon: "https://i.ibb.co/ZLg8sjm/find-ethan.jpg",
+                name: "DebugApp",
                 id: "skibidi"
             })
         }
@@ -1071,7 +1143,7 @@ const AsyncFunction = async function () {}.constructor;
                 util.stackFrame.loopCounter = backend.windowIds.length //Object.keys(backend.windows).length
                 frame++
                 topWindow = null
-                console.log("reset")
+                //console.log("reset")
             }
             util.stackFrame.loopCounter--;
             
@@ -1206,7 +1278,7 @@ const AsyncFunction = async function () {}.constructor;
 
             if (windowUpdated !== oUpdate) {
                 topWindow = args.WINDOW
-                console.log("just updated", windowUpdated, oUpdate, topWindow)
+                //console.log("just updated", windowUpdated, oUpdate, topWindow)
             } // if the window was just updated then it's the top window
             
         }
@@ -1214,9 +1286,11 @@ const AsyncFunction = async function () {}.constructor;
         triggerEvent(args, util) {
             backend.events[Scratch.Cast.toString(args.EVENT)].forEach((e) => {
                 backend.windows[e.src].windowUpdated = windowUpdated
-                console.log("window update state: ", windowUpdated, backend.windows[e.src].windowUpdated)
+                //console.log("window update state: ", windowUpdated, backend.windows[e.src].windowUpdated)
                 e.func(frame)
             })
+
+            if (args.EVENT.toLowerCase() === "tick") lastMouse = vm.runtime.ioDevices["mouse"]._isDown
         }
 
         readFile(args) {
@@ -1244,7 +1318,17 @@ const AsyncFunction = async function () {}.constructor;
 
         debug(args) {
             //console.log(backend.fs)
-            console.log(backend.windowIds, backend.windows,backend.events)
+            console.log(backend.windowIds, backend.windows,backend.events, backend.fs)
+            backend.rm("/system/preferences/taskbar/pinned.json")
+            console.log(backend.fs)
+            backend.writeFile("/system/preferences/taskbar/pinned.json",[])
+            // const l =  backend.ls("/system/apps/")
+            // const f = l[2]
+            // console.log(f, backend.fs)
+            // backend.createTaskbarIcon(f)
+            backend.createTaskbarIcon("skibidi")
+            backend.createTaskbarIcon("skibidi")
+            backend.createTaskbarIcon("skibidi")
         }
 
         killAllWindows() {
@@ -1269,6 +1353,68 @@ const AsyncFunction = async function () {}.constructor;
             Object.keys(backend.events).forEach((e) => {
                 backend.events[e] = []
             })
+        }
+
+        initialTaskbarUpdate() {
+            const icons = backend.readFile("/system/preferences/taskbar/pinned.json")
+            icons.forEach((v) => {
+                if (!Object.prototype.hasOwnProperty.call(penPlusCostumeLibrary,"!taskicon_" + v.id)) {
+                    backend.createPenPlusTextureInfo(v.icon,"!taskicon_" + v.id,gl.CLAMP_TO_EDGE) // load any missing icons. this is async but who cares :trol:
+                }
+                // should probably make sure the app still exists but i can do that later
+            })
+
+
+        }
+
+        iconData() {
+            return JSON.stringify(iconData)
+        }
+
+        forTaskbarIcon(args, util) {
+            const f = backend.readFile("/system/preferences/taskbar/pinned.json")
+            //console.log(f)
+            if (typeof util.stackFrame.loopCounter === "undefined") util.stackFrame.loopCounter = f.length
+            util.stackFrame.loopCounter--;
+
+           
+            if (util.stackFrame.loopCounter >= 0) {
+                f[util.stackFrame.loopCounter].index = util.stackFrame.loopCounter
+                f[util.stackFrame.loopCounter].listLength = f.length
+                iconData = f[util.stackFrame.loopCounter]
+                //console.log(iconData, f)
+                util.startBranch(1, true);
+            }
+        }
+
+        updateIcon(args,util) {
+            args.ICON = Scratch.Cast.toNumber(args.ICON)
+            const icons = backend.readFile("/system/preferences/taskbar/pinned.json")
+            const icon = icons[args.ICON]
+
+            //console.log("Icon updated - ", icon)
+            const mx =  vm.runtime.ioDevices["mouse"]._scratchX;
+            const my =  vm.runtime.ioDevices["mouse"]._scratchY;
+            const is = 35
+            const ix = (args.ICON*50)-((icons.length-1) * 25)//((args.ICON-(icons.length-1))/2)*50
+            const iy = -335
+            if (clamp(mx, ix-(is/2),ix+(is/2)) === mx && clamp(my, iy-(is/2),iy+(is/2)) === my && (vm.runtime.ioDevices["mouse"]._isDown && !lastMouse)) {
+                // clicked, now we need to figure out what to do
+                // if the app is running we should show it if it's minimized, and minimize it otherwise
+                // who cares about multiple apps rn
+                // if it's not running we need to start it
+                console.log(icon.id,backend.events.tick)
+                const runningApps = backend.events.tick.filter((v) => backend.windowIdSources[v.src] === icon.id)
+                if (runningApps.length > 0) {
+                    // app is running
+                    // only worry about the first one right now
+                    backend.windows[runningApps[0].src].minimized = !backend.windows[runningApps[0].src].minimized
+                    
+                }
+                else {
+                    this.runApp({APP: icon.id}, util)
+                }
+            }
         }
     }
     // @ts-ignore
