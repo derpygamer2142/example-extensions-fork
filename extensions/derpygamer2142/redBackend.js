@@ -41,6 +41,11 @@ const AsyncFunction = async function () {}.constructor;
     const runtime = vm.runtime;
     const renderer = vm.renderer
     const gl = renderer._gl
+    /**
+     * @type {number} 0 = none, 1 = start, 2 = search, 3 = widget
+     */
+    let taskbarFlyout = 0
+    let taskbarHover  = 0 // if it's negative it's a pinned index
     if (!Scratch.extensions.unsandboxed) {
         throw new Error("This extension must run unsandboxed.")
     }
@@ -64,6 +69,7 @@ const AsyncFunction = async function () {}.constructor;
             this.windowIds = []
             this.nextWindowIds = []
             this.windowIdSources = {}
+            this.taskbar = []
     
             this.events = {
                 tick: []
@@ -455,10 +461,9 @@ const AsyncFunction = async function () {}.constructor;
          * Loads an image to be used by drawImage, returns a promise that is resolved when the image is loaded.
          * @param {URL} url Url to the image
          * @param {String} name Image name. Outside of the dev environment this adds the image to the pen+ library, but here it adds it to a json file.
-         * @param {WindowId} id Window to draw to
          * @returns {Promise} A promise that will be resolved when the image is loaded.
          */
-        async loadImage(url, name,id) {
+        async loadImage(url, name) {
             // this.windows[id].commands.push(this.windows[id].contents.length)
             // this.windows[id].contents = this.windows[id].contents.concat([
             //     "LOAD",
@@ -788,23 +793,37 @@ const AsyncFunction = async function () {}.constructor;
             //delete this.windows[id]
         }
 
+        /**
+         * Creates an icon on the taskbar. Not for you!
+         * @param {String} app The id of the app to create an icon for
+         * @returns {void}
+         */
         createTaskbarIcon(app) {
-            const c = this.readFile("/system/preferences/taskbar/pinned.json")
+            // const c = this.readFile("/system/preferences/taskbar/pinned.json")
+            if (this.taskbar.find((v) => v.id === app)) return
             const appData = this.readFile("/system/apps/" + app + "/app.json")
-            console.log(appData)
+            this.loadImage(appData.desktopIcon,"taskicon_"+app)
+            // console.log(appData)
             /*{
                 icon: "someImageURL",
                 name: "some app name",
                 path: "system/apps/appPath.json", // don't worry about this right now, it's where the app will get data from if needed
                 id: "someAppID"
             }*/
-           c.push({
-            icon: appData.desktopIcon,
-            name: appData.name,
-            path: "system/apps/" + app,
-            id: appData.id
-           })
-           this.writeFile("/system/preferences/taskbar/pinned.json",c)
+        //    c.push({
+        //     icon: appData.desktopIcon,
+        //     name: appData.name,
+        //     path: "system/apps/" + app,
+        //     id: appData.id
+        //    })
+        //    this.writeFile("/system/preferences/taskbar/pinned.json",c)
+            this.taskbar.push({
+                icon: appData.desktopIcon,
+                name: appData.name,
+                path: "system/apps/" + app,
+                id: appData.id
+            })
+            //console.log(this.taskbar[this.taskbar.length - 1])
         }
     }
 
@@ -1004,6 +1023,12 @@ const AsyncFunction = async function () {}.constructor;
                     },
 
                     {
+                        opcode: "initialTaskbarData",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Initial taskbar data"
+                    },
+
+                    {
                         opcode: "forTaskbarIcon",
                         blockType: Scratch.BlockType.LOOP,
                         text: "For each taskbar icon",
@@ -1097,6 +1122,23 @@ const AsyncFunction = async function () {}.constructor;
                         blockType: Scratch.BlockType.COMMAND,
                         text: "DEBUG"
 
+                    },
+
+                    {
+                        opcode: "penPlusHasTex",
+                        blockType: Scratch.BlockType.BOOLEAN,
+                        text: "cooler does [IMAGE] exist in pen plus library",
+                        color1: "#0fbd8c",
+                        color2: "#0c9a72",
+                        color3: "#0da57a",
+                        blockIconURI:
+                            "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+cGVuLWljb248L3RpdGxlPjxnIHN0cm9rZT0iIzU3NUU3NSIgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik04Ljc1MyAzNC42MDJsLTQuMjUgMS43OCAxLjc4My00LjIzN2MxLjIxOC0yLjg5MiAyLjkwNy01LjQyMyA1LjAzLTcuNTM4TDMxLjA2NiA0LjkzYy44NDYtLjg0MiAyLjY1LS40MSA0LjAzMi45NjcgMS4zOCAxLjM3NSAxLjgxNiAzLjE3My45NyA0LjAxNUwxNi4zMTggMjkuNTljLTIuMTIzIDIuMTE2LTQuNjY0IDMuOC03LjU2NSA1LjAxMiIgZmlsbD0iI0ZGRiIvPjxwYXRoIGQ9Ik0yOS40MSA2LjExcy00LjQ1LTIuMzc4LTguMjAyIDUuNzcyYy0xLjczNCAzLjc2Ni00LjM1IDEuNTQ2LTQuMzUgMS41NDYiLz48cGF0aCBkPSJNMzYuNDIgOC44MjVjMCAuNDYzLS4xNC44NzMtLjQzMiAxLjE2NGwtOS4zMzUgOS4zYy4yODItLjI5LjQxLS42NjguNDEtMS4xMiAwLS44NzQtLjUwNy0xLjk2My0xLjQwNi0yLjg2OC0xLjM2Mi0xLjM1OC0zLjE0Ny0xLjgtNC4wMDItLjk5TDMwLjk5IDUuMDFjLjg0NC0uODQgMi42NS0uNDEgNC4wMzUuOTYuODk4LjkwNCAxLjM5NiAxLjk4MiAxLjM5NiAyLjg1NU0xMC41MTUgMzMuNzc0Yy0uNTczLjMwMi0xLjE1Ny41Ny0xLjc2NC44M0w0LjUgMzYuMzgybDEuNzg2LTQuMjM1Yy4yNTgtLjYwNC41My0xLjE4Ni44MzMtMS43NTcuNjkuMTgzIDEuNDQ4LjYyNSAyLjEwOCAxLjI4Mi42Ni42NTggMS4xMDIgMS40MTIgMS4yODcgMi4xMDIiIGZpbGw9IiM0Qzk3RkYiLz48cGF0aCBkPSJNMzYuNDk4IDguNzQ4YzAgLjQ2NC0uMTQuODc0LS40MzMgMS4xNjVsLTE5Ljc0MiAxOS42OGMtMi4xMyAyLjExLTQuNjczIDMuNzkzLTcuNTcyIDUuMDFMNC41IDM2LjM4bC45NzQtMi4zMTYgMS45MjUtLjgwOGMyLjg5OC0xLjIxOCA1LjQ0LTIuOSA3LjU3LTUuMDFsMTkuNzQzLTE5LjY4Yy4yOTItLjI5Mi40MzItLjcwMi40MzItMS4xNjUgMC0uNjQ2LS4yNy0xLjQtLjc4LTIuMTIyLjI1LjE3Mi41LjM3Ny43MzcuNjE0Ljg5OC45MDUgMS4zOTYgMS45ODMgMS4zOTYgMi44NTYiIGZpbGw9IiM1NzVFNzUiIG9wYWNpdHk9Ii4xNSIvPjxwYXRoIGQ9Ik0xOC40NSAxMi44M2MwIC41LS40MDQuOTA1LS45MDQuOTA1cy0uOTA1LS40MDUtLjkwNS0uOTA0YzAtLjUuNDA3LS45MDMuOTA2LS45MDMuNSAwIC45MDQuNDA0LjkwNC45MDR6IiBmaWxsPSIjNTc1RTc1Ii8+PC9nPjwvc3ZnPg==",
+                        arguments: {
+                            IMAGE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "yourMother"
+                            }
+                        }
                     }
                     
                 ]
@@ -1110,7 +1152,7 @@ const AsyncFunction = async function () {}.constructor;
             backend.windowIdSources[windowId] = args.APP
             // @ts-ignore
             const appFunction = new AsyncFunction("windowId", "backend", backend.apps[args.APP].code)
-            
+            backend.createTaskbarIcon(args.APP)
             appFunction(windowId, backend)
             /*
                 sandboxing is cringe, who needs that
@@ -1326,9 +1368,6 @@ const AsyncFunction = async function () {}.constructor;
             // const f = l[2]
             // console.log(f, backend.fs)
             // backend.createTaskbarIcon(f)
-            backend.createTaskbarIcon("skibidi")
-            backend.createTaskbarIcon("skibidi")
-            backend.createTaskbarIcon("skibidi")
         }
 
         killAllWindows() {
@@ -1344,7 +1383,7 @@ const AsyncFunction = async function () {}.constructor;
         appRunning(args) {
             const keys = Object.keys(backend.events)
             for (let i = 0; i < keys.length; i++) {
-                if (backend.events[keys[i]].filter((e) => e.src === Scratch.Cast.toString(args.APP)).length > 0) return true
+                if (backend.events[keys[i]].find((e) => e.src === Scratch.Cast.toString(args.APP))) return true
             }
             return false
         }
@@ -1356,15 +1395,54 @@ const AsyncFunction = async function () {}.constructor;
         }
 
         initialTaskbarUpdate() {
-            const icons = backend.readFile("/system/preferences/taskbar/pinned.json")
-            icons.forEach((v) => {
-                if (!Object.prototype.hasOwnProperty.call(penPlusCostumeLibrary,"!taskicon_" + v.id)) {
-                    backend.createPenPlusTextureInfo(v.icon,"!taskicon_" + v.id,gl.CLAMP_TO_EDGE) // load any missing icons. this is async but who cares :trol:
+            
+            const click = vm.runtime.ioDevices["mouse"].getButtonIsDown(0) && !lastMouse
+            const mx =  vm.runtime.ioDevices["mouse"]._scratchX;
+            const my =  vm.runtime.ioDevices["mouse"]._scratchY;
+            if (taskbarHover > 0) taskbarHover = 0
+            for (let i = 1; i < 4; i++) {
+                const f = pointrect(-620 + ((i-1)*40),-345,-580 + ((i-1)*40),-325, mx, my)
+                if (click && f) {
+                    
+                    if (taskbarFlyout === i) taskbarFlyout = 0
+                    else taskbarFlyout = i
                 }
-                // should probably make sure the app still exists but i can do that later
+                else if (f) {
+                    taskbarHover = i+1
+                }
+            }
+            
+            
+            /**
+             * @type {Array<object>}
+             */
+            const icons = structuredClone(backend.taskbar)//backend.readFile("/system/preferences/taskbar/pinned.json")
+            
+
+            let tasks = icons.map((v) => v.id)
+            backend.events.tick.forEach((v) => {
+                const s=backend.windowIdSources[v.src]
+                if (!tasks.includes(s)) {
+                    tasks.push(s)
+                    /*{
+                    icon: "someImageURL",
+                    name: "some app name",
+                    path: "system/apps/appPath/app.json", // don't worry about this right now, it's where the app will get data from if needed
+                    id: "someAppID"
+                  }*/
+                    backend.createTaskbarIcon(s)
+                }
+
             })
+        }
 
-
+        initialTaskbarData() {
+            return JSON.stringify({
+                flyoutState: taskbarFlyout,
+                hover: taskbarHover,
+                length: backend.taskbar.length
+                // more stuff goes here later
+            })
         }
 
         iconData() {
@@ -1372,9 +1450,12 @@ const AsyncFunction = async function () {}.constructor;
         }
 
         forTaskbarIcon(args, util) {
-            const f = backend.readFile("/system/preferences/taskbar/pinned.json")
-            //console.log(f)
-            if (typeof util.stackFrame.loopCounter === "undefined") util.stackFrame.loopCounter = f.length
+            //const f = backend.readFile("/system/preferences/taskbar/pinned.json")
+            const f = structuredClone(backend.taskbar)
+            if (typeof util.stackFrame.loopCounter === "undefined") {
+                util.stackFrame.loopCounter = f.length
+                if (taskbarHover < 0) taskbarHover = 0
+            }
             util.stackFrame.loopCounter--;
 
            
@@ -1389,7 +1470,8 @@ const AsyncFunction = async function () {}.constructor;
 
         updateIcon(args,util) {
             args.ICON = Scratch.Cast.toNumber(args.ICON)
-            const icons = backend.readFile("/system/preferences/taskbar/pinned.json")
+            //const icons = backend.readFile("/system/preferences/taskbar/pinned.json")
+            const icons = structuredClone(backend.taskbar)
             const icon = icons[args.ICON]
 
             //console.log("Icon updated - ", icon)
@@ -1398,12 +1480,13 @@ const AsyncFunction = async function () {}.constructor;
             const is = 35
             const ix = (args.ICON*50)-((icons.length-1) * 25)//((args.ICON-(icons.length-1))/2)*50
             const iy = -335
-            if (clamp(mx, ix-(is/2),ix+(is/2)) === mx && clamp(my, iy-(is/2),iy+(is/2)) === my && (vm.runtime.ioDevices["mouse"]._isDown && !lastMouse)) {
+            const f = clamp(mx, ix-(is/2),ix+(is/2)) === mx && clamp(my, iy-(is/2),iy+(is/2)) === my
+            // @ts-ignore
+            if (f && (vm.runtime.ioDevices["mouse"].getButtonIsDown(0) && !lastMouse)) {
                 // clicked, now we need to figure out what to do
                 // if the app is running we should show it if it's minimized, and minimize it otherwise
                 // who cares about multiple apps rn
                 // if it's not running we need to start it
-                console.log(icon.id,backend.events.tick)
                 const runningApps = backend.events.tick.filter((v) => backend.windowIdSources[v.src] === icon.id)
                 if (runningApps.length > 0) {
                     // app is running
@@ -1412,10 +1495,18 @@ const AsyncFunction = async function () {}.constructor;
                     
                 }
                 else {
-                    this.runApp({APP: icon.id}, util)
+                    //this.runApp({APP: icon.id}, util)
                 }
             }
+            else if (f) {
+                taskbarHover = 1 - args.ICON
+            }
         }
+
+        penPlusHasTex(args, util) {
+            return Object.prototype.hasOwnProperty.call(penPlusCostumeLibrary,args.IMAGE)
+        }
+        
     }
     // @ts-ignore
     Scratch.extensions.register(new RedBackend())
