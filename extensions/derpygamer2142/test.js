@@ -14,10 +14,15 @@
     }
     
     let shaders = {}
-    let bufferRefs = {}
-    let readOutput = ""
     let error = {}
-
+    let resources = {
+        buffers: {},
+        bindGroups: {},
+        bindGroupLayouts: {},
+        bufferRefs: {}
+    }
+    let currentBindGroup = ""
+    let currentBindGroupLayout = ""
     
 
     class GPUSb3 {
@@ -60,12 +65,16 @@
                     {
                         opcode: "compileHat",
                         blockType: Scratch.BlockType.EVENT,
-                        text: "Define shader [NAME]",
+                        text: "Define shader [NAME] using bind group layout [BGL]",
                         isEdgeActivated: false,
                         arguments: {
                             NAME: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "myShader"
+                            },
+                            BGL: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myBindGroupLayout"
                             }
                         }
                     },
@@ -81,7 +90,7 @@
                             },
                             ARGTYPE: {
                                 type: Scratch.ArgumentType.STRING,
-                                menu: "GPUFUNCARGTYPES",
+                                menu: "BGLENTRYTYPES",
                                 defaultValue: "buffer"
                             },
                             USAGE: {
@@ -96,7 +105,7 @@
                             },
                             TYPE: {
                                 type: Scratch.ArgumentType.STRING,
-                                menu: "BUFFERTYPE",
+                                menu: "BUFFERENTRYTYPE",
                                 defaultValue: "uniform"
                             },
                             NEXT: {
@@ -106,23 +115,7 @@
                         }
                     },*/
                     
-                    {   
-                        // https://www.w3.org/TR/webgpu/#buffer-usage
-                        opcode: "bufferUsage",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "Buffer usage [USAGE], next [NEXT]",
-                        arguments: {
-                            USAGE: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "BUFFERUSAGE",
-                                defaultValue: "STORAGE"
-                            },
-                            NEXT: {
-                                type: Scratch.ArgumentType.STRING,
-                                defaultValue: ""
-                            }
-                        }
-                    },
+                    
 
                     {
                         opcode: "compileStart",
@@ -152,13 +145,16 @@
                     {
                         opcode: "runGPU",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Run shader [GPUFUNC] with resources [ARGS] dimensions x: [X] y: [Y] z: [Z]",
+                        text: "Run shader [GPUFUNC] using bind group [BINDGROUP] dimensions x: [X] y: [Y] z: [Z]",
                         arguments: {
                             GPUFUNC: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "myShader"
                             },
-                            // ARGS intentionally omitted
+                            BINDGROUP: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myBindGroup"
+                            },
                             X: {
                                 type: Scratch.ArgumentType.NUMBER,
                                 defaultValue: 1
@@ -181,12 +177,143 @@
                         blockType: "label",
                         text: "Data input blocks"
                     },
-
                     
-
-                    
+                    {
+                        opcode: "createBindGroupLayout",
+                        blockType: Scratch.BlockType.CONDITIONAL,
+                        text: "Create bind group layout called [NAME]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myBindGroupLayout"
+                            }
+                        }
+                    },
 
                     {
+                        opcode: "bindGroupLayoutEntry",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Add bind group layout entry with binding [BINDING] for type [TYPE] and descriptor [DESC]",
+                        arguments: {
+                            BINDING: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "BGLENTRYTYPES",
+                                defaultValue: "buffer"
+                            },
+                            DESC: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "bufferEntryDescriptor",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Buffer layout entry descriptor with usage type [TYPE]",
+                        arguments: {
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "BUFFERENTRYTYPE"
+                            }
+                        }
+                    },
+                    
+                    {
+                        opcode: "createBindGroup",
+                        blockType: Scratch.BlockType.CONDITIONAL,
+                        text: "Create bind group called [NAME] using layout [LAYOUT]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myBindGroup"
+                            },
+                            LAYOUT: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myBindGroupLayout"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "bindGroupEntry",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Add bind group entry with binding [BINDING] of type [TYPE] using resource named [RESOURCE]",
+                        arguments: {
+                            BINDING: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "BGLENTRYTYPES", // this is named badly ig?
+                                defaultValue: "buffer"
+                            },
+                            RESOURCE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myBuffer"
+                            }
+                        }
+                    },
+                    
+                    {
+                        blockType: Scratch.BlockType.COMMAND,
+                        opcode: "createBuffer",
+                        text: "Create buffer called [NAME] with size(in bytes) [SIZE] and usage flags [USAGE]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myBuffer"
+                            },
+                            SIZE: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 8
+                            },
+                            USAGE: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 140 // GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+                            }
+                        }
+                    },
+
+                    {   
+                        // https://www.w3.org/TR/webgpu/#buffer-usage
+                        opcode: "bufferUsage",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Buffer usage [USAGE]",
+                        arguments: {
+                            USAGE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "BUFFERUSAGE",
+                                defaultValue: "STORAGE"
+                            }
+                        }
+                    },
+
+                    {
+                        blockType: Scratch.BlockType.REPORTER,
+                        opcode: "binaryOr",
+                        text: "Usage [A] | [B]",
+                        arguments: {
+                            A: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 128
+                            },
+                            B: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 4
+                            }
+                        }
+                    },
+
+
+                    {
+                        // todo: add more typed arrays and maybe arbitrary data or something idk man
+                        // https://webidl.spec.whatwg.org/#AllowSharedBufferSource
                         opcode: "genF32",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "F32 array from array [ARRAY]",
@@ -198,36 +325,55 @@
                         }
                     },
 
+                    {
+                        opcode: "writeBuffer",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Write [SIZE] elements of data from array [ARRAY] to buffer [BUFFER] from offset [OFF1] to offset [OFF2]",
+                        arguments: {
+                            SIZE:  { // https://www.w3.org/TR/webgpu/#dom-gpuqueue-writebuffer
+                                     // in elements for typesarrays and bytes otherwise
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 3
+                            },
+                            ARRAY: {
+                                type: Scratch.ArgumentType.STRING
+                            },
+                            BUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myBuffer"
+                            },
+                            OFF1: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            OFF2: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            }
+                        }
+                    },
+
                     {   
-                        // todo: move this to the new system
                         //hideFromPalette: true,
                         opcode: "copyBufferToBuffer",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Copy [NUMBYTES] bytes of data from buffer at binding [BUF1] in shader [SHADER1] from  position [BUF1OFF] to buffer at binding [BUF2] in shader [SHADER2] at position [BUF2OFF]",
+                        text: "Copy [NUMBYTES] bytes of data from buffer [BUF1] from  position [BUF1OFF] to buffer [BUF2] at position [BUF2OFF]",
                         arguments: {
                             NUMBYTES: {
                                 type: Scratch.ArgumentType.NUMBER,
                                 defaultValue: 256
                             },
                             BUF1: {
-                                type: Scratch.ArgumentType.NUMBER,
-                                defaultValue: 1
-                            },
-                            SHADER1: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "myShader"
+                                defaultValue: "myBuffer1"
                             },
                             BUF1OFF: {// IMPORTANT: THIS IS IN BYTES!!!!!!!!!
                                 type: Scratch.ArgumentType.NUMBER,
                                 defaultValue: 0
                             },
                             BUF2: {
-                                type: Scratch.ArgumentType.NUMBER,
-                                defaultValue: 1
-                            },
-                            SHADER2: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "anotherShader"
+                                defaultValue: "myBuffer2"
                             },
                             BUF2OFF: {// IMPORTANT: THIS IS IN BYTES!!!!!!!!!
                                 type: Scratch.ArgumentType.NUMBER,
@@ -262,27 +408,15 @@
                     },
 
                     {
-                        // todo: move this to the new system
                         opcode: "readBuffer",
-                        blockType: Scratch.BlockType.COMMAND,
-                        text: "Read buffer at binding [BINDING] in shader [SHADER]",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Read buffer [BUFFER]", // todo: add an output type here, not just f32s
                         arguments: {
-                            BINDING: {
-                                type: Scratch.ArgumentType.NUMBER,
-                                defaultValue: 0
-                            },
-                            SHADER: {
+                            BUFFER: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "myShader"
+                                defaultValue: "myBuffer"
                             }
                         }
-                    },
-
-                    {
-                        // todo: this kinda sucks, get rid of it
-                        opcode: "readBufOutput",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "Buffer read output"
                     },
                     
                     {
@@ -816,7 +950,7 @@
                             "bool"
                         ]
                     },
-                    GPUFUNCARGTYPES: {
+                    BGLENTRYTYPES: {
                         acceptReporters: true,
                         items: [
                             "buffer"
@@ -843,13 +977,12 @@
                             "UNIFORM"
                         ]
                     },
-                    BUFFERTYPE: { // why does one buffer need so much data man
+                    BUFFERENTRYTYPE: { // why does one buffer need so much data man
                         acceptReporters: true,
                         items: [
                             "read-only-storage",
                             "storage",
-                            "uniform",
-                            "NONE"
+                            "uniform"
                         ]
                     },
                     VARUSAGE: {
@@ -913,9 +1046,9 @@
                 this.throwError("deviceLost", info.message, "wgpu", info, util)
             })
             
-            this.device.addEventListener("uncapturederror",(event) => {
+            /*this.device.addEventListener("uncapturederror",(event) => {
                 this.throwError("UnclassifiedError",event.error.message,"Unknown",event.error)
-            })
+            })*/
         }
         
 
@@ -958,8 +1091,8 @@
                     break;
                 }
 
-                case "gpusb3_menu_GPUFUNCARGTYPES": {
-                    return _blocks[blob.id].fields.GPUFUNCARGTYPES.value
+                case "gpusb3_menu_BGLENTRYTYPES": {
+                    return _blocks[blob.id].fields.BGLENTRYTYPES.value
                     break;
                 }
                 
@@ -971,8 +1104,8 @@
                     return _blocks[blob.id].fields.BUFFERUSAGE.value
                 }
 
-                case "gpusb3_menu_BUFFERTYPE": {
-                    return _blocks[blob.id].fields.BUFFERTYPE.value
+                case "gpusb3_menu_BUFFERENTRYTYPE": {
+                    return _blocks[blob.id].fields.BUFFERENTRYTYPE.value
                 }
 
                 case "gpusb3_menu_VARUSAGE": {
@@ -1732,7 +1865,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 // @ts-ignore
                 data = new Float32Array(e)
 
-                readOutput = JSON.stringify(data)
+                //readOutput = JSON.stringify(data)
             },
             (reason) => {
                 console.warn(reason)
@@ -1884,21 +2017,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             // helpful error site: https://toji.dev/webgpu-best-practices/error-handling.html
             // seems to be one of the only places to explain this in human readable terms
             let threads = util.startHats("gpusb3_compileHat") // NOTE TO SELF: THIS DOESN'T START THE HATS(why is it named that then. this is stupid and i don't like it, i am going to complain on my twitter dot com (just kidding twitter is for nerds and i don't use it. also as of writing this comment for some it reason allows weird stuff now, what were they even thinking. twitter was bad to begin with but elon musk's midlife crisis ran it so far into the ground that it burned alive, also i'm not calling it x)), thanks sharkpool
-            /*
-                thanks sharkpool, very cool <3
-                runtime.allScriptsByOpcodeDo(opcode, (script, target) => {
-                        const thread = runtime._pushThread(script.blockId, target);
-                        //...
-                });
-            */
-            // vm.runtime.allScriptsByOpcodeDo("gpusb3_compileHat", (script, target) => {
-            //     console.log("found a hat!")
-            //     console.log(target)
-            //     // @ts-ignore
-            //     const thread = vm.runtime._pushThread(script.blockId, target);
-            // });
-            //console.log(threads.map((x) => x))
-            //console.log(vm.runtime.threads[0].topBlock)
             let newthreads = []
             vm.runtime.threads.forEach((i) => {
                 //console.log(i.topBlock)
@@ -1918,34 +2036,35 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                     //console.log(t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block)
                     //console.log(this.genInputTree(util, t, t.blockContainer._blocks, t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block, true))
                     // let farraycom = this.compile(util, t, t.blockContainer._blocks,t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block,true)
-                    let farraycom = this.genInputTree(util, t, t.blockContainer._blocks, t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block, true) // farraycom = function array compiled
-                    console.log(farraycom) 
-                    let funcargs = JSON.parse(this.genWGSL(util, farraycom, 0))
-                    console.log(funcargs)
+                    //let farraycom = this.genInputTree(util, t, t.blockContainer._blocks, t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block, true) // farraycom = function array compiled
+                    //console.log(farraycom)
+                    //let funcargs = JSON.parse(this.genWGSL(util, farraycom, 0))
+                    //console.log(funcargs)
 
                     const arraycompiled = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
                     console.log(arraycompiled)
                     const compiled = this.genWGSL(util, arraycompiled, 0)
                     console.log(compiled)
-                    let idkman = this.genInputTree(util, t, t.blockContainer._blocks, t.topBlock, true)
+                    //let idkman = this.genInputTree(util, t, t.blockContainer._blocks, t.topBlock, true)
                     
-                    if (Array.isArray(idkman[1])) {
+                    if (/*Array.isArray(idkman[1])*/false) {
                         this.throwError("unexpectedInput", "Unexpected input for block input!", "ShaderDefinition", "Shader name cannot have inputs!", util)
                         
                     }
                     else {
-                        this.device.pushErrorScope("out-of-memory")
+                        //this.device.pushErrorScope("out-of-memory")
 
 
-                        let funcname = this.textFromOp(util,idkman[1],false)//this.textFromOp(util, farraycom[1], false)
-                        this.device.pushErrorScope("validation")
+                        //let funcname = this.textFromOp(util,idkman[1],false)//this.textFromOp(util, farraycom[1], false)
+                        let funcname = "testShader"
+                        //this.device.pushErrorScope("validation")
                         const shaderModule = this.device.createShaderModule({
                             label: `Shader "${funcname}"`,
                             code: compiled
                         })
-                        this.device.popErrorScope((error) => {
+                        /*this.device.popErrorScope((error) => {
                             this.throwError("ShaderCreationError", error.message, "ShaderModuleCreation",error, util)
-                        })
+                        })*/
 
                         const compilationinfo = await shaderModule.getCompilationInfo()
                         console.log(compilationinfo)
@@ -1961,95 +2080,10 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                             name: funcname
                         }
                         let shader = shaders[funcname]
-
-                        // this code is horrible and i don't fully remember what it does or how it works.
-                        // looking at this a week later i'm not sure why i decided "pirate" was more important than explaining what i was doing
-                        shader.args = funcargs
-                        shader.inputs = []
-                        for (let i = 0; i < funcargs.length; i++) {
-                            const arg = funcargs[i]
-                            console.log(arg)
-                            let settings = {}
-                            shader.inputs.push({
-                                binding: i,
-                                name: arg.name,
-                                arg: arg // pirate
-                            })
-                            switch (arg.type) {
-                                case "buffer": {
-                                    console.log()
-                                    settings.size = arg.settings?.size ?? 404 // size not found
-                                    if (arg.usage.length > 0) {
-                                        for (let j = 0; j < arg.usage.length; j++) {
-                                            if (j == 0) {
-                                                // @ts-ignore
-                                                settings.usage = GPUBufferUsage[arg.usage[0]]
-                                            }
-                                            else {
-                                                // @ts-ignore
-                                                settings.usage |= GPUBufferUsage[arg.usage[j]]
-                                            }
-                                        }
-                                    }
-                                    settings.label = arg.name
-                                    
-
-                                    //const buffer = this.device.createBuffer(settings)
-                                    shader.inputs[i].settings = settings
-                                    shader.inputs[i].inputtype = "buffer"
-                                    break;
-                                }
-                                
-                                
-                            }
-
-                            
-                        }
-
-                        let entries = []
-                        shader.inputs.forEach((i) => {
-                            if (i.arg.usagetype !== "NONE") {
-                               let obj = {
-                                binding: i.binding,
-                                // @ts-ignore
-                                visibility: GPUShaderStage.COMPUTE,
-                                }
-                                console.log(i.arg.usagetype)
-                                obj[i.inputtype] = {
-                                    type: i.arg.usagetype
-                                }
-                                entries.push(obj)
-
-                                // let groupobj = {
-                                //     binding: i.binding,
-                                //     resource: {
-                                //         buffer: i.input // todo: make this work with multiple input types
-                                //     }
-                                // }
-
-                                // groupEntries.push(groupobj) 
-                            }
-                            
-                        })
-
-                        
-
-                        shader.bindGroupLayout = this.device.createBindGroupLayout({
-                            label: `${shader.name} bindgrouplayout`,
-                            entries: entries
-                        })
-
-                        // console.log(groupEntries)
-                        // shader.bindGroup = this.device.createBindGroup({
-                        //     layout: shader.bindGroupLayout,
-                        //     entries: groupEntries
-                        // })
-                        
-                        this.device.pushErrorScope("validation")
-                        this.device.pushErrorScope("internal")
-                        shader.computePipeline = this.device.createComputePipeline({ // todo: make this support multiple types of shaders
+                        console.log(resources, Scratch.Cast.toString(args.BGL))
+                        shader.computePipeline = this.device.createComputePipeline({
                             layout: this.device.createPipelineLayout({
-                                bindGroupLayouts: [shader.bindGroupLayout]
+                                bindGroupLayouts: [resources.bindGroupLayouts[/*Scratch.Cast.toString(args.BGL)*/"myBindGroupLayout"]] // todo: error handling here and actually make it use the values from the hat
                             }),
                             compute: {
                                 module: shaderModule,
@@ -2057,14 +2091,13 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                             }
 
                         })
-                        this.device.popErrorScope((error) => {
+                        /*this.device.popErrorScope((error) => {
                             this.throwError("ComputePipelineError", error.message, "ComputePipelineCreation", error, util)
                         })
                         this.device.popErrorScope((error) => {
                             this.throwError("ComputePipelineError", error.message, "ComputePipelineCreation", error, util)
-                        })
+                        })*/
 
-                        // todo: make this support running the functions(duh)
                         // shader.commandEncoder = this.device.createCommandEncoder()
 
                         // shader.passEncoder = shader.commandEncoder.beginComputePass()
@@ -2074,9 +2107,9 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                         // shader.passEncoder.end()
                         // this.device.queue.submit([shader.commandEncoder.finish()])
                         
-                        this.device.popErrorScope((error) => {
+                        /*this.device.popErrorScope((error) => {
                             this.throwError("OutOfMemory","Out of memory.", "WebGPU","Out of memory.",util)
-                        })
+                        })*/
                         console.log("if you're seeing this then the compiler ran without errors :)")
 
                     }
@@ -2089,122 +2122,13 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 
                 // console.log(e)
                 // console.log(compiled)
-                /*const BUFFER_SIZE = 1000;
-
-
-                const output = this.device.createBuffer({
-                    size: BUFFER_SIZE,
-                    // @ts-ignore
-                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-                });
                 
-                const stagingBuffer = this.device.createBuffer({
-                    size: BUFFER_SIZE,
-                    // @ts-ignore
-                    usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-                });
-    
-                const shaderModule = this.device.createShaderModule({
-                    code: compiled,
-                })
-    
-                const bindGroupLayout = this.device.createBindGroupLayout({
-                    entries: [
-                        {
-                            binding: 0,
-                            // @ts-ignore
-                            visibility: GPUShaderStage.COMPUTE,
-                            buffer: {
-                                type: "storage",
-                            },
-                        },
-                    ]
-                });
-    
-                const bindGroup = this.device.createBindGroup({
-                    layout: bindGroupLayout,
-                    entries: [
-                        {
-                            binding: 0,
-                            resource: {
-                                buffer: output,
-                            },
-                        },
-                    ],
-                });
-                
-                const computePipeline = this.device.createComputePipeline({
-                    layout: this.device.createPipelineLayout({
-                        bindGroupLayouts: [bindGroupLayout],
-                    }),
-                    compute: {
-                        module: shaderModule,
-                        entryPoint: "computeShader",
-                    },
-                });
-                
-                // @ts-ignore
-                const commandEncoder = this.device.createCommandEncoder();
-                // @ts-ignore
-                const passEncoder = commandEncoder.beginComputePass()
-                passEncoder.setPipeline(computePipeline);
-                passEncoder.setBindGroup(0, bindGroup);
-                passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / 64));
-    
-                passEncoder.end();
-    
-                // Copy output buffer to staging buffer
-                commandEncoder.copyBufferToBuffer(
-                    output,
-                    0, // Source offset
-                    stagingBuffer,
-                    0, // Destination offset
-                    BUFFER_SIZE,
-                );
-                
-                // End frame by passing array of command buffers to command queue for execution
-                this.device.queue.submit([commandEncoder.finish()]);
-        
-                // map staging buffer to read results back to JS
-                // let data = ["you done messed up"]
-                // stagingBuffer.mapAsync(
-                //     // @ts-ignore
-                //     GPUMapMode.READ,
-                //     0, // Offset
-                //     BUFFER_SIZE, // Length
-                // ).then((value) => {
-                //     const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE)
-                //     data = copyArrayBuffer.slice()
-                //     stagingBuffer.unmap();
-                // },
-                // (reason) => {
-                //     console.log(reason)
-                // })
-                
-                
-                
-                // console.log(new Float32Array(data));
-    
-    
-                
-                // map staging buffer to read results back to JS
-                stagingBuffer.mapAsync(
-                    // @ts-ignore
-                    GPUMapMode.READ,
-                    0, // Offset
-                    BUFFER_SIZE, // Length
-                ).then((value) => {
-                    const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE)
-                    const data = copyArrayBuffer.slice();
-                    stagingBuffer.unmap();
-                    console.log(new Float32Array(data));
-                });*/
             }
             
         }
         /*
         compute shader reference implementation
-
+        https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API#basic_compute_pipeline
         
             // Define global buffer size
             const BUFFER_SIZE = 1000;
@@ -2345,7 +2269,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             
   
 
-            // notes:
+            notes:
             
             most of this can stay the same across multiple modules, the only things that might change
             are the different input buffers and their usage, but that can probably be generated
@@ -2368,64 +2292,19 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 return
             }
             let shader = shaders[args.GPUFUNC]
-            let groupEntries = []
-            let parsedInputs
-            try {
-                parsedInputs = JSON.parse(args.ARGS ?? "{}")
-            }
-            catch {
-                parsedInputs = {}
-            }
-
-
-            shader.inputs.forEach((i, index) => {
-                if (Object.prototype.hasOwnProperty.call(parsedInputs,i.binding)) {
-                    let input
-                    switch (parsedInputs[i.binding].type) {
-                        case "buffer": {
-                            this.device.pushErrorScope("validation")
-                            input = this.device.createBuffer(i.settings);
-                            shader.inputs[index].input = input
-                            if (parsedInputs[i.binding].input) this.device.queue.writeBuffer(input,0,bufferRefs[parsedInputs[i.binding].input]) // if there isn't any input on the argument don't write data. It's probably an output buffer or something.
-                            this.device.popErrorScope((error) => {
-                                this.throwError("BufferWriteFailed",error.message,"RunShaderBlock",error,util)
-                            })
-                            break;
-                        }
-                    }
-                    if (i.arg.usagetype !== "NONE") {
-                        let groupobj = {
-                            binding: i.binding,
-                            resource: {
-                                buffer: input // todo: make this work with multiple input types
-                            }
-                        }
-
-                        groupEntries.push(groupobj)
-                    }
-                    
-                }
-                
-            })
-
-            this.device.pushErrorScope("validation")
-            const bindGroup = this.device.createBindGroup({
-                    layout: shader.bindGroupLayout,
-                    entries: groupEntries
-            })
-
+            console.log(shader)
             const commandEncoder = this.device.createCommandEncoder()
 
             const passEncoder = commandEncoder.beginComputePass()
             passEncoder.setPipeline(shader.computePipeline)
-            passEncoder.setBindGroup(0, bindGroup)
+            passEncoder.setBindGroup(0, resources.bindGroups[Scratch.Cast.toString(args.BINDGROUP)])
             passEncoder.dispatchWorkgroups(Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y),Scratch.Cast.toNumber(args.Z))
             passEncoder.end()
             this.device.queue.submit([commandEncoder.finish()])
 
-            this.device.popErrorScope((error) => {
+            /*this.device.popErrorScope((error) => {
                 this.throwError("UnclassifiedRuntimeError",error.message,"RunShaderBlock",error,util)
-            })
+            })*/
             //console.log("yay the function ran without errors =D")
         }
 
@@ -2503,9 +2382,14 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             return "This can be used with the above block for a root type."
         }
 
+        matrixType() {
+            return "This block creates a type for a matrix with the dimensions specified."
+        }
+
         bufferUsage(args, util) {
-            // todo: move this to the new system
-            return "This is used by the def shader arg block to define inputs. It's different from the usage in the bind input block."
+            // @ts-expect-error
+            return GPUBufferUsage[Scratch.Cast.toString(args.USAGE)] ?? 1
+            //return "This is used by the def shader arg block to define inputs. It's different from the usage in the bind input block."
         }
 
         variableUsage(args, util) {
@@ -2524,6 +2408,95 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             return "This block is used to create something out of whatever type you defined."
         }
 
+        createBuffer(args, util) {
+            currentBindGroupLayout = 
+            resources.buffers[Scratch.Cast.toString(args.NAME)] = this.device.createBuffer({
+                label: Scratch.Cast.toString(args.NAME),
+                size: Scratch.Cast.toNumber(args.SIZE),
+                usage: Scratch.Cast.toNumber(args.USAGE)
+            })
+        }
+
+        createBindGroupLayout(args, util) {
+            // thanks to cst1229 for this section <3
+            if (util.stackFrame.blockRanOnce) {
+                resources.bindGroupLayouts[Scratch.Cast.toString(args.NAME)] = this.device.createBindGroupLayout({
+                    entries: resources.bindGroupLayouts[Scratch.Cast.toString(args.NAME)],
+                    label: Scratch.Cast.toString(args.NAME)
+                })
+                return
+            }
+
+            currentBindGroupLayout = Scratch.Cast.toString(args.NAME)
+            resources.bindGroupLayouts[Scratch.Cast.toString(args.NAME)] = [] // temporarily store a list of entries here, things will be added to it via the bindGroupLayoutEntry block
+            util.startBranch(1,true)
+            util.stackFrame.blockRanOnce = true
+        }
+
+        bindGroupLayoutEntry(args, util) {
+            let parsed;
+            try {
+                parsed = JSON.parse(args.DESC)
+                if (!Object.prototype.hasOwnProperty.call(parsed,"type")) throw new Error("skibidi toilet ohio grimace shake rizz")
+            }
+            catch {
+                this.throwError("InvalidEntryDescriptor","Invalid bind group layout entry descriptor!", "BindGroupLayoutEntryBlock","The recieved descriptor for the bind group layout entry block is invalid, did you use the wrong block?",util)
+                return
+            }
+            let o = {
+                binding: Scratch.Cast.toNumber(args.BINDING),
+                // this extension only has compute shaders
+                // @ts-expect-error
+                visibility: GPUShaderStage.COMPUTE
+
+            }
+            o[args.TYPE] = parsed
+            resources.bindGroupLayouts[currentBindGroupLayout].push(o)
+        }
+
+        createBindGroup(args, util) {
+            // thanks to cst1229 for this section <3
+            
+            if (util.stackFrame.blockRanOnce) {
+                console.log(resources.bindGroups[Scratch.Cast.toString(args.NAME)])
+                resources.bindGroups[Scratch.Cast.toString(args.NAME)] = this.device.createBindGroup({
+                    layout: resources.bindGroupLayouts[Scratch.Cast.toString(args.LAYOUT)],
+                    entries: resources.bindGroups[Scratch.Cast.toString(args.NAME)],
+                    label: Scratch.Cast.toString(args.NAME)
+                })
+                return
+            }
+
+            currentBindGroup = Scratch.Cast.toString(args.NAME)
+            resources.bindGroups[Scratch.Cast.toString(args.NAME)] = [] // temporarily store a list of entries here, things will be added to it via the bindGroupLayoutEntry block
+            util.startBranch(1,true)
+            util.stackFrame.blockRanOnce = true
+        }
+
+        bindGroupEntry(args, util) {
+            console.log("entry add run")
+            // todo: error handling in this general area
+            const kv = {
+                buffer: "buffers"
+            } // bind group entry type -> resources object thing
+            let o = {}
+            o[Scratch.Cast.toString(args.TYPE)] = resources[kv[args.TYPE] ?? "buffers"][args.RESOURCE]
+            resources.bindGroups[currentBindGroup].push({
+                binding: Scratch.Cast.toNumber(args.BINDING),
+                resource: o
+            })
+        }
+        
+        bufferEntryDescriptor(args, util) {
+            return JSON.stringify({
+                type: args.TYPE
+            })
+        }
+        
+        binaryOr(args, util) {
+            return Scratch.Cast.toNumber(args.A) | Scratch.Cast.toNumber(args.B)
+        }
+
         genF32(args, util) {
             let array
             try {
@@ -2532,7 +2505,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             catch {
                 array = []
             }
-            bufferRefs[this.getBlockId(util)] = new Float32Array(array)
+            resources.bufferRefs[this.getBlockId(util)] = new Float32Array(array)
             return this.getBlockId(util) // todo: make this less of a memory leak
         }
 
@@ -2554,14 +2527,13 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             return
         }
 
+        writeBuffer(args, util) {
+            this.device.queue.writeBuffer(resources.buffers[Scratch.Cast.toString(args.BUFFER)], Scratch.Cast.toNumber(args.OFF2), resources.bufferRefs[Scratch.Cast.toString(args.ARRAY)], Scratch.Cast.toNumber(args.OFF1), Scratch.Cast.toNumber(args.SIZE))
+        }
 
         copyBufferToBuffer(args, util) {
-            if ((Scratch.Cast.toNumber(args.NUMBYTES) <= 0) || (Scratch.Cast.toNumber(args.BUF1) === Scratch.Cast.toNumber(args.BUF2)) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER1)) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER2))) {
-                this.throwError("copyDataFailed", "Copy data failed!", "CopyDataBlock", "Failed to copy data between buffers, check that the shaders exist, buffer 1 isn't the same as buffer 2, and the number of bytes is more than or equal to 0", util)
-                return
-            }
-            if ((shaders[args.SHADER1].inputs.length < Scratch.Cast.toNumber(args.BUF1)) || (shaders[args.SHADER2].inputs.length < Scratch.Cast.toNumber(args.BUF2))) {
-                this.throwError("copyDataFailed", "Copy data failed!", "CopyDataBlock", "Failed to copy data between buffers, check that the buffers are numbered correctly.", util)
+            if ((Scratch.Cast.toNumber(args.NUMBYTES) <= 0) || (args.BUF1 === args.BUF2) || (!Object.prototype.hasOwnProperty.call(resources.buffers,args.BUF1)) || (!Object.prototype.hasOwnProperty.call(resources.buffers,args.BUF1))) {
+                this.throwError("copyDataFailed", "Copy data failed!", "CopyDataBlock", "Failed to copy data between buffers, check that the buffers exist, buffer 1 isn't the same as buffer 2, and the number of bytes is more than or equal to 0", util)
                 return
             }
             const commandEncoder = this.device.createCommandEncoder({
@@ -2569,9 +2541,9 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             })
 
             commandEncoder.copyBufferToBuffer(
-                shaders[args.SHADER1].inputs[Scratch.Cast.toNumber(args.BUF1)].input,
+                resources.buffers[args.BUF1],
                 Scratch.Cast.toNumber(args.BUF1OFF),
-                shaders[args.SHADER2].inputs[Scratch.Cast.toNumber(args.BUF2)].input,
+                resources.buffers[args.BUF2],
                 Scratch.Cast.toNumber(args.BUF2OFF),
                 Scratch.Cast.toNumber(args.NUMBYTES)
             )
@@ -2579,6 +2551,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         }
 
         clearBuffer(args, util) {
+            // todo: move this to the new system? i don't know what this is
             if ((Scratch.Cast.toNumber(args.NUMBYTES) >= 0) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER))) {
                 return
             }
@@ -2598,42 +2571,29 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             }
         }
         
-        readBuffer(args, util) {
+        async readBuffer(args, util) {
             // copy_src, storage to write to internally, then copy_dst, map_read to copy and read from?
-            if (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER)) {
-                return
-            }
-            if ((shaders[args.SHADER].inputs.length < Scratch.Cast.toNumber(args.BINDING))) {
-                return
-            }
             // WARNING:
             // MAY CONTAIN BAD IDEA JUICE
-            // i wrote this code like 4 weeks ago and i don't fully remember what it does. GPUMadMode.READ assumes no writing will be done.
+            // i wrote this code like 4 weeks ago and i don't fully remember what it does. GPUMapMode.READ assumes no writing will be done.
             let data = ["you done messed up"]
-            shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.mapAsync(
+            await resources.buffers[args.BUFFER].mapAsync(
                 // @ts-ignore
                 GPUMapMode.READ,
                 // 0,
                 // shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size,
-            ).then((value) => {
-                const copyArrayBuffer = shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size*/)
-                data = copyArrayBuffer.slice()
-                shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.unmap();
-                
-                // @ts-ignore
-                readOutput = JSON.stringify(new Float32Array(data));
-            },
-            (reason) => {
-                console.log(reason)
-            })
-            
-            
-            
-            
-        }
+            )
 
-        readBufOutput(args, util) {
-            return readOutput
+            const copyArrayBuffer = resources.buffers[args.BUFFER].getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size*/)
+            data = copyArrayBuffer.slice()
+            resources.buffers[args.BUFFER].unmap();
+            
+            // @ts-ignore
+            return JSON.stringify(new Float32Array(data));
+            
+            
+            
+            
         }
 
         error(args, util) {
