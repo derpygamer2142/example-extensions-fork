@@ -1018,9 +1018,8 @@
                 source: errorsource ?? "Undefined. This is an error, please report it!",
                 full: full ?? "Undefined. This is an error, please report it!"
             }
-    
+            console.error(error)
             if (util) {
-                console.log("started hats")
                 util.startHats("gpusb3_onError")
             }
             else {
@@ -2012,13 +2011,18 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             }
             return output
         }
-
+        /**
+         * 
+         * @param {*} args 
+         * @param {import("scratch-vm").BlockUtility} util 
+         */
         async compileStart (args,util) {
             // helpful error site: https://toji.dev/webgpu-best-practices/error-handling.html
             // seems to be one of the only places to explain this in human readable terms
             let threads = util.startHats("gpusb3_compileHat") // NOTE TO SELF: THIS DOESN'T START THE HATS(why is it named that then. this is stupid and i don't like it, i am going to complain on my twitter dot com (just kidding twitter is for nerds and i don't use it. also as of writing this comment for some it reason allows weird stuff now, what were they even thinking. twitter was bad to begin with but elon musk's midlife crisis ran it so far into the ground that it burned alive, also i'm not calling it x)), thanks sharkpool
             let newthreads = []
             vm.runtime.threads.forEach((i) => {
+                console.log(util.thread.blockContainer._blocks,i.topBlock)
                 //console.log(i.topBlock)
                 if (Object.prototype.hasOwnProperty.call(util.thread.blockContainer._blocks,i.topBlock)) {
                     if (util.thread.blockContainer._blocks[i.topBlock].opcode === "gpusb3_compileHat") {
@@ -2046,9 +2050,10 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                     const compiled = this.genWGSL(util, arraycompiled, 0)
                     console.log(compiled)
                     //let idkman = this.genInputTree(util, t, t.blockContainer._blocks, t.topBlock, true)
-                    
-                    if (/*Array.isArray(idkman[1])*/false) {
-                        this.throwError("unexpectedInput", "Unexpected input for block input!", "ShaderDefinition", "Shader name cannot have inputs!", util)
+                    let bglInput = t.blockContainer._blocks[t.blockContainer._blocks[t.topBlock].inputs.BGL.block]
+                    let nameInput = t.blockContainer._blocks[t.blockContainer._blocks[t.topBlock].inputs.NAME.block]
+                    if (nameInput.opcode != "text" || bglInput.opcode != "text") {
+                        this.throwError("unexpectedInput", "Unexpected input for block input!", "ShaderDefinition", "Shader name and bind group layout cannot have inputs!", util)
                         
                     }
                     else {
@@ -2056,7 +2061,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
 
                         //let funcname = this.textFromOp(util,idkman[1],false)//this.textFromOp(util, farraycom[1], false)
-                        let funcname = "testShader"
+                        let funcname = nameInput.fields.TEXT.value
                         //this.device.pushErrorScope("validation")
                         const shaderModule = this.device.createShaderModule({
                             label: `Shader "${funcname}"`,
@@ -2083,7 +2088,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                         console.log(resources, Scratch.Cast.toString(args.BGL))
                         shader.computePipeline = this.device.createComputePipeline({
                             layout: this.device.createPipelineLayout({
-                                bindGroupLayouts: [resources.bindGroupLayouts[/*Scratch.Cast.toString(args.BGL)*/"myBindGroupLayout"]] // todo: error handling here and actually make it use the values from the hat
+                                bindGroupLayouts: [resources.bindGroupLayouts[bglInput.fields.TEXT.value]] // todo: error handling here and actually make it use the values from the hat
                             }),
                             compute: {
                                 module: shaderModule,
