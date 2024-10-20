@@ -39,30 +39,6 @@
                 docsURI: 'https://derpygamer2142-extensions.pages.dev/docs/gpusb3',
                 blocks: [
                     {
-                        hideFromPalette: true,
-                        opcode: "ablock",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "test block",
-                        // arguments: {
-                        //     URL: {
-                        //         type: Scratch.ArgumentType.STRING
-                        //     }
-                        // }
-                    },
-                    {
-                        hideFromPalette: true,
-                        opcode: "testBlock",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "another test block [NEXT]",
-                        arguments: {
-                            
-                        }
-
-                    
-
-                    },
-
-                    {
                         opcode: "compileHat",
                         blockType: Scratch.BlockType.EVENT,
                         text: "Define shader [NAME] using bind group layout [BGL]",
@@ -77,45 +53,7 @@
                                 defaultValue: "myBindGroupLayout"
                             }
                         }
-                    },
-
-                    /*{
-                        opcode: "gpuFuncArgDef",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "Def shader resource [ARGNAME] type [ARGTYPE] usage [USAGE] settings [SETTINGS] usage type [TYPE] next [NEXT]", // argtype may or may not do anything in the future, i need to learn more about wgpu
-                        arguments: {
-                            ARGNAME: {
-                                type: Scratch.ArgumentType.STRING,
-                                defaultValue: "someArg"
-                            },
-                            ARGTYPE: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "BGLENTRYTYPES",
-                                defaultValue: "buffer"
-                            },
-                            USAGE: {
-                                type: Scratch.ArgumentType.STRING,
-                                defaultValue: ""
-                            },
-                            SETTINGS: {
-                                type: Scratch.ArgumentType.STRING,
-                                defaultValue: JSON.stringify({
-                                    size: 256
-                                })
-                            },
-                            TYPE: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "BUFFERENTRYTYPE",
-                                defaultValue: "uniform"
-                            },
-                            NEXT: {
-                                type: Scratch.ArgumentType.STRING,
-                                defaultValue: ""
-                            }
-                        }
-                    },*/
-                    
-                    
+                    },        
 
                     {
                         opcode: "compileStart",
@@ -386,19 +324,15 @@
                         hideFromPalette: true,
                         opcode: "clearBuffer",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Clear [NUMBYTES] bytes(-1 for all) of buffer at binding [BUFFER] in shader [SHADER] from offset [OFFSET]",
+                        text: "Clear [NUMBYTES] bytes(-1 for all) of buffer [BUFFER] from offset [OFFSET]",
                         arguments: {
                             NUMBYTES: {
                                 type: Scratch.ArgumentType.NUMBER,
                                 defaultValue: 128
                             },
                             BUFFER: {
-                                type: Scratch.ArgumentType.NUMBER,
-                                defaultValue: 0
-                            },
-                            SHADER: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: "myShader"
+                                defaultValue: "myBuffer"
                             },
                             OFFSET: {
                                 type: Scratch.ArgumentType.NUMBER,
@@ -1042,9 +976,10 @@
             }
             this.device = await this.adapter.requestDevice();
             this.device.lost.then((info) => {
-                this.throwError("deviceLost", info.message, "wgpu", info, util)
+                this.throwError("DeviceLost", info.message, "wgpu", info, util)
             })
             
+            // note to self: uncomment this on release
             /*this.device.addEventListener("uncapturederror",(event) => {
                 this.throwError("UnclassifiedError",event.error.message,"Unknown",event.error)
             })*/
@@ -1115,7 +1050,7 @@
                     if (unsafe) {
                         return false
                     }
-                    this.throwError("missingOp", "Input type not found, did you forget to add a menu?","textFromOp", "Input type not found, did you forget to add a menu?", util)
+                    this.throwError("MissingOp", "Input type not found, did you forget to add a menu?","textFromOp", "Input type not found, did you forget to add a menu?", util)
                     //console.log(blob)
                     return "Input type not found!"
                     
@@ -1460,7 +1395,7 @@
 
                                 case "gpusb3_getProp": {
                                     if (Array.isArray(blocks[i+2])) {
-                                        this.throwError("unexpectedInput", "Unexpected input in block input!", "GetPropertyBlock", "Unexpected input in Get Property block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "GetPropertyBlock", "Unexpected input in Get Property block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                     code = code.concat(`${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionDepth+1) : this.textFromOp(util, blocks[i+1], false)}.${this.textFromOp(util, blocks[i+2], false)}`)
@@ -1491,7 +1426,7 @@
 
                                 case "gpusb3_rootType": {
                                     if (Array.isArray(blocks[i+1])) {
-                                        this.throwError("unexpectedInput", "Unexpected input in block input!", "RootTypeBlock", "Unexpected input in Root type block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "RootTypeBlock", "Unexpected input in Root type block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                     code = code.concat(this.textFromOp(util, blocks[i+1], false))
@@ -1501,7 +1436,7 @@
 
                                 case "gpusb3_matrixType": {
                                     if (Array.isArray(blocks[i+1]) || Array.isArray(blocks[i+2])) {
-                                        this.throwError("unexpectedInput", "Unexpected input in block input!", "MatrixTypeBlock", "Unexpected input in Root type block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "MatrixTypeBlock", "Unexpected input in Root type block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                     code = code.concat(`mat${this.textFromOp(util, blocks[i+1], false)}x${this.textFromOp(util, blocks[i+2], false)}`)
@@ -1511,7 +1446,7 @@
 
                                 case "gpusb3_defFuncArgs": {
                                     if (Array.isArray(blocks[i+1])) {
-                                        this.throwError("unexpectedInput", "Unexpected input in block input!", "DefFuncArgsBlock", "Unexpected input in Def func args block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "DefFuncArgsBlock", "Unexpected input in Def func args block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                 
@@ -1525,7 +1460,7 @@
 
                                 case "gpusb3_getFuncArg": {
                                     if (Array.isArray(blocks[i+1])) {
-                                        this.throwError("unexpectedInput", "Unexpected input in block input!", "GetFuncArgBlock", "Unexpected input in Get func arg block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "GetFuncArgBlock", "Unexpected input in Get func arg block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                     code = code.concat(this.textFromOp(util, blocks[i+1],false))
@@ -1535,7 +1470,7 @@
 
                                 case "gpusb3_r_runFunc": {
                                     if (Array.isArray(blocks[i+1])) {
-                                        this.throwError("unexpectedInput", "Unexpected input in block input!", "RunFuncBlock", "Unexpected input in Run func block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "RunFuncBlock", "Unexpected input in Run func block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                     code = code.concat(this.textFromOp(util, blocks[i+1],false))
@@ -1546,7 +1481,7 @@
 
                                 case "gpusb3_variableUsage": {
                                     if (Array.isArray(blocks[i+1])) {
-                                        this.throwError("unexpectedInput", "Unexpected input in block input!", "VariableUsageBlock", "Unexpected input in Variable block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "VariableUsageBlock", "Unexpected input in Variable block!", util)
                                         return "Unexpected input in variable usage!"
                                     }
                                     code = code.concat(this.textFromOp(util,blocks[i+1],false))
@@ -1560,7 +1495,7 @@
                                 }
 
                                 default: {
-                                    this.throwError("invalidBlock", "Invalid block!", "genWGSL", "Invalid operator type block!", util)
+                                    this.throwError("InvalidBlock", "Invalid block!", "genWGSL", "Invalid operator type block!", util)
                                     console.error("Invalid operator! Did you forget the i += (# of inputs)?") // this is to idiot proof it from myself, me am big smort
                                     return code + "Error! - compilation stopped"
                                 }
@@ -1572,7 +1507,7 @@
                                     code = code.concat("if (")
                                     code = code.concat(blocks[i+1].length > 0 ? this.genWGSL(util,blocks[i+1],recursionDepth+1) : "true")
                                     if (blocks[i+1].length <= 0) {
-                                        this.throwError("missingInput", "If statement missing condition!", "IfBlock", "If statement missing condition, defaulting to true!", util)
+                                        this.throwError("MissingInput", "If statement missing condition!", "IfBlock", "If statement missing condition, defaulting to true!", util)
                                     }
                                     code = code.concat(") {\n")
                                     if (blocks[i+2].length > 0) {
@@ -1583,19 +1518,13 @@
                                     i += 2
                                     break;
                                     // did i spell that right
-                                    /*
-                                    expected output:
-                                    if (condition) {
-                                    code
-                                    }
-                                    */
                                 }
 
                                 case "control_if_else": {
                                     code = code.concat("if (")
                                     code = code.concat(blocks[i+1].length > 0 ? this.genWGSL(util,blocks[i+1],recursionDepth+1) : "true")
                                     if (blocks[i+1].length <= 0) {
-                                        this.throwError("missingInput", "If statement missing condition!", "IfBlock", "If statement missing condition, defaulting to true!", util)
+                                        this.throwError("MissingInput", "If statement missing condition!", "IfBlock", "If statement missing condition, defaulting to true!", util)
                                     }
                                     code = code.concat(") {\n")
                                     if (blocks[i+2].length > 0) {
@@ -1609,13 +1538,6 @@
                                     code = code.concat("\n}\n")
                                     i += 3
                                     break;
-                                    // did i spell that right
-                                    /*
-                                    expected output:
-                                    if (condition) {
-                                    code
-                                    }
-                                    */
                                 }
 
                                 case "gpusb3_declareVar": {
@@ -1636,7 +1558,7 @@
 
                                 case "gpusb3_varOp": {
                                     if (Array.isArray(blocks[i+2])) {
-                                        this.throwError("unexpectedInput", "Unexpected input for block input!", "VarOpBlock", "Unexpected input in Variable operation block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input for block input!", "VarOpBlock", "Unexpected input in Variable operation block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                     code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionDepth+1) : this.textFromOp(util, blocks[i+1],false))
@@ -1665,29 +1587,14 @@
                                             code = code.concat("return;\n")
                                         }
                                         
-                                        code = code.concat("}\n") // newlines for some semblance of readability
+                                        code = code.concat("}\n")
                                         i += 2
                                         break;
-                                        // did i spell that right
-                                        /*
-                                        expected output:
-                                        @compute @workgroup_size(workgroup size) fn computeShader(
-                                        @builtin(workgroup_id) workgroup_id : vec3<u32>,
-                                        @builtin(local_invocation_id) local_invocation_id : vec3<u32>,
-                                        @builtin(global_invocation_id) global_invocation_id : vec3<u32>,
-                                        @builtin(local_invocation_index) local_invocation_index: u32,
-                                        @builtin(num_workgroups) num_workgroups: vec3<u32>
-                                        ) {
-
-                                        code
-
-                                        }
-                                        */
                                 }
 
                                 case "gpusb3_wgslForLoop": {
                                     if (Array.isArray(blocks[i+1])) {
-                                        this.throwError("unexpectedInput", "Unexpected input for block input!", "ForLoopBlock", "Unexpected input in For loop block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input for block input!", "ForLoopBlock", "Unexpected input in For loop block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                     code = code.concat(`
@@ -1742,7 +1649,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
                                 case "gpusb3_bindInput": {
                                     if (Array.isArray(blocks[i+1]) || Array.isArray(blocks[i+2])) {
-                                        this.throwError("unexpectedInput", "Unexpected input for block input!", "BindResourceBlock", "Unexpected input in Bind resource block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input for block input!", "BindResourceBlock", "Unexpected input in Bind resource block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                     code = code.concat(`@group(0) @binding(${this.textFromOp(util, blocks[i+1], false)}) var<${Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3], recursionDepth+1) : this.textFromOp(util, blocks[i+3])}> ${this.textFromOp(util, blocks[i+2])}: ${Array.isArray(blocks[i+4]) ? this.genWGSL(util, blocks[i+4], recursionDepth+1) : this.textFromOp(util, blocks[i+4], false)};\n`)
@@ -1752,7 +1659,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                                 
                                 case "gpusb3_defFunc": {
                                     if (Array.isArray(blocks[i+1])) {
-                                        this.throwError("unexpectedInput", "Unexpected input for block input!", "VarOpBlock", "Unexpected input in Function definition block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input for block input!", "VarOpBlock", "Unexpected input in Function definition block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                     code = code.concat(`fn ${this.textFromOp(util, blocks[i+1],false)}(`)
@@ -1799,7 +1706,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
                                 case "gpusb3_c_runFunc": {
                                     if (Array.isArray(blocks[i+1])) {
-                                        this.throwError("unexpectedInput", "Unexpected input for block input!", "RunFuncBlock", "Unexpected input in Run function block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input for block input!", "RunFuncBlock", "Unexpected input in Run function block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
                                     code = code.concat(this.textFromOp(util, blocks[i+1],false))
@@ -1809,7 +1716,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                                 }
 
                                 default: {
-                                    this.throwError("invalidBlock", "Invalid block!", "genWGSL", "Invalid block, WGSL generation failed!", util)
+                                    this.throwError("InvalidBlock", "Invalid block!", "genWGSL", "Invalid block, WGSL generation failed!", util)
                                     console.error("Invalid block! Did you forget the i += (# of inputs)?")
                                     return code + "Error! - compilation stopped"
                                 }
@@ -1829,47 +1736,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             } else {
                 return util.thread.peekStackFrame().op.id;
             }
-        }
-
-        // make a hat block and get all the blocks under the script?
-        ablock(args, util) {
-            /*
-            //console.log(Scratch, util, vm)
-            util.thread.tryCompile()
-            console.log(vm)
-            console.log(util)
-            console.log(args)
-            console.log(util.thread.peekStack())
-            // console.log(util.thread.peekStackFrame().op.id)
-            console.log(util.thread.blockContainer._blocks[util.thread.blockContainer._blocks[this.getBlockId(util)].parent ?? this.getBlockId(util)].opcode === "gpusb3_placeholder")
-            let script = util.thread
-            //console.log(script) // script[Object.getOwnPropertyNames(script)[0]].value.startingFunction
-            return 1
-            */
-            
-            const buffer = this.device.createBuffer({
-                size: 16,
-                // @ts-ignore
-                usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-            });
-
-            let data
-            buffer.mapAsync(
-                // @ts-ignore
-                GPUMapMode.READ,
-                // 0,
-                // shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.size,
-            ).then((value) => {
-                let e = buffer.getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input.size*/)
-                // @ts-ignore
-                data = new Float32Array(e)
-
-                //readOutput = JSON.stringify(data)
-            },
-            (reason) => {
-                console.warn(reason)
-            })
-            
         }
 
         genInputTree(util,thread,blocks,check,addCheck) {
@@ -1951,7 +1817,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             return output
         }
 
-        compile (util,thread,blocks,firstblock,addStart) {
+        compile(util,thread,blocks,firstblock,addStart) {
             let output = []
             let held = firstblock
             if (addStart) { output = output.concat(this.genBlock(util,thread,blocks,held)) }
@@ -2037,13 +1903,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             if (threads.length > 0) {
                 threads.forEach(async (t) => {
                     t.tryCompile() // this doesn't do anything =D
-                    //console.log(t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block)
-                    //console.log(this.genInputTree(util, t, t.blockContainer._blocks, t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block, true))
-                    // let farraycom = this.compile(util, t, t.blockContainer._blocks,t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block,true)
-                    //let farraycom = this.genInputTree(util, t, t.blockContainer._blocks, t.blockContainer._blocks[t.topBlock].inputs.GPUARGS.block, true) // farraycom = function array compiled
-                    //console.log(farraycom)
-                    //let funcargs = JSON.parse(this.genWGSL(util, farraycom, 0))
-                    //console.log(funcargs)
 
                     const arraycompiled = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
                     console.log(arraycompiled)
@@ -2053,23 +1912,27 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                     let bglInput = t.blockContainer._blocks[t.blockContainer._blocks[t.topBlock].inputs.BGL.block]
                     let nameInput = t.blockContainer._blocks[t.blockContainer._blocks[t.topBlock].inputs.NAME.block]
                     if (nameInput.opcode != "text" || bglInput.opcode != "text") {
-                        this.throwError("unexpectedInput", "Unexpected input for block input!", "ShaderDefinition", "Shader name and bind group layout cannot have inputs!", util)
+                        this.throwError("UnexpectedInput", "Unexpected input for block input!", "ShaderDefinition", "Shader name and bind group layout cannot have inputs!", util)
                         
                     }
+                    else if (!Object.prototype.hasOwnProperty.call(resources.bindGroupLayouts,bglInput.fields.TEXT.value)) {
+                        this.throwError("BindGroupLayoutNotFound","Bind group layout not found!",`Shader "${nameInput.fields.TEXT.value}"`,`Couldn't find bind group layout"${bglInput.fields.TEXT.value}", make sure to define it before compiling!`,util)
+                    }
                     else {
-                        //this.device.pushErrorScope("out-of-memory")
-
-
-                        //let funcname = this.textFromOp(util,idkman[1],false)//this.textFromOp(util, farraycom[1], false)
                         let funcname = nameInput.fields.TEXT.value
-                        //this.device.pushErrorScope("validation")
+                        
+                        this.device.pushErrorScope("internal")
+                        this.device.pushErrorScope("validation")
                         const shaderModule = this.device.createShaderModule({
                             label: `Shader "${funcname}"`,
                             code: compiled
                         })
-                        /*this.device.popErrorScope((error) => {
+                        this.device.popErrorScope((error) => {
                             this.throwError("ShaderCreationError", error.message, "ShaderModuleCreation",error, util)
-                        })*/
+                        })
+                        this.device.popErrorScope((error) => {
+                            this.throwError("ShaderCreationError", error.message, "ShaderModuleCreation",error, util)
+                        })
 
                         const compilationinfo = await shaderModule.getCompilationInfo()
                         console.log(compilationinfo)
@@ -2077,18 +1940,18 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                         for (const message of compilationinfo.messages) {
                             this.throwError("WGSLError", message.message, `ShaderCreation`,`Error parsing WGSL in shader \"${funcname}\": ${message.message} - Line ${message.lineNum}:${message.linePos} ${compiled.substring(Math.max(0, message.offset-15),message.offset)}**${compiled.substring(message.offset,message.offset + message.length)}**${compiled.substring(message.offset+message.length,Math.min(compiled.length, message.offset+message.length+15))}`)
                         }
-
                         
-                    
                         
                         shaders[funcname] = {
                             name: funcname
                         }
                         let shader = shaders[funcname]
-                        console.log(resources, Scratch.Cast.toString(args.BGL))
+
+                        this.device.pushErrorScope("validation")
+                        this.device.pushErrorScope("internal")
                         shader.computePipeline = this.device.createComputePipeline({
                             layout: this.device.createPipelineLayout({
-                                bindGroupLayouts: [resources.bindGroupLayouts[bglInput.fields.TEXT.value]] // todo: error handling here and actually make it use the values from the hat
+                                bindGroupLayouts: [resources.bindGroupLayouts[bglInput.fields.TEXT.value]]
                             }),
                             compute: {
                                 module: shaderModule,
@@ -2096,25 +1959,14 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                             }
 
                         })
-                        /*this.device.popErrorScope((error) => {
+                        this.device.popErrorScope((error) => {
                             this.throwError("ComputePipelineError", error.message, "ComputePipelineCreation", error, util)
                         })
                         this.device.popErrorScope((error) => {
                             this.throwError("ComputePipelineError", error.message, "ComputePipelineCreation", error, util)
-                        })*/
+                        })
 
-                        // shader.commandEncoder = this.device.createCommandEncoder()
-
-                        // shader.passEncoder = shader.commandEncoder.beginComputePass()
-                        // shader.passEncoder.setPipeline(shader.computePipeline)
-                        // shader.passEncoder.setBindGroup(0, shader.bindGroup)
-                        // shader.passEncoder.dispatchWorkgroups(1)
-                        // shader.passEncoder.end()
-                        // this.device.queue.submit([shader.commandEncoder.finish()])
                         
-                        /*this.device.popErrorScope((error) => {
-                            this.throwError("OutOfMemory","Out of memory.", "WebGPU","Out of memory.",util)
-                        })*/
                         console.log("if you're seeing this then the compiler ran without errors :)")
 
                     }
@@ -2134,145 +1986,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         /*
         compute shader reference implementation
         https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API#basic_compute_pipeline
-        
-            // Define global buffer size
-            const BUFFER_SIZE = 1000;
-
-            const shader = `
-            @group(0) @binding(0)
-            var<storage, read_write> output: array<f32>;
-
-            @compute @workgroup_size(64)
-            fn main(
-            @builtin(global_invocation_id)
-            global_id : vec3u,
-
-            @builtin(local_invocation_id)
-            local_id : vec3u,
-            ) {
-            // Avoid accessing the buffer out of bounds
-            if (global_id.x >= ${BUFFER_SIZE}) {
-                return;
-            }
-
-            output[global_id.x] =
-                f32(global_id.x) * 1000. + f32(local_id.x);
-            }
-            `;
-            const output = this.device.createBuffer({
-                size: BUFFER_SIZE,
-                // @ts-ignore
-                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-            });
-            
-            const stagingBuffer = this.device.createBuffer({
-                size: BUFFER_SIZE,
-                // @ts-ignore
-                usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-            });
-
-            const shaderModule = this.device.createShaderModule({
-                code: shader,
-            })
-
-            // const bindGroupLayout = this.device.createBindGroupLayout({
-            // entries: [
-            //     {
-            //     binding: 0,
-            //     // @ts-ignore
-            //     visibility: GPUShaderStage.COMPUTE,
-            //     buffer: {
-            //         type: "storage",
-            //     },
-            //     },
-            // ],
-            // });
-
-            // const bindGroup = this.device.createBindGroup({
-            // layout: bindGroupLayout,
-            // entries: [
-            //     {
-            //     binding: 0,
-            //     resource: {
-            //         buffer: output,
-            //     },
-            //     },
-            // ],
-            // });
-            
-            const computePipeline = this.device.createComputePipeline({
-                layout: this.device.createPipelineLayout({
-                    bindGroupLayouts: [], // bindGroupLayout
-                }),
-                compute: {
-                    module: shaderModule,
-                    entryPoint: "main",
-                },
-            });
-            
-            // @ts-ignore
-            const commandEncoder = this.device.createCommandEncoder();
-            // @ts-ignore
-            const passEncoder = commandEncoder.beginComputePass()
-            passEncoder.setPipeline(computePipeline);
-            //passEncoder.setBindGroup(0, bindGroup);
-            passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / 64));
-
-            passEncoder.end();
-
-            // Copy output buffer to staging buffer
-            commandEncoder.copyBufferToBuffer(
-                output,
-                0, // Source offset
-                stagingBuffer,
-                0, // Destination offset
-                BUFFER_SIZE,
-            );
-            
-            // End frame by passing array of command buffers to command queue for execution
-            this.device.queue.submit([commandEncoder.finish()]);
-    
-            // map staging buffer to read results back to JS
-            // let data = ["you done messed up"]
-            // stagingBuffer.mapAsync(
-            //     // @ts-ignore
-            //     GPUMapMode.READ,
-            //     0, // Offset
-            //     BUFFER_SIZE, // Length
-            // ).then((value) => {
-            //     const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE)
-            //     data = copyArrayBuffer.slice()
-            //     stagingBuffer.unmap();
-            // },
-            // (reason) => {
-            //     console.log(reason)
-            // })
-            
-            
-            
-            // console.log(new Float32Array(data));
-
-
-            
-            // map staging buffer to read results back to JS
-            stagingBuffer.mapAsync(
-                // @ts-ignore
-                GPUMapMode.READ,
-                0, // Offset
-                BUFFER_SIZE, // Length
-            ).then((value) => {
-                const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE)
-                const data = copyArrayBuffer.slice();
-                stagingBuffer.unmap();
-                console.log(new Float32Array(data));
-            });
-            
-            // const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE);
-            // const data = copyArrayBuffer.slice();
-            // stagingBuffer.unmap();
-            // console.log(new Float32Array(data));
-            
-  
 
             notes:
             
@@ -2292,12 +2005,19 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         
         runGPU (args, util) {
             if (!Object.prototype.hasOwnProperty.call(shaders,args.GPUFUNC)) {
-                console.log(shaders)
-                this.throwError("shaderNotFound", "Couldn't find specified shader!", "RunShaderBlock", "Couldn't find shader \"" + Scratch.Cast.toString(args.GPUFUNC) + "\"!", util)
+                this.throwError("ShaderNotFound", "Couldn't find specified shader!", "RunShaderBlock", "Couldn't find shader \"" + Scratch.Cast.toString(args.GPUFUNC) + "\"!", util)
+                return
+            }
+            if (!Object.prototype.hasOwnProperty.call(resources.bindGroups,Scratch.Cast.toString(args.BINDGROUP))) {
+                this.throwError("BindGroupNotFound", "Couldn't find specified bind group!", "RunShaderBlock", "Couldn't find bind group \"" + Scratch.Cast.toString(args.BINDGROUP) + "\"!", util)
                 return
             }
             let shader = shaders[args.GPUFUNC]
             console.log(shader)
+
+            this.device.pushErrorScope("validation")
+            this.device.pushErrorScope("internal")
+            this.device.pushErrorScope("out-of-memory")
             const commandEncoder = this.device.createCommandEncoder()
 
             const passEncoder = commandEncoder.beginComputePass()
@@ -2307,9 +2027,15 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             passEncoder.end()
             this.device.queue.submit([commandEncoder.finish()])
 
-            /*this.device.popErrorScope((error) => {
+            this.device.popErrorScope((error) => {
+                this.throwError("UnclassifiedRuntimeErrorOOM",error.message,"RunShaderBlock",error,util)
+            })
+            this.device.popErrorScope((error) => {
                 this.throwError("UnclassifiedRuntimeError",error.message,"RunShaderBlock",error,util)
-            })*/
+            })
+            this.device.popErrorScope((error) => {
+                this.throwError("UnclassifiedRuntimeError",error.message,"RunShaderBlock",error,util)
+            })
             //console.log("yay the function ran without errors =D")
         }
 
@@ -2414,20 +2140,44 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         }
 
         createBuffer(args, util) {
+            this.device.pushErrorScope("validation")
+            this.device.pushErrorScope("internal")
+            this.device.pushErrorScope("out-of-memory")
             currentBindGroupLayout = 
             resources.buffers[Scratch.Cast.toString(args.NAME)] = this.device.createBuffer({
                 label: Scratch.Cast.toString(args.NAME),
                 size: Scratch.Cast.toNumber(args.SIZE),
                 usage: Scratch.Cast.toNumber(args.USAGE)
             })
+            this.device.popErrorScope((error) => {
+                this.throwError("BufferCreationErrorOOM", error.message, "BufferCreation", error, util)
+            })
+            this.device.popErrorScope((error) => {
+                this.throwError("BufferCreationError", error.message, "BufferCreation", error, util)
+            })
+            this.device.popErrorScope((error) => {
+                this.throwError("BufferCreationError", error.message, "BufferCreation", error, util)
+            })
         }
 
         createBindGroupLayout(args, util) {
             // thanks to cst1229 for this section <3
             if (util.stackFrame.blockRanOnce) {
+                this.device.pushErrorScope("validation")
+                this.device.pushErrorScope("internal")
+                this.device.pushErrorScope("out-of-memory")
                 resources.bindGroupLayouts[Scratch.Cast.toString(args.NAME)] = this.device.createBindGroupLayout({
                     entries: resources.bindGroupLayouts[Scratch.Cast.toString(args.NAME)],
                     label: Scratch.Cast.toString(args.NAME)
+                })
+                this.device.popErrorScope((error) => {
+                    this.throwError("BindGroupLayoutCreationErrorOOM", error.message, "BindGroupLayoutCreation", error, util)
+                })
+                this.device.popErrorScope((error) => {
+                    this.throwError("BindGroupLayoutCreationError", error.message, "BindGroupLayoutCreation", error, util)
+                })
+                this.device.popErrorScope((error) => {
+                    this.throwError("BindGroupLayoutCreationError", error.message, "BindGroupLayoutCreation", error, util)
                 })
                 return
             }
@@ -2463,11 +2213,22 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             // thanks to cst1229 for this section <3
             
             if (util.stackFrame.blockRanOnce) {
-                console.log(resources.bindGroups[Scratch.Cast.toString(args.NAME)])
+                this.device.pushErrorScope("validation")
+                this.device.pushErrorScope("internal")
+                this.device.pushErrorScope("out-of-memory")
                 resources.bindGroups[Scratch.Cast.toString(args.NAME)] = this.device.createBindGroup({
                     layout: resources.bindGroupLayouts[Scratch.Cast.toString(args.LAYOUT)],
                     entries: resources.bindGroups[Scratch.Cast.toString(args.NAME)],
                     label: Scratch.Cast.toString(args.NAME)
+                })
+                this.device.popErrorScope((error) => {
+                    this.throwError("BindGroupCreationErrorOOM", error.message, "BindGroupCreation", error, util)
+                })
+                this.device.popErrorScope((error) => {
+                    this.throwError("BindGroupCreationError", error.message, "BindGroupCreation", error, util)
+                })
+                this.device.popErrorScope((error) => {
+                    this.throwError("BindGroupCreationError", error.message, "BindGroupCreation", error, util)
                 })
                 return
             }
@@ -2480,7 +2241,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
         bindGroupEntry(args, util) {
             console.log("entry add run")
-            // todo: error handling in this general area
             const kv = {
                 buffer: "buffers"
             } // bind group entry type -> resources object thing
@@ -2514,12 +2274,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             return this.getBlockId(util) // todo: make this less of a memory leak
         }
 
-        testBlock(args, util) {
-            console.log("NEXT:")
-            console.log(args.NEXT)
-            return args.NEXT
-        }
-
         wgslWhileLoop(args, util) {
             return;
         }
@@ -2533,18 +2287,27 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         }
 
         writeBuffer(args, util) {
+            // todo: more input types here
+            if ((!Object.prototype.hasOwnProperty.call(resources.buffers,Scratch.Cast.toString(args.BUFFER)))) {
+                this.throwError("BufferNotFound","The provided buffer doesn't exist", "ClearBuffer",`The buffer "${Scratch.Cast.toString(args.BUFFER)}" doesn't exist`, util)
+            }
+            if ((!Object.prototype.hasOwnProperty.call(resources.bufferRefs,Scratch.Cast.toString(args.ARRAY)))) {
+                this.throwError("ArrayNotFound","The provided array doesn't exist", "ClearBuffer",`The array "${Scratch.Cast.toString(args.ARRAY)}" doesn't exist`, util)
+            }
             this.device.queue.writeBuffer(resources.buffers[Scratch.Cast.toString(args.BUFFER)], Scratch.Cast.toNumber(args.OFF2), resources.bufferRefs[Scratch.Cast.toString(args.ARRAY)], Scratch.Cast.toNumber(args.OFF1), Scratch.Cast.toNumber(args.SIZE))
         }
 
         copyBufferToBuffer(args, util) {
             if ((Scratch.Cast.toNumber(args.NUMBYTES) <= 0) || (args.BUF1 === args.BUF2) || (!Object.prototype.hasOwnProperty.call(resources.buffers,args.BUF1)) || (!Object.prototype.hasOwnProperty.call(resources.buffers,args.BUF1))) {
-                this.throwError("copyDataFailed", "Copy data failed!", "CopyDataBlock", "Failed to copy data between buffers, check that the buffers exist, buffer 1 isn't the same as buffer 2, and the number of bytes is more than or equal to 0", util)
+                this.throwError("CopyDataFailed", "Copy data failed!", "CopyDataBlock", "Failed to copy data between buffers, check that the buffers exist, buffer 1 isn't the same as buffer 2, and the number of bytes is more than or equal to 0", util)
                 return
             }
             const commandEncoder = this.device.createCommandEncoder({
                 label: "copyBuffer encoder"
             })
 
+            this.device.pushErrorScope("validation")
+            this.device.pushErrorScope("internal")
             commandEncoder.copyBufferToBuffer(
                 resources.buffers[args.BUF1],
                 Scratch.Cast.toNumber(args.BUF1OFF),
@@ -2552,36 +2315,45 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 Scratch.Cast.toNumber(args.BUF2OFF),
                 Scratch.Cast.toNumber(args.NUMBYTES)
             )
+            this.device.popErrorScope((error) => {
+                this.throwError("CopyBufferToBufferError", error.message, "CopyingBufferToBuffer", error, util)
+            })
+            this.device.popErrorScope((error) => {
+                this.throwError("CopyBufferToBufferError", error.message, "CopyingBufferToBuffer", error, util)
+            })
             this.device.queue.submit([commandEncoder.finish()]);
         }
 
         clearBuffer(args, util) {
-            // todo: move this to the new system? i don't know what this is
-            if ((Scratch.Cast.toNumber(args.NUMBYTES) >= 0) || (!Object.prototype.hasOwnProperty.call(shaders,args.SHADER))) {
-                return
+            if ((Scratch.Cast.toNumber(args.NUMBYTES) <= 0 && Scratch.Cast.toNumber(args.NUMBYTES) !== -1)) {
+                this.throwError("InvalidInput","Invalid number of bytes to clear", "ClearBuffer",`The provided number of bytes to clear, ${Scratch.Cast.toNumber(args.NUMBYTES)}, is invalid. Must be more than 0, or -1 to clear all.`)
             }
-            if ((shaders[args.SHADER].inputs.length < Scratch.Cast.toNumber(args.BUFFER))) {
-                return
+            if ((!Object.prototype.hasOwnProperty.call(resources.buffers,Scratch.Cast.toString(args.BUFFER)))) {
+                this.throwError("BufferNotFound","The provided buffer doesn't exist", "ClearBuffer",`The buffer "${Scratch.Cast.toString(args.BUFFER)}" doesn't exist`, util)
             }
             if (Scratch.Cast.toNumber(args.NUMBYTES) === -1) {
-                this.device.clearBuffer(shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input)
+                this.device.clearBuffer(resources.buffers[Scratch.Cast.toString(args.BUFFER)])
             }
             else {
                 this.device.clearBuffer(
-                    shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BUFFER)].input,
+                    resources.buffers[Scratch.Cast.toString(args.BUFFER)],
                     Scratch.Cast.toNumber(args.OFFSET),
                     Scratch.Cast.toNumber(args.NUMBYTES)
-                
                 )
             }
         }
         
         async readBuffer(args, util) {
-            // copy_src, storage to write to internally, then copy_dst, map_read to copy and read from?
             // WARNING:
             // MAY CONTAIN BAD IDEA JUICE
-            // i wrote this code like 4 weeks ago and i don't fully remember what it does. GPUMapMode.READ assumes no writing will be done.
+            // GPUMapMode.READ assumes no writing will be done
+            if (!Object.prototype.hasOwnProperty.call(resources.buffers,args.BUFFER)) {
+                this.throwError("BufferNotFound","The buffer provided doesn't exist","ReadBuffer",`Buffer "${args.BUFFER}" doesn't exist.`,util)
+            }
+
             let data = ["you done messed up"]
+            this.device.pushErrorScope("validation")
+            this.device.pushErrorScope("internal")
             await resources.buffers[args.BUFFER].mapAsync(
                 // @ts-ignore
                 GPUMapMode.READ,
@@ -2592,12 +2364,14 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             const copyArrayBuffer = resources.buffers[args.BUFFER].getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size*/)
             data = copyArrayBuffer.slice()
             resources.buffers[args.BUFFER].unmap();
-            
+            this.device.popErrorScope((error) => {
+                this.throwError("BufferReadError", error.message, "ReadBuffer", error, util)
+            })
+            this.device.popErrorScope((error) => {
+                this.throwError("BufferReadError", error.message, "ReadBuffer", error, util)
+            })
             // @ts-ignore
-            return JSON.stringify(new Float32Array(data));
-            
-            
-            
+            return JSON.stringify(Array.from(new Float32Array(data))); // todo: more types here
             
         }
 
