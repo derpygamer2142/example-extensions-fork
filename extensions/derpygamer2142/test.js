@@ -69,6 +69,12 @@
                     },
 
                     {
+                        opcode: "clearError",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "clear current error"
+                    },
+
+                    {
                         opcode: "error",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "Error"
@@ -760,6 +766,34 @@
                             ARGS: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: ""
+                            }
+                        }
+                    },
+
+
+                    {
+                        blockType: "label",
+                        text: "      "
+                    },
+
+                    {
+                        opcode: "c_arbitraryWGSL",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Arbitrary WGSL [TEXT]",
+                        arguments: {
+                            TEXT: {
+                                type: Scratch.ArgumentType.STRING
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "r_arbitraryWGSL",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Arbitrary WGSL [TEXT]",
+                        arguments: {
+                            TEXT: {
+                                type: Scratch.ArgumentType.STRING
                             }
                         }
                     }
@@ -1715,6 +1749,18 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                                     break;
                                 }
 
+                                case "gpusb3_c_arbitraryWGSL": {
+                                    code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1],recursionDepth+1) : this.textFromOp(util, blocks[i+1],false))
+                                    i += 1;
+                                    break;
+                                }
+
+                                case "gpusb3_r_arbitraryWGSL": {
+                                    code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1],recursionDepth+1) : this.textFromOp(util, blocks[i+1],false))
+                                    i += 1;
+                                    break;
+                                }
+
                                 default: {
                                     this.throwError("InvalidBlock", "Invalid block!", "genWGSL", "Invalid block, WGSL generation failed!", util)
                                     console.error("Invalid block! Did you forget the i += (# of inputs)?")
@@ -2379,7 +2425,9 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             return JSON.stringify(error)
         }
 
-
+        clearError() {
+            error = {}
+        }
     }
     // @ts-ignore
     Scratch.extensions.register(new GPUSb3())
