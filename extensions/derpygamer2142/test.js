@@ -158,6 +158,7 @@
                     {
                         opcode: "bufferEntryDescriptor",
                         blockType: Scratch.BlockType.REPORTER,
+                        // note to self: this text is correct, there's a different descriptor for each type
                         text: "Buffer layout entry descriptor with usage type [TYPE]",
                         arguments: {
                             TYPE: {
@@ -770,6 +771,57 @@
                         }
                     },
 
+                    {
+                        blockType: "label",
+                        text: "Atomics"
+                    },
+
+                    {
+                        opcode: "atomicType",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Create atomic of type [BASE]",
+                        arguments: {
+                            BASE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "i32",
+                                menu: "ATOMICBASES"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "atomicLoad",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Load atomic [ATOMIC]",
+                        arguments: {
+                            ATOMIC: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myAtomic"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "c_atomicFunc",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Perform operation [OP] on atomic [ATOMIC] with value [VALUE]",
+                        arguments: {
+                            OP: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "ATOMICFUNCTIONS",
+                                defaultValue: "atomicStore"
+                            },
+                            ATOMIC: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myAtomic"
+                            },
+                            VALUE: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 15
+                            }
+                        }
+                    },
+
 
                     {
                         blockType: "label",
@@ -972,6 +1024,30 @@
                             "uniform",
                             "storage"
                         ]
+                    },
+                    ATOMICBASES: {
+                        acceptReporters: true,
+                        items: [
+                            "i32",
+                            "u32"
+                        ]
+                    },
+                    ATOMICFUNCTIONS: {
+                        acceptReporters: true,
+                        items: [
+                            //https://www.w3.org/TR/WGSL/#atomic-builtin-functions
+                            "atomicStore",
+                            "atomicAdd",
+                            "atomicSub",
+                            "atomicMax",
+                            "atomicMin",
+                            "atomicAnd",
+                            "atomicOr",
+                            "atomicXor",
+                            "atomicExchange",
+                            "atomicCompareExchangeWeak"
+
+                        ]
                     }
                     
                 }
@@ -1078,6 +1154,14 @@
 
                 case "gpusb3_menu_VARUSAGE": {
                     return _blocks[blob.id].fields.VARUSAGE.value
+                }
+
+                case "gpusb3_menu_ATOMICBASES": {
+                    return _blocks[blob.id].fields.ATOMICBASES.value
+                }
+
+                case "gpusb3_menu_ATOMICFUNCS": {
+                    return _blocks[blob.id].fields.ATOMICFUNCS.value
                 }
 
                 default: {
@@ -1468,6 +1552,7 @@
                                     break;
                                 }
 
+
                                 case "gpusb3_matrixType": {
                                     if (Array.isArray(blocks[i+1]) || Array.isArray(blocks[i+2])) {
                                         this.throwError("UnexpectedInput", "Unexpected input in block input!", "MatrixTypeBlock", "Unexpected input in Root type block!", util)
@@ -1526,6 +1611,24 @@
                                     }
                                     i += 2
                                     break;
+                                }
+
+                                case "gpusb3_atomicLoad": {
+                                    code = code.concat("atomicLoad(&" + (Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1]) : this.textFromOp(util, blocks[i+1],false)) + ")")
+
+                                    i += 1
+                                    break
+                                }
+
+                                case "gpusb3_atomicFunc": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "AtomicFunctionBlock", "Unexpected input in Variable block!", util)
+                                        return "Unexpected input in atomic function!"
+                                    }
+                                    code = code.concat(`${this.textFromOp(blocks[i+1])}(&${(Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2],false))}, ${(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3],false))} )`)
+
+                                    i += 3
+                                    break
                                 }
 
                                 default: {
@@ -2345,7 +2448,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
         copyBufferToBuffer(args, util) {
             if ((Scratch.Cast.toNumber(args.NUMBYTES) <= 0) || (args.BUF1 === args.BUF2) || (!Object.prototype.hasOwnProperty.call(resources.buffers,args.BUF1)) || (!Object.prototype.hasOwnProperty.call(resources.buffers,args.BUF1))) {
-                this.throwError("CopyDataFailed", "Copy data failed!", "CopyDataBlock", "Failed to copy data between buffers, check that the buffers exist, buffer 1 isn't the same as buffer 2, and the number of bytes is more than or equal to 0", util)
+                this.throwError("InvalidInput", "Invalid input recieved when trying to copy data", "CopyDataBlock", "Failed to copy data between buffers, check that the buffers exist, buffer 1 isn't the same as buffer 2, and the number of bytes is more than or equal to 0", util)
                 return
             }
             const commandEncoder = this.device.createCommandEncoder({
@@ -2428,6 +2531,15 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         clearError() {
             error = {}
         }
+
+        c_arbitraryWGSL() {
+            return
+        }
+
+        r_arbitraryWGSL() {
+            return "This block allows you to add custom WGSL to your shaders."
+        }
+
     }
     // @ts-ignore
     Scratch.extensions.register(new GPUSb3())
