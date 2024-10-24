@@ -473,6 +473,18 @@
                     },
 
                     {
+                        opcode: "variablePointer",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Pointer to variable [VAR]",
+                        arguments: {
+                            VAR: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myVariable"
+                            }
+                        }
+                    },
+
+                    {
                         opcode: "indexObject",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "In object [ARRAY] get index [INDEX]",
@@ -1201,12 +1213,12 @@
                     return _blocks[blob.id].fields.ATOMICBASES.value
                 }
 
-                case "gpusb3_menu_ATOMICFUNCS": {
-                    return _blocks[blob.id].fields.ATOMICFUNCS.value
+                case "gpusb3_menu_ATOMICFUNCTIONS": {
+                    return _blocks[blob.id].fields.ATOMICFUNCTIONS.value
                 }
 
                 case "gpusb3_menu_BARRIERFUNCTIONS": {
-                    return _blocks[blob.id].fields.BARRIERFUNCTIONSs.value
+                    return _blocks[blob.id].fields.BARRIERFUNCTIONS.value
                 }
 
                 default: {
@@ -1214,7 +1226,7 @@
                         return false
                     }
                     this.throwError("MissingOp", "Input type not found, did you forget to add a menu?","textFromOp", "Input type not found, did you forget to add a menu?", util)
-                    //console.log(blob)
+                    console.log(blob)
                     return "Input type not found!"
                     
                 }
@@ -1281,7 +1293,6 @@
                 return true
             }
             catch {
-                console.log(JSON.stringify(text) + " is not json.")
                 return false
             }
             return false
@@ -1520,9 +1531,9 @@
                                     }
                                     code = code.concat(Array.isArray(blocks[i+1]) ? "error!" : this.textFromOp(util,blocks[i+1],false))
                                     code = code.concat("(")
-                                    if (this.textFromOp(util,blocks[i+1],false) === "arrayLength") {
+                                    /*if (this.textFromOp(util,blocks[i+1],false) === "arrayLength") {
                                         code = code.concat("&") // idk why you need this
-                                    }
+                                    }*/
                                     code = code.concat(Array.isArray(blocks[i+2]) ? this.genWGSL(util,blocks[i+2],recursionDepth+1) : this.textFromOp(util, blocks[i+2],false))
                                     code = code.concat(")")
                                     i += 2
@@ -1659,7 +1670,7 @@
                                 }
 
                                 case "gpusb3_atomicLoad": {
-                                    code = code.concat("atomicLoad(&" + (Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1]) : this.textFromOp(util, blocks[i+1],false)) + ")")
+                                    code = code.concat("atomicLoad(" + (Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1]) : this.textFromOp(util, blocks[i+1],false)) + ")")
 
                                     i += 1
                                     break
@@ -1682,15 +1693,22 @@
                                         this.throwError("UnexpectedInput", "Unexpected input in block input!", "AtomicFunctionBlock", "Unexpected input in Variable block!", util)
                                         return "Unexpected input in atomic function!"
                                     }
-                                    code = code.concat(`${this.textFromOp(blocks[i+1])}(&${(Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2],false))}, ${(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3],false))} )`)
+                                    code = code.concat(`${this.textFromOp(util, blocks[i+1], false)}(${(Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2],false))}, ${(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3],false))} )`)
 
                                     i += 3
                                     break
                                 }
 
+                                case "gpusb3_variablePointer": {
+                                    code = code.concat("&" + (Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionDepth+1) : this.textFromOp(util, blocks[i+1], false)))
+                                    
+                                    i += 1
+                                    break
+                                }
+
                                 default: {
                                     this.throwError("InvalidBlock", "Invalid block!", "genWGSL", "Invalid operator type block!", util)
-                                    console.error("Invalid operator! Did you forget the i += (# of inputs)?") // this is to idiot proof it from myself, me am big smort
+                                    console.error("Invalid operator! Did you forget the i += (# of inputs)?", blocks.slice(i, i+5)) // this is to idiot proof it from myself, me am big smort
                                     return code + "Error! - compilation stopped"
                                 }
                             }
@@ -1743,8 +1761,19 @@
                                         code = code.concat(": ")
                                         code = code.concat(t)
                                     }
-                                    code = code.concat(" = ")
-                                    code = code.concat(Array.isArray(blocks[i+3]) ? this.genWGSL(util,blocks[i+3],recursionDepth+1) : this.textFromOp(util,blocks[i+3],false))
+                                    if (!Array.isArray(blocks[i+3])) {
+                                        const t = this.textFromOp(util, blocks[i+3], false)
+                                        //console.log(JSON.stringify(t), t == "")
+                                        if (t != "") {
+                                            code = code.concat(" = ")
+                                            code = code.concat(t)
+                                        }
+                                    }
+                                    else {
+                                        code = code.concat(" = ")
+                                        code = code.concat(this.genWGSL(util,blocks[i+3],recursionDepth+1))
+                                    }
+                                    
                                     code = code.concat(";\n")
                                     i += 4
                                     break;
@@ -1926,19 +1955,19 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                                         this.throwError("UnexpectedInput", "Unexpected input in block input!", "AtomicFunctionBlock", "Unexpected input in Variable block!", util)
                                         return "Unexpected input in atomic function!"
                                     }
-                                    code = code.concat(`${this.textFromOp(blocks[i+1])}(&${(Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2],false))}, ${(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3],false))} );`)
+                                    code = code.concat(`${this.textFromOp(util, blocks[i+1], false)}(${(Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2],false))}, ${(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3],false))} );`)
 
                                     i += 3
                                     break
                                 }
 
-                                case "barrier": {
+                                case "gpusb3_barrier": {
                                     if (Array.isArray(blocks[i+1])) {
                                         // barrier block minecraft??????
                                         this.throwError("UnexpectedInput", "Unexpected input in block input!", "BarrierBlock", "Unexpected input in Variable block!", util)
                                         return "Unexpected input in barrier!"
                                     }
-                                    code = code.concat(this.textFromOp(blocks[i+1]) + "();")
+                                    code = code.concat(this.textFromOp(util,blocks[i+1],false) + "();")
 
                                     i += 1
                                     break
@@ -1946,7 +1975,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
                                 default: {
                                     this.throwError("InvalidBlock", "Invalid block!", "genWGSL", "Invalid block, WGSL generation failed!", util)
-                                    console.error("Invalid block! Did you forget the i += (# of inputs)?")
+                                    console.error("Invalid block! Did you forget the i += (# of inputs)?", blocks.slice(i, i+5))
                                     return code + "Error! - compilation stopped"
                                 }
                             }
@@ -2030,7 +2059,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 }
             }
             else {
-                console.log(JSON.stringify(heldInputs) + " does not require a tree")
             }
             if (Object.prototype.hasOwnProperty.call(blocks[block].inputs,"SUBSTACK")) {
                 output.push(this.compile(util,thread,blocks,blocks[block].inputs.SUBSTACK.block,true))
@@ -2080,7 +2108,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                     }
                 }
                 else {
-                    console.log(JSON.stringify(heldInputs) + " does not require a tree")
+
                 }
                 if (Object.prototype.hasOwnProperty.call(blocks[held].inputs,"SUBSTACK") || blocks[held].opcode === "control_if" || blocks[held].opcode === "control_if_else" || blocks[held].opcode === "gpusb3_computeFunc" || blocks[held].opcode === "gpusb3_defFunc") {
                     if ((blocks[held].opcode === "control_if" || blocks[held].opcode === "gpusb3_computeFunc" || blocks[held].opcode === "gpusb3_defFunc" || blocks[held].opcode === "control_if_else") && !Object.prototype.hasOwnProperty.call(blocks[held].inputs,"SUBSTACK")) {
@@ -2117,7 +2145,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             let threads = util.startHats("gpusb3_compileHat") // NOTE TO SELF: THIS DOESN'T START THE HATS(why is it named that then. this is stupid and i don't like it, i am going to complain on my twitter dot com (just kidding twitter is for nerds and i don't use it. also as of writing this comment for some it reason allows weird stuff now, what were they even thinking. twitter was bad to begin with but elon musk's midlife crisis ran it so far into the ground that it burned alive, also i'm not calling it x)), thanks sharkpool
             let newthreads = []
             vm.runtime.threads.forEach((i) => {
-                console.log(util.thread.blockContainer._blocks,i.topBlock)
                 //console.log(i.topBlock)
                 if (Object.prototype.hasOwnProperty.call(util.thread.blockContainer._blocks,i.topBlock)) {
                     if (util.thread.blockContainer._blocks[i.topBlock].opcode === "gpusb3_compileHat") {
@@ -2128,7 +2155,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             })
             threads = newthreads
             //threads = vm.runtime.threads.filter((i) => util.thread.blockContainer._blocks[i.topBlock].opcode === "gpusb3_compileHat")
-            console.log(threads)
+            //console.log(threads)
             if (threads.length > 0) {
                 threads.forEach(async (t) => {
                     t.tryCompile() // this doesn't do anything =D
@@ -2196,7 +2223,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                         })
 
                         
-                        console.log("if you're seeing this then the compiler ran without errors :)")
 
                     }
                 })
@@ -2242,7 +2268,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 return
             }
             let shader = shaders[args.GPUFUNC]
-            console.log(shader)
 
             this.device.pushErrorScope("validation")
             this.device.pushErrorScope("internal")
@@ -2469,7 +2494,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         }
 
         bindGroupEntry(args, util) {
-            console.log("entry add run")
             const kv = {
                 buffer: "buffers"
             } // bind group entry type -> resources object thing
@@ -2620,6 +2644,29 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             return "This block allows you to add custom WGSL to your shaders."
         }
 
+        atomicType() {
+            return "This block returns a type that can be used to declare an atomic variable."
+        }
+
+        atomicLoad() {
+            return "This block gets an atomic function"
+        }
+
+        c_atomicFunc() {
+
+        }
+
+        r_atomicFunc() {
+            return "This block performs a thread safe operation on an atomic variable."
+        }
+
+        barrier() {
+
+        }
+
+        variablePointer() {
+            return "This block converts a variable to a pointer. Equivilant to *someVar in c."
+        }
     }
     // @ts-ignore
     Scratch.extensions.register(new GPUSb3())
