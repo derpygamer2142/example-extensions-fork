@@ -773,7 +773,7 @@
 
                     {
                         blockType: "label",
-                        text: "Atomics"
+                        text: "Thread safety"
                     },
 
                     {
@@ -818,6 +818,39 @@
                             VALUE: {
                                 type: Scratch.ArgumentType.NUMBER,
                                 defaultValue: 15
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "r_atomicFunc",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Perform operation [OP] on atomic [ATOMIC] with value [VALUE]",
+                        arguments: {
+                            OP: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "ATOMICFUNCTIONS",
+                                defaultValue: "atomicStore"
+                            },
+                            ATOMIC: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myAtomic"
+                            },
+                            VALUE: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 15
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "barrier",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Barrier [TYPE]",
+                        arguments: {
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "BARRIERFUNCTIONS"
                             }
                         }
                     },
@@ -1048,8 +1081,16 @@
                             "atomicCompareExchangeWeak"
 
                         ]
+                    },
+
+                    BARRIERFUNCTIONS: {
+                        acceptReporters: true,
+                        items: [
+                            "storageBarrier",
+                            "workgroupBarrier"
+                            // "textureBarrier"
+                        ]
                     }
-                    
                 }
             };
 
@@ -1162,6 +1203,10 @@
 
                 case "gpusb3_menu_ATOMICFUNCS": {
                     return _blocks[blob.id].fields.ATOMICFUNCS.value
+                }
+
+                case "gpusb3_menu_BARRIERFUNCTIONS": {
+                    return _blocks[blob.id].fields.BARRIERFUNCTIONSs.value
                 }
 
                 default: {
@@ -1620,7 +1665,19 @@
                                     break
                                 }
 
-                                case "gpusb3_atomicFunc": {
+                                case "gpusb3_atomicType": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "AtomicTypeBlock", "Unexpected input in Variable block!", util)
+                                        return "Unexpected input in variable usage!"
+                                    }
+                                    code = code.concat("atomic<" + this.textFromOp(util, blocks[i+1],false) + ">")
+
+                                    i += 1
+                                    break
+                                }
+
+                                
+                                case "gpusb3_r_atomicFunc": {
                                     if (Array.isArray(blocks[i+1])) {
                                         this.throwError("UnexpectedInput", "Unexpected input in block input!", "AtomicFunctionBlock", "Unexpected input in Variable block!", util)
                                         return "Unexpected input in atomic function!"
@@ -1862,6 +1919,29 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                                     code = code.concat(Array.isArray(blocks[i+1]) ? this.genWGSL(util,blocks[i+1],recursionDepth+1) : this.textFromOp(util, blocks[i+1],false))
                                     i += 1;
                                     break;
+                                }
+
+                                case "gpusb3_c_atomicFunc": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "AtomicFunctionBlock", "Unexpected input in Variable block!", util)
+                                        return "Unexpected input in atomic function!"
+                                    }
+                                    code = code.concat(`${this.textFromOp(blocks[i+1])}(&${(Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2],false))}, ${(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3],false))} );`)
+
+                                    i += 3
+                                    break
+                                }
+
+                                case "barrier": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        // barrier block minecraft??????
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "BarrierBlock", "Unexpected input in Variable block!", util)
+                                        return "Unexpected input in barrier!"
+                                    }
+                                    code = code.concat(this.textFromOp(blocks[i+1]) + "();")
+
+                                    i += 1
+                                    break
                                 }
 
                                 default: {
