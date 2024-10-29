@@ -23,7 +23,7 @@
         buffers: {},
         bindGroups: {},
         bindGroupLayouts: {},
-        bufferRefs: {},
+        bufferRefs: {}, // deprecated, not used anywhere anymore
         arrayBuffers: {},
         views: {}
     }
@@ -267,6 +267,7 @@
                         // https://webidl.spec.whatwg.org/#AllowSharedBufferSource
                         opcode: "genF32",
                         blockType: Scratch.BlockType.REPORTER,
+                        hideFromPalette: true,
                         text: "F32 array from array [ARRAY]",
                         arguments: {
                             ARRAY: {
@@ -372,6 +373,12 @@
                     },
 
                     {
+                        opcode: "listABs",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "List arraybuffers"
+                    },
+
+                    {
                         opcode: "createAB",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "Create arraybuffer called [ARRAYBUFFER] with length [LENGTH]",
@@ -386,6 +393,60 @@
                                 defaultValue: 16
                             }
                         }
+                    },
+
+                    {
+                        opcode: "createABFromArray",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Create arraybuffer and view called [ARRAYBUFFER] from array [ARRAY] of type [TYPE] ",
+                        arguments: {
+                            ARRAYBUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myArrayBuffer"
+                            },
+                            ARRAY: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "[1,2,3]"
+                            },
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "TYPEDARRAYTYPES"
+                            },
+                        }
+                    },
+
+                    {
+                        opcode: "deleteAB",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Delete arraybuffer [ARRAYBUFFER]",
+                        arguments: {
+                            ARRAYBUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myArrayBuffer"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "resizeAB",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Resize arraybuffer [ARRAYBUFFER] to [SIZE] bytes",
+                        arguments: {
+                            ARRAYBUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "ARRAYBUFFERS"
+                            },
+                            SIZE: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 16
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "listViews",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "List views"
                     },
 
                     {
@@ -409,39 +470,11 @@
                     },
 
                     {
-                        opcode: "listABs",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "List arraybuffers"
-                    },
-
-                    {
-                        opcode: "listviews",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "List views"
-                    },
-
-                    {
-                        opcode: "ABLength",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "Length of arraybuffer [ARRAYBUFFER]",
+                        opcode: "deleteView",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Delete view [NAME]",
                         arguments: {
-                            ARRAYBUFFER: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "getArrayBuffersMenu"
-                            }
-                        }
-                    },
-
-                    {
-                        opcode: "itemOfView",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "Item [INDEX] of arraybuffer view [VIEW]",
-                        arguments: {
-                            INDEX: {
-                                type: Scratch.ArgumentType.NUMBER,
-                                defaultValue: 0
-                            },
-                            VIEW: {
+                            NAME: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "myView"
                             }
@@ -489,6 +522,66 @@
                     },
 
                     {
+                        opcode: "fillView",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Fill items [START] to [END] of view [VIEW] with [VALUE]",
+                        arguments: {
+                            START: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            END: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 5
+                            },
+                            VIEW: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myView"
+                            },
+                            VALUE: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 3
+                            },
+                        }
+                    },
+
+                    {
+                        opcode: "itemOfView",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Item [INDEX] of arraybuffer view [VIEW]",
+                        arguments: {
+                            INDEX: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            VIEW: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myView"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "sliceView",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Items [START] to [END] of view [VIEW]",
+                        arguments: {
+                            START: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            END: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 3
+                            },
+                            VIEW: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myView"
+                            }
+                        }
+                    },
+
+                    {
                         opcode: "viewToArray",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "Get view [VIEW] as array",
@@ -501,49 +594,17 @@
                     },
 
                     {
-                        opcode: "sliceView",
+                        opcode: "propFromView",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "Items [INDEX1] to [INDEX2] of view [VIEW]",
+                        text: "[PROP] of view [VIEW]",
                         arguments: {
-                            INDEX1: {
-                                type: Scratch.ArgumentType.NUMBER,
-                                defaultValue: 0
-                            },
-                            INDEX2: {
-                                type: Scratch.ArgumentType.NUMBER,
-                                defaultValue: 3
+                            PROP: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "TYPEDARRAYPROPS"
                             },
                             VIEW: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "myView"
-                            }
-                        }
-                    },
-
-                    {
-                        opcode: "ABLength",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "Length of arraybuffer [ARRAYBUFFER]",
-                        arguments: {
-                            ARRAYBUFFER: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "getArrayBuffersMenu"
-                            }
-                        }
-                    },
-
-                    {
-                        opcode: "resizeAB",
-                        blockType: Scratch.BlockType.COMMAND,
-                        text: "Resize arraybuffer [ARRAYBUFFER] to [SIZE] bytes",
-                        arguments: {
-                            ARRAYBUFFER: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "getArrayBuffersMenu"
-                            },
-                            SIZE: {
-                                type: Scratch.ArgumentType.NUMBER,
-                                defaultValue: 16
                             }
                         }
                     },
@@ -1317,6 +1378,16 @@
                     ARRAYBUFFERS: {
                         acceptReporters: true,
                         items: "getArrayBuffersMenu"
+                    },
+
+                    TYPEDARRAYPROPS: {
+                        acceptReporters: true,
+                        items: [
+                            "BYTES_PER_ELEMENT",
+                            "byteLength",
+                            "length",
+
+                        ]
                     }
                 }
             };
@@ -2759,10 +2830,10 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             if ((!Object.prototype.hasOwnProperty.call(resources.buffers,Scratch.Cast.toString(args.BUFFER)))) {
                 this.throwError("BufferNotFound","The provided buffer doesn't exist", "ClearBuffer",`The buffer "${Scratch.Cast.toString(args.BUFFER)}" doesn't exist`, util)
             }
-            if ((!Object.prototype.hasOwnProperty.call(resources.bufferRefs,Scratch.Cast.toString(args.ARRAY)))) {
+            if ((!Object.prototype.hasOwnProperty.call(resources.arrayBuffers,Scratch.Cast.toString(args.ARRAY)))) {
                 this.throwError("ArrayNotFound","The provided array doesn't exist", "ClearBuffer",`The array "${Scratch.Cast.toString(args.ARRAY)}" doesn't exist`, util)
             }
-            this.device.queue.writeBuffer(resources.buffers[Scratch.Cast.toString(args.BUFFER)], Scratch.Cast.toNumber(args.OFF2), resources.bufferRefs[Scratch.Cast.toString(args.ARRAY)], Scratch.Cast.toNumber(args.OFF1), Scratch.Cast.toNumber(args.SIZE))
+            this.device.queue.writeBuffer(resources.buffers[Scratch.Cast.toString(args.BUFFER)], Scratch.Cast.toNumber(args.OFF2), resources.arrayBuffers[Scratch.Cast.toString(args.ARRAY)], Scratch.Cast.toNumber(args.OFF1), Scratch.Cast.toNumber(args.SIZE))
         }
 
         copyBufferToBuffer(args, util) {
@@ -2904,10 +2975,9 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             /*if (!Object.prototype.hasOwnProperty.call(resources.arrayBuffers,Scratch.Cast.toString(args.ARRAYBUFFER))) {
                 this.throwError("ArrayBufferNotFound", "Couldn't find array buffer", "CreateArrayBufferView", "The specified array buffer to view doesn't exist")
             }*/
-           if (Scratch.Cast.toString(args.NAME) == "") return // todo: error handling
+            if (Scratch.Cast.toString(args.NAME) == "") return // this looks weird in the list
             resources.views[Scratch.Cast.toString(args.NAME)] = this.typedArrayFromType(Scratch.Cast.toString(args.TYPE), resources.arrayBuffers[Scratch.Cast.toString(args.ARRAYBUFFER)])
         }
-
 
         typedArrayFromType(type, data) {
             const t = {
@@ -2923,13 +2993,134 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 "BigUint64Array": BigUint64Array,
                 "Float64Array": Float64Array,
             }
-
+            if (!Object.prototype.hasOwnProperty.call(t,type)) type = "Int32Array"
             if (data) return new t[type](data)
             return new t[type]()
         }
 
         listABs() {
             return JSON.stringify(this.getArrayBuffers())
+        }
+
+        listViews() {
+            return JSON.stringify(Array.from((buffersExt?.views ?? new Map()).keys()).concat(Object.keys(resources.views)))
+        }
+
+        createABFromArray(args, util) {
+            if (Scratch.Cast.toString(args.NAME) == "") return // this looks weird in the list
+            let j
+            try {
+                j = JSON.parse(args.ARRAY)
+                if (!Array.isArray(j)) throw new Error("skibidi toilet ohio rizz")
+            }
+            catch {
+                this.throwError("InvalidArray","The provided array is invalid","CreateArrayBufferFromArrayBlock","The provided array is invalid, or isn't an array.",util)
+            }
+            const ta = this.typedArrayFromType(Scratch.Cast.toString(args.TYPE),j)
+            resources.arrayBuffers[Scratch.Cast.toString(args.ARRAYBUFFER)] = ta.buffer
+            resources.views[Scratch.Cast.toString(args.ARRAYBUFFER)] = ta
+        }
+
+        deleteAB(args, util) {
+            if (Object.prototype.hasOwnProperty.call(resources.arrayBuffers,Scratch.Cast.toString(args.ARRAYBUFFER))) {
+                delete resources.arrayBuffers[Scratch.Cast.toString(args.ARRAYBUFFER)]
+            }
+            else {
+                this.throwError("ArrayBufferNotFound","Array buffer not found","DeleteArrayBufferBlock","The specified array buffer doesn't exist",util)
+            }
+        }
+
+        resizeAB(args, util) {
+            if (Object.prototype.hasOwnProperty.call(resources.arrayBuffers,Scratch.Cast.toString(args.ARRAYBUFFER))) {
+                resources.arrayBuffers[Scratch.Cast.toString(args.ARRAYBUFFER)].resize(Scratch.Cast.toNumber(args.SIZE))
+            }
+            else {
+                this.throwError("ArrayBufferNotFound","Array buffer not found","ResizeArrayBufferBlock","The specified array buffer doesn't exist",util)
+            }
+        }
+
+        deleteView(args, util) {
+            if (Object.prototype.hasOwnProperty.call(resources.views,Scratch.Cast.toString(args.VIEW))) {
+                delete resources.views[Scratch.Cast.toString(args.VIEW)]
+            }
+            else {
+                this.throwError("ViewNotFound","View not found","DeleteViewBlock","The specified view doesn't exist",util)
+            }
+        }
+
+        setItemInView(args, util) {
+            if (Object.prototype.hasOwnProperty.call(resources.views,Scratch.Cast.toString(args.VIEW))) {
+                resources.views[Scratch.Cast.toString(args.VIEW)][Scratch.Cast.toNumber(args.INDEX)] = Scratch.Cast.toNumber(args.VALUE)
+            }
+            else {
+                console.log('aaaaa')
+                this.throwError("ViewNotFound","View not found","SetItemInViewBlock","The specified view doesn't exist",util)
+            }
+        }
+
+        setView(args, util) {
+            let j
+            try {
+                j = JSON.parse(args.ARRAY)
+                if (!Array.isArray(j)) throw new Error("balkan rage winter arc jonkler trollge phonk")
+            }
+            catch {
+                this.throwError("InvalidArray","The provided array is invalid","SetViewBlock","The provided array is invalid, or isn't an array.",util)
+            }
+
+            if (Object.prototype.hasOwnProperty.call(resources.views,Scratch.Cast.toString(args.VIEW))) {
+                resources.views[Scratch.Cast.toString(args.VIEW)].set(j,Scratch.Cast.toNumber(args.INDEX))
+            }
+            else {
+                this.throwError("ViewNotFound","View not found","SetViewBlock","The specified view doesn't exist",util)
+            }
+        }
+
+        fillView(args, util) {
+            if (Object.prototype.hasOwnProperty.call(resources.views,Scratch.Cast.toString(args.VIEW))) {
+                resources.views[Scratch.Cast.toString(args.VIEW)].fill(Scratch.Cast.toNumber(args.VALUE),Scratch.Cast.toNumber(args.START),Scratch.Cast.toNumber(args.END))
+            }
+            else {
+                this.throwError("ViewNotFound","View not found","FillViewBlock","The specified view doesn't exist",util)
+            }
+        }
+
+        itemOfView(args, util) {
+            if (Object.prototype.hasOwnProperty.call(resources.views,Scratch.Cast.toString(args.VIEW))) {
+                return resources.views[Scratch.Cast.toString(args.VIEW)][Scratch.Cast.toNumber(args.INDEX)]
+            }
+            else {
+                return ""
+            }
+        }
+
+        sliceView(args, util) {
+            if (Object.prototype.hasOwnProperty.call(resources.views,Scratch.Cast.toString(args.VIEW))) {
+                const a = Array.from(resources.views[Scratch.Cast.toString(args.VIEW)].slice(Scratch.Cast.toNumber(args.START),Scratch.Cast.toNumber(args.END)))
+                console.log(a)
+                return JSON.stringify(a)
+            }
+            else {
+                return ""
+            }
+        }
+
+        viewToArray(args, util) {
+            if (Object.prototype.hasOwnProperty.call(resources.views,Scratch.Cast.toString(args.VIEW))) {
+                return JSON.stringify(Array.from(resources.views[Scratch.Cast.toString(args.VIEW)]))
+            }
+            else {
+                return ""
+            }
+        }
+
+        propFromView(args, util) {
+            if (Object.prototype.hasOwnProperty.call(resources.views,Scratch.Cast.toString(args.VIEW))) {
+                return resources.views[Scratch.Cast.toString(args.VIEW)][Scratch.Cast.toString(args.PROP)]
+            }
+            else {
+                return ""
+            }
         }
     }
     // @ts-ignore
