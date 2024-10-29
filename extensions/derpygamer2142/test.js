@@ -12,14 +12,20 @@
     if (!Scratch.extensions.unsandboxed) {
         throw new Error("This extension must run unsandboxed.")
     }
-    
+
+    let buffersExt;
+    let penPlus;
+    // load exposed extension stuff
+    Scratch.vm.runtime.on("EXTENSION_ADDED", () => { penPlus = Scratch.vm.runtime.ext_obviousalexc_penPlus; buffersExt = Scratch.vm.runtime.ext_0znzwBuffers; })
     let shaders = {}
     let error = {}
     let resources = {
         buffers: {},
         bindGroups: {},
         bindGroupLayouts: {},
-        bufferRefs: {}
+        bufferRefs: {},
+        arrayBuffers: {},
+        views: {}
     }
     let currentBindGroup = ""
     let currentBindGroupLayout = ""
@@ -359,6 +365,190 @@
                             }
                         }
                     },
+
+                    {
+                        blockType: "label",
+                        text: "ArrayBuffer blocks"
+                    },
+
+                    {
+                        opcode: "createAB",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Create arraybuffer called [ARRAYBUFFER] with length [LENGTH]",
+                        arguments: {
+                            ARRAYBUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myArrayBuffer"
+                            },
+
+                            LENGTH: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 16
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "createABView",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "View arraybuffer [ARRAYBUFFER] as [TYPE] called [NAME]",
+                        arguments: {
+                            ARRAYBUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "ARRAYBUFFERS"
+                            },
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "TYPEDARRAYTYPES"
+                            },
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myView"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "listABs",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "List arraybuffers"
+                    },
+
+                    {
+                        opcode: "listviews",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "List views"
+                    },
+
+                    {
+                        opcode: "ABLength",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Length of arraybuffer [ARRAYBUFFER]",
+                        arguments: {
+                            ARRAYBUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "getArrayBuffersMenu"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "itemOfView",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Item [INDEX] of arraybuffer view [VIEW]",
+                        arguments: {
+                            INDEX: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            VIEW: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myView"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "setItemInView",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Set item [INDEX] of view [VIEW] to [VALUE]",
+                        arguments: {
+                            INDEX: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            VIEW: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myView"
+                            },
+                            VALUE: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 255
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "setView",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Copy data from array [ARRAY] to view [VIEW] from index [INDEX]",
+                        arguments: {
+                            ARRAY: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "[1,2,3]"
+                            },
+                            VIEW: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myView"
+                            },
+                            INDEX: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "viewToArray",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Get view [VIEW] as array",
+                        arguments: {
+                            VIEW: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myView"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "sliceView",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Items [INDEX1] to [INDEX2] of view [VIEW]",
+                        arguments: {
+                            INDEX1: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 0
+                            },
+                            INDEX2: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 3
+                            },
+                            VIEW: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myView"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "ABLength",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Length of arraybuffer [ARRAYBUFFER]",
+                        arguments: {
+                            ARRAYBUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "getArrayBuffersMenu"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "resizeAB",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Resize arraybuffer [ARRAYBUFFER] to [SIZE] bytes",
+                        arguments: {
+                            ARRAYBUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "getArrayBuffersMenu"
+                            },
+                            SIZE: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 16
+                            }
+                        }
+                    },
+
+
                     
                     {
                         blockType: "label",
@@ -1102,6 +1292,31 @@
                             "workgroupBarrier"
                             // "textureBarrier"
                         ]
+                    },
+
+                    TYPEDARRAYTYPES: {
+                        acceptReporters: true,
+                        items: [
+                            "Int32Array",
+                            "Uint32Array",
+                            "Float32Array",
+                            // webgpu doesn't support types below this comment, but people may want to access them using those types anyways
+                            "Int8Array",
+                            "Uint8Array",
+                            "Uint8ClampedArray",
+                            "Int16Array",
+                            "Uint16Array",
+                            // "Float16Array",
+                            // float16array is only available in firefox
+                            "BigInt64Array",
+                            "BigUint64Array",
+                            "Float64Array",
+                        ]
+                    },
+
+                    ARRAYBUFFERS: {
+                        acceptReporters: true,
+                        items: "getArrayBuffersMenu"
                     }
                 }
             };
@@ -2666,6 +2881,55 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
         variablePointer() {
             return "This block converts a variable to a pointer. Equivilant to *someVar in c."
+        }
+
+        createAB(args, util) {
+            resources.arrayBuffers[Scratch.Cast.toString(args.ARRAYBUFFER)] = new ArrayBuffer(Scratch.Cast.toNumber(args.LENGTH))
+        }
+
+        getArrayBuffers() {
+            // note to self: the buffer object on view is views[key]
+            // this code is bad and i hate it
+            return Array.from((buffersExt?.views ?? new Map()).keys()).concat(Object.keys(resources.arrayBuffers))
+        }
+
+        getArrayBuffersMenu() {
+            // note to self: the buffer object on view is views[key]
+            // this code is bad and i hate it
+            const a = Array.from((buffersExt?.views ?? new Map()).keys()).concat(Object.keys(resources.arrayBuffers))
+            return a.length < 1 ? a.concat("Choose a buffer") : a
+        }
+        
+        createABView(args, util) {
+            /*if (!Object.prototype.hasOwnProperty.call(resources.arrayBuffers,Scratch.Cast.toString(args.ARRAYBUFFER))) {
+                this.throwError("ArrayBufferNotFound", "Couldn't find array buffer", "CreateArrayBufferView", "The specified array buffer to view doesn't exist")
+            }*/
+           if (Scratch.Cast.toString(args.NAME) == "") return // todo: error handling
+            resources.views[Scratch.Cast.toString(args.NAME)] = this.typedArrayFromType(Scratch.Cast.toString(args.TYPE), resources.arrayBuffers[Scratch.Cast.toString(args.ARRAYBUFFER)])
+        }
+
+
+        typedArrayFromType(type, data) {
+            const t = {
+                "Int32Array": Int32Array,
+                "Uint32Array": Uint32Array,
+                "Float32Array": Float32Array,
+                "Int8Array": Int8Array,
+                "Uint8Array": Uint8Array,
+                "Uint8ClampedArray": Uint8ClampedArray,
+                "Int16Array": Int16Array,
+                "Uint16Array": Uint16Array,
+                "BigInt64Array": BigInt64Array,
+                "BigUint64Array": BigUint64Array,
+                "Float64Array": Float64Array,
+            }
+
+            if (data) return new t[type](data)
+            return new t[type]()
+        }
+
+        listABs() {
+            return JSON.stringify(this.getArrayBuffers())
         }
     }
     // @ts-ignore
