@@ -25,7 +25,8 @@
         bindGroupLayouts: {},
         bufferRefs: {}, // deprecated, not used anywhere anymore
         arrayBuffers: {},
-        views: {}
+        views: {},
+        textures: {} // webgpu texture objects, actual images will be yoinked from the pen+ costume library(if available) and costume list
     }
     let currentBindGroup = ""
     let currentBindGroupLayout = ""
@@ -246,6 +247,49 @@
                     },
 
                     {
+                        opcode: "createTexture",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Create texture called [NAME] width dimensions [WIDTH] [HEIGHT], color format [FORMAT] and usage [USAGE]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myTexture"
+                            },
+                            WIDTH: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 150
+                            },
+                            HEIGHT: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 150
+                            },
+                            FORMAT: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "TEXTURECOLORFORMATS"
+                            },
+                            USAGE: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 6
+                            }
+                        }
+
+                    },
+
+                    {   
+                        // https://www.w3.org/TR/webgpu/#buffer-usage
+                        opcode: "textureUsage",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Texture usage [USAGE]",
+                        arguments: {
+                            USAGE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "TEXTUREUSAGE",
+                                defaultValue: "STORAGE"
+                            }
+                        }
+                    },
+
+                    {
                         blockType: Scratch.BlockType.REPORTER,
                         opcode: "binaryOr",
                         text: "Usage [A] | [B]",
@@ -363,6 +407,22 @@
                             BUFFER: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "myBuffer"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "writeTexture",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Write texture data from [IMAGE] to texture [TEXTURE]",
+                        arguments: {
+                            IMAGE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "IMAGELIST"
+                            },
+                            TEXTURE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myTexture"
                             }
                         }
                     },
@@ -1269,7 +1329,8 @@
                     BGLENTRYTYPES: {
                         acceptReporters: true,
                         items: [
-                            "buffer"
+                            "buffer",
+                            "texture"
                         ]
                     },
                     CONSTRUCTABLETYPES: {
@@ -1388,6 +1449,78 @@
                             "length",
 
                         ]
+                    },
+
+                    TEXTURECOLORFORMATS: {
+                        // https://www.w3.org/TR/webgpu/#enumdef-gputextureformat
+                        // some formats aren't supported(i think?), and depth textures aren't usable in compute shaders
+                        acceptReporters: true,
+                        items: [
+                                // 8-bit formats
+                                "r8unorm",
+                                "r8snorm",
+                                "r8uint",
+                                "r8sint",
+
+                                // 16-bit formats
+                                "r16uint",
+                                "r16sint",
+                                "r16float",
+                                "rg8unorm",
+                                "rg8snorm",
+                                "rg8uint",
+                                "rg8sint",
+
+                                // 32-bit formats
+                                "r32uint",
+                                "r32sint",
+                                "r32float",
+                                "rg16uint",
+                                "rg16sint",
+                                "rg16float",
+                                "rgba8unorm",
+                                "rgba8unorm-srgb",
+                                "rgba8snorm",
+                                "rgba8uint",
+                                "rgba8sint",
+                                "bgra8unorm",
+                                "bgra8unorm-srgb",
+                                // Packed 32-bit formats
+                                // removed for my own convenience
+                                /*"rgb9e5ufloat",
+                                "rgb10a2uint",
+                                "rgb10a2unorm",
+                                "rg11b10ufloat",*/
+
+                                // 64-bit formats
+                                "rg32uint",
+                                "rg32sint",
+                                "rg32float",
+                                "rgba16uint",
+                                "rgba16sint",
+                                "rgba16float",
+
+                                // 128-bit formats
+                                "rgba32uint",
+                                "rgba32sint",
+                                "rgba32float",
+                        ]
+                    },
+                    TEXTUREUSAGE: {
+                        // https://www.w3.org/TR/webgpu/#dom-gputextureusage-storage_binding
+                        acceptReporters: true,
+                        items: [
+                            "COPY_SRC",
+                            "COPY_DST",
+                            "TEXTURE_BINDING",
+                            "STORAGE_BINDING"
+                            // RENDER_ATTACHMENT intentionally excluded
+                        ]
+                    },
+
+                    IMAGELIST: {
+                        acceptReporters: true,
+                        items: "getImageList"
                     }
                 }
             };
@@ -3121,6 +3254,52 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             else {
                 return ""
             }
+        }
+
+        createTexture(args, util) {
+            resources.textures[Scratch.Cast.toString(args.NAME)] = this.device.createTexture({
+                size: [Scratch.Cast.toNumber(args.WIDTH), Scratch.Cast.toNumber(args.HEIGHT)],
+                format: Scratch.Cast.toString(args.FORMAT),
+                usage: Scratch.Cast.toNumber(args.USAGE)
+            })
+        }
+
+        textureUsage(args, util) {
+            // @ts-ignore
+            return GPUTextureUsage[Scratch.Cast.toString(args.USAGE)]
+        }
+
+        /**
+         * 
+         * @param {*} args 
+         * @param {import("scratch-vm").BlockUtility} util 
+         */
+        writeTexture(args, util) {
+            let textureData
+            // if (penPlus) {
+                //  todo: error handling here and adding pen+ costume library support
+            // }
+            const i = util.target.getCostumeIndexByName(Scratch.Cast.toString(args.IMAGE))
+            if (i !== -1) {
+                textureData = util.target.sprite.costumes[i].asset.data
+            }
+            else {
+                throw new Error("Texture missing - " + args.IMAGE)
+            }
+            const t = resources.textures[Scratch.Cast.toString(args.TEXTURE)]
+            this.device.queue.writeTexture({
+                texture: {
+                    t
+                },
+                data: textureData,
+                dataLayout: { bytesPerRow: (Scratch.Cast.toNumber(t.format.match(/[0-9][0-9]?/)[0]) / 4) * t.width }, // this shouldn't be invalid, if it is you have other problems. get the number of bytes per pixel, multiplied by the width of the row.
+                size: { width: t.width, height: t.height}
+            })
+        }
+
+        getImageList() {
+            
+            return vm.editingTarget.sprite.costumes.map((v) => v.name)
         }
     }
     // @ts-ignore
