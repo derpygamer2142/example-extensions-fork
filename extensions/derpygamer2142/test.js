@@ -26,7 +26,8 @@
         bufferRefs: {}, // deprecated, not used anywhere anymore
         arrayBuffers: {},
         views: {},
-        textures: {} // webgpu texture objects, actual images will be yoinked from the pen+ costume library(if available) and costume list
+        textures: {}, // webgpu texture objects, actual images will be yoinked from the pen+ costume library(if available) and costume list
+        samplers: {}
     }
     let currentBindGroup = ""
     let currentBindGroupLayout = ""
@@ -174,6 +175,36 @@
                             }
                         }
                     },
+
+                    {
+                        opcode: "textureEntryDescriptor",
+                        blockType: Scratch.BlockType.REPORTER,
+                        // note to self: this text is correct, there's a different descriptor for each type
+                        text: "Texture layout entry descriptor with usage type [TYPE] and format [FORMAT]",
+                        arguments: {
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "TEXTUREENTRYTYPE"
+                            },
+                            FORMAT: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "TEXTURECOLORFORMATS"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "samplerEntryDescriptor",
+                        blockType: Scratch.BlockType.REPORTER,
+                        // note to self: this text is correct, there's a different descriptor for each type
+                        text: "Sampler layout entry descriptor with sample type [TYPE]",
+                        arguments: {
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "SAMPLERENTRYTYPE"
+                            }
+                        }
+                    },
                     
                     {
                         opcode: "createBindGroup",
@@ -285,6 +316,27 @@
                                 type: Scratch.ArgumentType.STRING,
                                 menu: "TEXTUREUSAGE",
                                 defaultValue: "STORAGE"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "createSampler",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Create texture sampler called [NAME] with U address mode [UMODE] and v address mode [VMODE] and mag filter [MAGFILTER]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "mySampler"
+                            },
+                            UMODE: {
+                                menu: "ADDRESSMODES"
+                            },
+                            VMODE: {
+                                menu: "ADDRESSMODES"
+                            },
+                            MAGFILTER: {
+                                menu: "FILTERMODES"
                             }
                         }
                     },
@@ -882,6 +934,36 @@
                     },
 
                     {
+                        opcode: "textureType",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Texture of base type [TYPE]",
+                        arguments: {
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "TEXTUREBASETYPES"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "textureType",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Texture type of [TYPE]",
+                        arguments: {
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "TEXTUREBASETYPES"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "samplerType",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Sampler type"
+                    },
+
+                    {
                         opcode: "rootType",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "Base type [TYPE]",
@@ -1330,7 +1412,8 @@
                         acceptReporters: true,
                         items: [
                             "buffer",
-                            "texture"
+                            "texture",
+                            "sampler"
                         ]
                     },
                     CONSTRUCTABLETYPES: {
@@ -1487,10 +1570,10 @@
                                 "bgra8unorm-srgb",
                                 // Packed 32-bit formats
                                 // removed for my own convenience
-                                /*"rgb9e5ufloat",
+                                "rgb9e5ufloat",
                                 "rgb10a2uint",
                                 "rgb10a2unorm",
-                                "rg11b10ufloat",*/
+                                "rg11b10ufloat",
 
                                 // 64-bit formats
                                 "rg32uint",
@@ -1521,6 +1604,44 @@
                     IMAGELIST: {
                         acceptReporters: true,
                         items: "getImageList"
+                    },
+
+                    ADDRESSMODES: {
+                        acceptReporters: true,
+                        items: ["clamp-to-edge", "repeat","mirror-repeat"]
+                    },
+
+                    FILTERMODES: {
+                        acceptReporters: true,
+                        items: ["nearest", "filter"]
+                    },
+
+                    TEXTUREENTRYTYPE: {
+                        acceptReporters: true,
+                        items: [
+                            "write-only",
+                            "read-only",
+                            "read-write"
+                        ]
+                    },
+
+                    SAMPLERENTRYTYPE: {
+                        acceptReporters: true,
+                        items: [
+                            "float",
+                            "unfilterable-float",
+                            "sint",
+                            "uint"
+                        ]
+                    },
+
+                    TEXTUREBASETYPES: {
+                        acceptReporters: true,
+                        items: [
+                            "f32",
+                            "i32",
+                            "u32"
+                        ]
                     }
                 }
             };
@@ -1638,6 +1759,10 @@
 
                 case "gpusb3_menu_BARRIERFUNCTIONS": {
                     return _blocks[blob.id].fields.BARRIERFUNCTIONS.value
+                }
+
+                case "gpusb3_menu_TEXTUREBASETYPES": {
+                    return _blocks[blob.id].fields.TEXTUREBASETYPES.value
                 }
 
                 default: {
@@ -2865,7 +2990,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             let parsed;
             try {
                 parsed = JSON.parse(args.DESC)
-                if (!Object.prototype.hasOwnProperty.call(parsed,"type")) throw new Error("skibidi toilet ohio grimace shake rizz")
+                // if (!Object.prototype.hasOwnProperty.call(parsed,"type")) throw new Error("skibidi toilet ohio grimace shake rizz")
             }
             catch {
                 this.throwError("InvalidEntryDescriptor","Invalid bind group layout entry descriptor!", "BindGroupLayoutEntryBlock","The recieved descriptor for the bind group layout entry block is invalid, did you use the wrong block?",util)
@@ -2914,10 +3039,23 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
         bindGroupEntry(args, util) {
             const kv = {
-                buffer: "buffers"
-            } // bind group entry type -> resources object thing
-            let o = {}
-            o[Scratch.Cast.toString(args.TYPE)] = resources[kv[args.TYPE] ?? "buffers"][args.RESOURCE]
+                buffer: "buffers",
+                texture: "textures",
+                sampler: "samplers"
+            } // bind group entry type -> resources key
+
+            // the object to bind to that slot. buffers are freaky and need a special object
+            let o;
+            const type = kv[args.TYPE] ?? "buffers"
+            if (type == "buffers") {
+                o = {}
+                o[Scratch.Cast.toString(args.TYPE)] = resources[type][args.RESOURCE]
+            }
+            else {
+                o = resources[type][args.RESOURCE]
+                if (type == "textures") o = o.createView()
+            }
+            
             resources.bindGroups[currentBindGroup].push({
                 binding: Scratch.Cast.toNumber(args.BINDING),
                 resource: o
@@ -2943,7 +3081,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 array = []
             }
             resources.bufferRefs[this.getBlockId(util)] = new Float32Array(array)
-            return this.getBlockId(util) // todo: make this less of a memory leak
+            return this.getBlockId(util)
         }
 
         wgslWhileLoop(args, util) {
@@ -2999,6 +3137,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         clearBuffer(args, util) {
             if ((Scratch.Cast.toNumber(args.NUMBYTES) <= 0 && Scratch.Cast.toNumber(args.NUMBYTES) !== -1)) {
                 this.throwError("InvalidInput","Invalid number of bytes to clear", "ClearBuffer",`The provided number of bytes to clear, ${Scratch.Cast.toNumber(args.NUMBYTES)}, is invalid. Must be more than 0, or -1 to clear all.`)
+                
             }
             if ((!Object.prototype.hasOwnProperty.call(resources.buffers,Scratch.Cast.toString(args.BUFFER)))) {
                 this.throwError("BufferNotFound","The provided buffer doesn't exist", "ClearBuffer",`The buffer "${Scratch.Cast.toString(args.BUFFER)}" doesn't exist`, util)
@@ -3021,6 +3160,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             // GPUMapMode.READ assumes no writing will be done
             if (!Object.prototype.hasOwnProperty.call(resources.buffers,args.BUFFER)) {
                 this.throwError("BufferNotFound","The buffer provided doesn't exist","ReadBuffer",`Buffer "${args.BUFFER}" doesn't exist.`,util)
+                return
             }
 
             let data = ["you done messed up"]
@@ -3292,7 +3432,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                     t
                 },
                 data: textureData,
-                dataLayout: { bytesPerRow: (Scratch.Cast.toNumber(t.format.match(/[0-9][0-9]?/)[0]) / 4) * t.width }, // this shouldn't be invalid, if it is you have other problems. get the number of bytes per pixel, multiplied by the width of the row.
+                dataLayout: { bytesPerRow: this.bytesFromFormat(t.format) * t.width }, // get the number of bytes per pixel, multiplied by the width of the row.
                 size: { width: t.width, height: t.height}
             })
         }
@@ -3300,6 +3440,76 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         getImageList() {
             
             return vm.editingTarget.sprite.costumes.map((v) => v.name)
+        } 
+
+        createSampler(args, util) {
+            resources.samplers[Scratch.Cast.toString(args.NAME)] = this.device.createSampler({
+                addressModeU: Scratch.Cast.toString(args.UMODE),
+                addressModeV: Scratch.Cast.toString(args.VMODE),
+                magFilter: Scratch.Cast.toString(args.MAGFILTER),
+            })
+        }
+
+        bytesFromFormat(format) {
+            // returns the bytes per pixel of a given format
+            return {
+                r8unorm: 1,
+                r8norm: 1,
+                r8uint: 1,
+                r8int: 1,
+                r16uint: 2,
+                r16sint: 2,
+                r16float: 2,
+                rg8unorm: 2,
+                rg8snorm: 2,
+                rg8uint: 2,
+                rg8sint: 2,
+                r32uint: 4,
+                r32sint: 4,
+                r32float: 4,
+                rg16uint: 4,
+                rg16sint: 4,
+                rg16float: 4,
+                rgba8unorm: 4,
+                "rgba8unorm-srgb": 4,
+                rgba8snorm: 4,
+                rgba8uint: 4,
+                bgra8unorm: 4,
+                "bgra8unorm-srgb": 4,
+                rgba10a2unorm: 4,
+                rg11b10ufloat: 4,
+                rgba9e5ufloat: 4,
+                rg32uint: 8,
+                rg32sint: 8,
+                rg32float: 8,
+                rgba16uint: 8,
+                rgba16sint: 8,
+                rgba16float: 8,
+                rgba32uint: 16,
+                rgba32sint: 16,
+                rgba32float: 16
+            }[format]
+        }
+        
+        textureType() {
+            return "This block allows you to add texture types to your shaders"
+        }
+
+        samplerType() {
+            return "This block allows you to add sampler types to your shaders"
+        }
+
+        textureEntryDescriptor(args, util) {
+            return JSON.stringify({
+                access: Scratch.Cast.toString(args.TYPE),
+                format: Scratch.Cast.toString(args.FORMAT)
+            })
+        }
+
+        samplerEntryDescriptor(args, util) {
+            return JSON.stringify({
+                samplerType: Scratch.Cast.toString(args.TYPE)
+            })
         }
     }
     // @ts-ignore
