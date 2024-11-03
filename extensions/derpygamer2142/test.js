@@ -3503,10 +3503,10 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 {
                     texture: t
                 },
-                data: textureData,
-                dataLayout: { bytesPerRow: this.bytesFromFormat(t.format) * t.width }, // get the number of bytes per pixel, multiplied by the width of the row.
-                size: { width: t.width, height: t.height}
-            })
+                textureData,
+                { bytesPerRow: this.bytesFromFormat(t.format) * t.width }, // get the number of bytes per pixel, multiplied by the width of the row.
+                { width: t.width, height: t.height}
+            )
         }
 
         getImageList() {
