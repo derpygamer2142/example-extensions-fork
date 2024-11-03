@@ -209,7 +209,7 @@ class ExtensionFile extends BuildFile {
 
     if (!metadata.license) {
       throw new Error(
-        "Missing // License: -- We recommend using // License: LGPL-3.0"
+        "Missing // License: -- We recommend using // License: MPL-2.0"
       );
     }
 
@@ -219,7 +219,7 @@ class ExtensionFile extends BuildFile {
       spdxParser(metadata.license);
     } catch (e) {
       throw new Error(
-        `${metadata.license} is not a valid SPDX license. Did you typo it? It is case sensitive. We recommend using // License: LGPL-3.0`
+        `${metadata.license} is not a valid SPDX license. Did you typo it? It is case sensitive. We recommend using // License: MPL-2.0`
       );
     }
 
@@ -860,12 +860,12 @@ class Builder {
     chokidar
       .watch(
         [
-          `${this.extensionsRoot}/**/*`,
-          `${this.imagesRoot}/**/*`,
-          `${this.websiteRoot}/**/*`,
-          `${this.docsRoot}/**/*`,
-          `${this.samplesRoot}/**/*`,
-          `${this.translationsRoot}/**/*`,
+          this.extensionsRoot,
+          this.imagesRoot,
+          this.websiteRoot,
+          this.docsRoot,
+          this.samplesRoot,
+          this.translationsRoot,
         ],
         {
           ignoreInitial: true,
