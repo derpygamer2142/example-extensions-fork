@@ -194,6 +194,7 @@
                     },
 
                     {
+                        hideFromPalette: true,
                         opcode: "samplerEntryDescriptor",
                         blockType: Scratch.BlockType.REPORTER,
                         // note to self: this text is correct, there's a different descriptor for each type
@@ -321,6 +322,8 @@
                     },
 
                     {
+                        // I found out after implementing this that texture samplers don't work in compute shaders :,)
+                        hideFromPalette: true,
                         opcode: "createSampler",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "Create texture sampler called [NAME] with U address mode [UMODE] and v address mode [VMODE] and mag filter [MAGFILTER]",
@@ -936,28 +939,21 @@
                     {
                         opcode: "textureType",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "Texture of base type [TYPE]",
+                        text: "Texture type of [TYPE] with access [ACCESS]",
                         arguments: {
                             TYPE: {
                                 type: Scratch.ArgumentType.STRING,
-                                menu: "TEXTUREBASETYPES"
+                                menu: "TEXTURECOLORFORMATS"
+                            },
+                            ACCESS: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: "VARIABLEACCESSTYPES"
                             }
                         }
                     },
 
                     {
-                        opcode: "textureType",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "Texture type of [TYPE]",
-                        arguments: {
-                            TYPE: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "TEXTUREBASETYPES"
-                            }
-                        }
-                    },
-
-                    {
+                        hideFromPalette: true,
                         opcode: "samplerType",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "Sampler type"
@@ -1374,7 +1370,14 @@
                             "sign",
                             "sinh",
                             "tanh",
-                            // textureDimensions?
+                            "textureDimensions",
+                            "textureLoad",
+                            "textureStore",
+                            //"textureSample",
+                            // "textureSampleBaseClampToEdge"
+                            // "textureSampleBias"
+                            // "textureSampleCompare"
+                            // "textureSampleCompareLevel"
                             "textureNumLayers",
                             "textureNumLevels",
                             "textureNumSamples",
@@ -1413,7 +1416,7 @@
                         items: [
                             "buffer",
                             "texture",
-                            "sampler"
+                            //"sampler"
                         ]
                     },
                     CONSTRUCTABLETYPES: {
@@ -1562,18 +1565,17 @@
                                 "rg16sint",
                                 "rg16float",
                                 "rgba8unorm",
-                                "rgba8unorm-srgb",
+                                //"rgba8unorm-srgb",
                                 "rgba8snorm",
                                 "rgba8uint",
                                 "rgba8sint",
                                 "bgra8unorm",
                                 "bgra8unorm-srgb",
                                 // Packed 32-bit formats
-                                // removed for my own convenience
-                                "rgb9e5ufloat",
-                                "rgb10a2uint",
-                                "rgb10a2unorm",
-                                "rg11b10ufloat",
+                                // "rgb9e5ufloat",
+                                // "rgb10a2uint",
+                                // "rgb10a2unorm",
+                                // "rg11b10ufloat",
 
                                 // 64-bit formats
                                 "rg32uint",
@@ -1641,6 +1643,15 @@
                             "f32",
                             "i32",
                             "u32"
+                        ]
+                    },
+
+                    VARIABLEACCESSTYPES: {
+                        acceptReporters: true,
+                        items: [
+                            "read",
+                            "write",
+                            "read_write"
                         ]
                     }
                 }
@@ -1765,12 +1776,26 @@
                     return _blocks[blob.id].fields.TEXTUREBASETYPES.value
                 }
 
+                case "gpusb3_samplerType": {
+                    return "sampler" // the codesmell here is crazy but this should work well enough
+                }
+
+                case "gpusb3_menu_VARIABLEACCESSTYPES": {
+                    return _blocks[blob.id].fields.VARIABLEACCESSTYPES.value
+                }
+
+                case "gpusb3_menu_TEXTURECOLORFORMATS": {
+                    return _blocks[blob.id].fields.TEXTURECOLORFORMATS.value
+                }
+
                 default: {
                     if (unsafe) {
                         return false
                     }
                     this.throwError("MissingOp", "Input type not found, did you forget to add a menu?","textFromOp", "Input type not found, did you forget to add a menu?", util)
                     console.log(blob)
+                    
+                    // note to self: might need to check for raw inputs or fix that because if a block has no inputs the array compiler doesn't make it an array
                     return "Input type not found!"
                     
                 }
@@ -1858,7 +1883,7 @@
                         
                         if (typeof b === "object") {
                             //const op = b.block
-
+                            console.log(b.block)
                             switch (b.block) {
                                 case "operator_equals": {
                                     code = code.concat(" (")
@@ -2250,6 +2275,19 @@
                                     break
                                 }
 
+                                case "gpusb3_textureType": {
+                                    code = code.concat(`texture_storage_2d<${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1],recursionDepth+1) : this.textFromOp(util, blocks[i+1],false)}, ${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2],recursionDepth+1) : this.textFromOp(util, blocks[i+2],false)}>`)
+
+                                    i += 2
+                                    break
+                                }
+
+                                case "gpusb3_samplerType": {
+                                    code = code.concat("sampler") // probably one of the simplest blocks here
+
+                                    break
+                                }
+
                                 default: {
                                     this.throwError("InvalidBlock", "Invalid block!", "genWGSL", "Invalid operator type block!", util)
                                     console.error("Invalid operator! Did you forget the i += (# of inputs)?", blocks.slice(i, i+5)) // this is to idiot proof it from myself, me am big smort
@@ -2408,10 +2446,13 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                                 // probably the 2 most simple blocks
                                 case "gpusb3_break": {
                                     code = code.concat("break;\n")
+
+                                    break
                                 }
 
                                 case "gpusb3_continue": {
                                     code = code.concat("continue;\n")
+                                    break
                                 }
 
                                 case "gpusb3_bindInput": {
@@ -2419,7 +2460,20 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                                         this.throwError("UnexpectedInput", "Unexpected input for block input!", "BindResourceBlock", "Unexpected input in Bind resource block!", util)
                                         return code + "Error! - compilation stopped"
                                     }
-                                    code = code.concat(`@group(0) @binding(${this.textFromOp(util, blocks[i+1], false)}) var<${Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3], recursionDepth+1) : this.textFromOp(util, blocks[i+3])}> ${this.textFromOp(util, blocks[i+2])}: ${Array.isArray(blocks[i+4]) ? this.genWGSL(util, blocks[i+4], recursionDepth+1) : this.textFromOp(util, blocks[i+4], false)};\n`)
+                                    if (!Array.isArray(blocks[i+3])) {
+                                        const t = this.textFromOp(util,blocks[i+3],false)
+                                        if (t == "") {
+                                            code = code.concat(`@group(0) @binding(${this.textFromOp(util, blocks[i+1], false)}) var ${this.textFromOp(util, blocks[i+2])}: ${Array.isArray(blocks[i+4]) ? this.genWGSL(util, blocks[i+4], recursionDepth+1) : this.textFromOp(util, blocks[i+4], false)};\n`)
+                                        }
+                                        else {
+                                            code = code.concat(`@group(0) @binding(${this.textFromOp(util, blocks[i+1], false)}) var<${t}> ${this.textFromOp(util, blocks[i+2])}: ${Array.isArray(blocks[i+4]) ? this.genWGSL(util, blocks[i+4], recursionDepth+1) : this.textFromOp(util, blocks[i+4], false)};\n`)
+                                        }
+                                    }
+                                    else {
+                                        code = code.concat(`@group(0) @binding(${this.textFromOp(util, blocks[i+1], false)}) var<${this.genWGSL(util, blocks[i+3], recursionDepth+1)}> ${this.textFromOp(util, blocks[i+2])}: ${Array.isArray(blocks[i+4]) ? this.genWGSL(util, blocks[i+4], recursionDepth+1) : this.textFromOp(util, blocks[i+4], false)};\n`)
+                                    }
+                                    
+                                    
                                     i += 4
                                     break;
                                 }
@@ -2623,12 +2677,15 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             let held = firstblock
             if (addStart) { output = output.concat(this.genBlock(util,thread,blocks,held)) }
             let next = blocks[held].next
+            // the ExtensionInfo type is currently undocumented so this will pout about being undefined
+            // @ts-ignore
+            let gpusb3Info = vm.runtime._blockInfo.find((v) => v.id == "gpusb3")
             while (next != null) {
                 held = next
                 next = blocks[held].next
                 output.push(blocks[held].opcode)
                 let heldInputs = structuredClone(blocks[held].inputs)
-                
+                //output.push(gpusb3Info.blocks.find((v) => v.info.opcode == blocks[held].opcode)?.info?.blockType === "reporter" && Object.getOwnPropertyNames(heldInputs).length < 1 ? [blocks[held].opcode] : blocks[held].opcode)
                 if (Object.prototype.hasOwnProperty.call(heldInputs,"SUBSTACK")) {
                     delete heldInputs.SUBSTACK // this is a quick fix and probably won't play well with other extensions.
                     // i will make a custom math/block system later
@@ -2643,9 +2700,14 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                         output.push([])
                     }
                     else {
-                        for (let i = 0; i < Object.getOwnPropertyNames(heldInputs).length; i++) {
+                        const props = Object.getOwnPropertyNames(heldInputs)
+                        for (let i = 0; i < props.length; i++) {
                             output.push(this.genInputTree(util,thread,blocks,heldInputs[Object.getOwnPropertyNames(heldInputs)[i]].block,true))
-                        }
+                        }   
+                        
+                        
+                        // here
+                        
                         if (blocks[held].opcode === "gpusb3_defFunc" && (!Object.prototype.hasOwnProperty.call(heldInputs,"ARGS"))) {
                             output.push(null)
                         }
@@ -2684,6 +2746,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
          * @param {import("scratch-vm").BlockUtility} util 
          */
         async compileStart (args,util) {
+            console.log(util)
             // helpful error site: https://toji.dev/webgpu-best-practices/error-handling.html
             // seems to be one of the only places to explain this in human readable terms
             let threads = util.startHats("gpusb3_compileHat") // NOTE TO SELF: THIS DOESN'T START THE HATS(why is it named that then. this is stupid and i don't like it, i am going to complain on my twitter dot com (just kidding twitter is for nerds and i don't use it. also as of writing this comment for some it reason allows weird stuff now, what were they even thinking. twitter was bad to begin with but elon musk's midlife crisis ran it so far into the ground that it burned alive, also i'm not calling it x)), thanks sharkpool
@@ -3038,18 +3101,25 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         }
 
         bindGroupEntry(args, util) {
+            
             const kv = {
                 buffer: "buffers",
                 texture: "textures",
                 sampler: "samplers"
             } // bind group entry type -> resources key
-
+            
             // the object to bind to that slot. buffers are freaky and need a special object
             let o;
             const type = kv[args.TYPE] ?? "buffers"
+            if (!Object.prototype.hasOwnProperty.call(resources[type],Scratch.Cast.toString(args.RESOURCE))) {
+                this.throwError("ResourceNotFound","The specified resource doesn't exist","BindGroupEntryBlock",`Either the resource type is invalid or the provided resource name doesn't exist.`,util)
+                return
+            }
             if (type == "buffers") {
-                o = {}
-                o[Scratch.Cast.toString(args.TYPE)] = resources[type][args.RESOURCE]
+                o = {
+                    buffer: resources.buffers[args.RESOURCE]
+                }
+                console.log(o)
             }
             else {
                 o = resources[type][args.RESOURCE]
@@ -3400,7 +3470,8 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             resources.textures[Scratch.Cast.toString(args.NAME)] = this.device.createTexture({
                 size: [Scratch.Cast.toNumber(args.WIDTH), Scratch.Cast.toNumber(args.HEIGHT)],
                 format: Scratch.Cast.toString(args.FORMAT),
-                usage: Scratch.Cast.toNumber(args.USAGE)
+                usage: Scratch.Cast.toNumber(args.USAGE),
+                label: Scratch.Cast.toString(args.NAME)
             })
         }
 
@@ -3422,14 +3493,15 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             const i = util.target.getCostumeIndexByName(Scratch.Cast.toString(args.IMAGE))
             if (i !== -1) {
                 textureData = util.target.sprite.costumes[i].asset.data
+                console.log(util.target.sprite.costumes[i].asset.data)
             }
             else {
                 throw new Error("Texture missing - " + args.IMAGE)
             }
             const t = resources.textures[Scratch.Cast.toString(args.TEXTURE)]
-            this.device.queue.writeTexture({
-                texture: {
-                    t
+            this.device.queue.writeTexture(
+                {
+                    texture: t
                 },
                 data: textureData,
                 dataLayout: { bytesPerRow: this.bytesFromFormat(t.format) * t.width }, // get the number of bytes per pixel, multiplied by the width of the row.
