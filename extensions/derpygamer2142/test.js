@@ -1883,7 +1883,6 @@
                         
                         if (typeof b === "object") {
                             //const op = b.block
-                            console.log(b.block)
                             switch (b.block) {
                                 case "operator_equals": {
                                     code = code.concat(" (")
@@ -2745,7 +2744,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
          * @param {*} args 
          * @param {import("scratch-vm").BlockUtility} util 
          */
-        async compileStart (args,util) {
+        compileStart (args,util) {
             console.log(util)
             // helpful error site: https://toji.dev/webgpu-best-practices/error-handling.html
             // seems to be one of the only places to explain this in human readable terms
@@ -3119,7 +3118,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 o = {
                     buffer: resources.buffers[args.RESOURCE]
                 }
-                console.log(o)
+                //console.log(o)
             }
             else {
                 o = resources[type][args.RESOURCE]
@@ -3482,6 +3481,18 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
         /**
          * 
+         * @param {import("scratch-render").SVGSkin | import("scratch-render").BitmapSkin} skin 
+         */
+        skinToArray(skin) {
+            // https://stackoverflow.com/a/18804153/20805087
+            const gl = vm.renderer.gl
+            skin.updateSilhouette()
+            console.log(skin._silhouette._colorData)
+            return skin._silhouette._colorData
+        }
+
+        /**
+         * 
          * @param {*} args 
          * @param {import("scratch-vm").BlockUtility} util 
          */
@@ -3492,13 +3503,22 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             // }
             const i = util.target.getCostumeIndexByName(Scratch.Cast.toString(args.IMAGE))
             if (i !== -1) {
-                textureData = util.target.sprite.costumes[i].asset.data
-                console.log(util.target.sprite.costumes[i].asset.data)
+                // not using the properties that are causing stupid errors so who cares
+                // @ts-ignore
+                textureData = this.skinToArray(vm.renderer._allSkins[util.target.sprite.costumes[i].skinId])
+                //textureData = util.target.sprite.costumes[i].asset.data
+                //console.log(util.target.sprite.costumes[i].asset.data)
             }
             else {
                 throw new Error("Texture missing - " + args.IMAGE)
             }
             const t = resources.textures[Scratch.Cast.toString(args.TEXTURE)]
+            console.log({
+                texture: t
+            },
+            textureData,
+            { bytesPerRow: this.bytesFromFormat(t.format) * t.width }, // get the number of bytes per pixel, multiplied by the width of the row.
+            { width: t.width, height: t.height})
             this.device.queue.writeTexture(
                 {
                     texture: t
