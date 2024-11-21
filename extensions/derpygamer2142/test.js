@@ -316,7 +316,7 @@
                             USAGE: {
                                 type: Scratch.ArgumentType.STRING,
                                 menu: "TEXTUREUSAGE",
-                                defaultValue: "STORAGE"
+                                defaultValue: "STORAGE_BINDING"
                             }
                         }
                     },
@@ -372,6 +372,30 @@
                             ARRAY: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: JSON.stringify([1, 2, 3])
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "copyTextureToBuffer",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Copy texture [TEXTURE] to buffer [BUFFER] with dimensions [WIDTH] [HEIGHT]",
+                        arguments: {
+                            TEXTURE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myTexture"
+                            },
+                            BUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myBuffer"
+                            },
+                            WIDTH: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 15
+                            },
+                            HEIGHT: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 15
                             }
                         }
                     },
@@ -456,12 +480,16 @@
 
                     {
                         opcode: "readBuffer",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "Read buffer [BUFFER]", // todo: add an output type here, not just f32s
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Read buffer [BUFFER] to array buffer [ARRAYBUFFER]", // todo: add an output type here, not just f32s
                         arguments: {
                             BUFFER: {
                                 type: Scratch.ArgumentType.STRING,
                                 defaultValue: "myBuffer"
+                            },
+                            ARRAYBUFFER: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "myArrayBuffer"
                             }
                         }
                     },
@@ -1415,7 +1443,7 @@
                         acceptReporters: true,
                         items: [
                             "buffer",
-                            "texture",
+                            "storageTexture",
                             //"sampler"
                         ]
                     },
@@ -2744,7 +2772,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
          * @param {*} args 
          * @param {import("scratch-vm").BlockUtility} util 
          */
-        compileStart (args,util) {
+        async compileStart (args,util) {
             console.log(util)
             // helpful error site: https://toji.dev/webgpu-best-practices/error-handling.html
             // seems to be one of the only places to explain this in human readable terms
@@ -2789,11 +2817,11 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                             label: `Shader "${funcname}"`,
                             code: compiled
                         })
-                        this.device.popErrorScope((error) => {
-                            this.throwError("ShaderCreationError", error.message, "ShaderModuleCreation",error, util)
+                        this.device.popErrorScope().then((error) => {
+                            if (error) this.throwError("ShaderCreationError", error.message, "ShaderModuleCreation",error, util)
                         })
-                        this.device.popErrorScope((error) => {
-                            this.throwError("ShaderCreationError", error.message, "ShaderModuleCreation",error, util)
+                        this.device.popErrorScope().then((error) => {
+                            if (error) this.throwError("ShaderCreationError", error.message, "ShaderModuleCreation",error, util)
                         })
 
                         const compilationinfo = await shaderModule.getCompilationInfo()
@@ -2821,11 +2849,11 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                             }
 
                         })
-                        this.device.popErrorScope((error) => {
-                            this.throwError("ComputePipelineError", error.message, "ComputePipelineCreation", error, util)
+                        this.device.popErrorScope().then((error) => {
+                            if (error) this.throwError("ComputePipelineError", error.message, "ComputePipelineCreation", error, util)
                         })
-                        this.device.popErrorScope((error) => {
-                            this.throwError("ComputePipelineError", error.message, "ComputePipelineCreation", error, util)
+                        this.device.popErrorScope().then((error) => {
+                            if (error) this.throwError("ComputePipelineError", error.message, "ComputePipelineCreation", error, util)
                         })
 
                         
@@ -2887,14 +2915,14 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             passEncoder.end()
             this.device.queue.submit([commandEncoder.finish()])
 
-            this.device.popErrorScope((error) => {
-                this.throwError("UnclassifiedRuntimeErrorOOM",error.message,"RunShaderBlock",error,util)
+            this.device.popErrorScope().then((error) => {
+                if (error) this.throwError("UnclassifiedRuntimeErrorOOM",error.message,"RunShaderBlock",error,util)
             })
-            this.device.popErrorScope((error) => {
-                this.throwError("UnclassifiedRuntimeError",error.message,"RunShaderBlock",error,util)
+            this.device.popErrorScope().then((error) => {
+                if (error) this.throwError("UnclassifiedRuntimeError",error.message,"RunShaderBlock",error,util)
             })
-            this.device.popErrorScope((error) => {
-                this.throwError("UnclassifiedRuntimeError",error.message,"RunShaderBlock",error,util)
+            this.device.popErrorScope().then((error) => {
+                if (error) this.throwError("UnclassifiedRuntimeError",error.message,"RunShaderBlock",error,util)
             })
             //console.log("yay the function ran without errors =D")
         }
@@ -2978,7 +3006,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         }
 
         bufferUsage(args, util) {
-            // @ts-expect-error
             return GPUBufferUsage[Scratch.Cast.toString(args.USAGE)] ?? 1
             //return "This is used by the def shader arg block to define inputs. It's different from the usage in the bind input block."
         }
@@ -3003,20 +3030,20 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             this.device.pushErrorScope("validation")
             this.device.pushErrorScope("internal")
             this.device.pushErrorScope("out-of-memory")
-            currentBindGroupLayout = 
+            // currentBindGroupLayout = 
             resources.buffers[Scratch.Cast.toString(args.NAME)] = this.device.createBuffer({
                 label: Scratch.Cast.toString(args.NAME),
                 size: Scratch.Cast.toNumber(args.SIZE),
                 usage: Scratch.Cast.toNumber(args.USAGE)
             })
-            this.device.popErrorScope((error) => {
-                this.throwError("BufferCreationErrorOOM", error.message, "BufferCreation", error, util)
+            this.device.popErrorScope().then((error) => {
+                if (error) this.throwError("BufferCreationErrorOOM", error.message, "BufferCreation", error, util)
             })
-            this.device.popErrorScope((error) => {
-                this.throwError("BufferCreationError", error.message, "BufferCreation", error, util)
+            this.device.popErrorScope().then((error) => {
+                if (error) this.throwError("BufferCreationError", error.message, "BufferCreation", error, util)
             })
-            this.device.popErrorScope((error) => {
-                this.throwError("BufferCreationError", error.message, "BufferCreation", error, util)
+            this.device.popErrorScope().then((error) => {
+                if (error) this.throwError("BufferCreationError", error.message, "BufferCreation", error, util)
             })
         }
 
@@ -3030,14 +3057,14 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                     entries: resources.bindGroupLayouts[Scratch.Cast.toString(args.NAME)],
                     label: Scratch.Cast.toString(args.NAME)
                 })
-                this.device.popErrorScope((error) => {
-                    this.throwError("BindGroupLayoutCreationErrorOOM", error.message, "BindGroupLayoutCreation", error, util)
+                this.device.popErrorScope().then((error) => {
+                    if (error) this.throwError("BindGroupLayoutCreationErrorOOM", error.message, "BindGroupLayoutCreation", error, util)
                 })
-                this.device.popErrorScope((error) => {
-                    this.throwError("BindGroupLayoutCreationError", error.message, "BindGroupLayoutCreation", error, util)
+                this.device.popErrorScope().then((error) => {
+                    if (error) this.throwError("BindGroupLayoutCreationError", error.message, "BindGroupLayoutCreation", error, util)
                 })
-                this.device.popErrorScope((error) => {
-                    this.throwError("BindGroupLayoutCreationError", error.message, "BindGroupLayoutCreation", error, util)
+                this.device.popErrorScope().then((error) => {
+                    if (error) this.throwError("BindGroupLayoutCreationError", error.message, "BindGroupLayoutCreation", error, util)
                 })
                 return
             }
@@ -3061,7 +3088,6 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             let o = {
                 binding: Scratch.Cast.toNumber(args.BINDING),
                 // this extension only has compute shaders
-                // @ts-expect-error
                 visibility: GPUShaderStage.COMPUTE
 
             }
@@ -3081,14 +3107,14 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                     entries: resources.bindGroups[Scratch.Cast.toString(args.NAME)],
                     label: Scratch.Cast.toString(args.NAME)
                 })
-                this.device.popErrorScope((error) => {
-                    this.throwError("BindGroupCreationErrorOOM", error.message, "BindGroupCreation", error, util)
+                this.device.popErrorScope().then((error) => {
+                    if (error) this.throwError("BindGroupCreationErrorOOM", error.message, "BindGroupCreation", error, util)
                 })
-                this.device.popErrorScope((error) => {
-                    this.throwError("BindGroupCreationError", error.message, "BindGroupCreation", error, util)
+                this.device.popErrorScope().then((error) => {
+                    if (error) this.throwError("BindGroupCreationError", error.message, "BindGroupCreation", error, util)
                 })
-                this.device.popErrorScope((error) => {
-                    this.throwError("BindGroupCreationError", error.message, "BindGroupCreation", error, util)
+                this.device.popErrorScope().then((error) => {
+                    if (error) this.throwError("BindGroupCreationError", error.message, "BindGroupCreation", error, util)
                 })
                 return
             }
@@ -3103,7 +3129,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             
             const kv = {
                 buffer: "buffers",
-                texture: "textures",
+                storageTexture: "textures",
                 sampler: "samplers"
             } // bind group entry type -> resources key
             
@@ -3194,11 +3220,11 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 Scratch.Cast.toNumber(args.BUF2OFF),
                 Scratch.Cast.toNumber(args.NUMBYTES)
             )
-            this.device.popErrorScope((error) => {
-                this.throwError("CopyBufferToBufferError", error.message, "CopyingBufferToBuffer", error, util)
+            this.device.popErrorScope().then((error) => {
+                if (error) this.throwError("CopyBufferToBufferError", error.message, "CopyingBufferToBuffer", error, util)
             })
-            this.device.popErrorScope((error) => {
-                this.throwError("CopyBufferToBufferError", error.message, "CopyingBufferToBuffer", error, util)
+            this.device.popErrorScope().then((error) => {
+                if (error) this.throwError("CopyBufferToBufferError", error.message, "CopyingBufferToBuffer", error, util)
             })
             this.device.queue.submit([commandEncoder.finish()]);
         }
@@ -3211,11 +3237,14 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             if ((!Object.prototype.hasOwnProperty.call(resources.buffers,Scratch.Cast.toString(args.BUFFER)))) {
                 this.throwError("BufferNotFound","The provided buffer doesn't exist", "ClearBuffer",`The buffer "${Scratch.Cast.toString(args.BUFFER)}" doesn't exist`, util)
             }
+            const commandEncoder = this.device.createCommandEncoder({
+                label: "clearBuffer encoder"
+            })
             if (Scratch.Cast.toNumber(args.NUMBYTES) === -1) {
-                this.device.clearBuffer(resources.buffers[Scratch.Cast.toString(args.BUFFER)])
+                commandEncoder.clearBuffer(resources.buffers[Scratch.Cast.toString(args.BUFFER)])
             }
             else {
-                this.device.clearBuffer(
+                commandEncoder.clearBuffer(
                     resources.buffers[Scratch.Cast.toString(args.BUFFER)],
                     Scratch.Cast.toNumber(args.OFFSET),
                     Scratch.Cast.toNumber(args.NUMBYTES)
@@ -3232,7 +3261,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 return
             }
 
-            let data = ["you done messed up"]
+            // let data = ["you done messed up"]
             this.device.pushErrorScope("validation")
             this.device.pushErrorScope("internal")
             await resources.buffers[args.BUFFER].mapAsync(
@@ -3243,16 +3272,18 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             )
 
             const copyArrayBuffer = resources.buffers[args.BUFFER].getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size*/)
-            data = copyArrayBuffer.slice()
+            console.log(copyArrayBuffer.slice())
+            resources.views.testview = new Float32Array(copyArrayBuffer.slice())
             resources.buffers[args.BUFFER].unmap();
-            this.device.popErrorScope((error) => {
-                this.throwError("BufferReadError", error.message, "ReadBuffer", error, util)
+            this.device.popErrorScope().then((error) => {
+                if (error) this.throwError("BufferReadError", error.message, "ReadBuffer", error, util)
             })
-            this.device.popErrorScope((error) => {
-                this.throwError("BufferReadError", error.message, "ReadBuffer", error, util)
+            this.device.popErrorScope().then((error) => {
+                if (error) this.throwError("BufferReadError", error.message, "ReadBuffer", error, util)
             })
+            resources.arrayBuffers[Scratch.Cast.toString(args.ARRAYBUFFER)] = copyArrayBuffer // todo: error handling here
             // @ts-ignore
-            return JSON.stringify(Array.from(new Float32Array(data))); // todo: more types here
+            //return JSON.stringify(Array.from(new Float32Array(data)));
             
         }
 
@@ -3468,6 +3499,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
         createTexture(args, util) {
             resources.textures[Scratch.Cast.toString(args.NAME)] = this.device.createTexture({
                 size: [Scratch.Cast.toNumber(args.WIDTH), Scratch.Cast.toNumber(args.HEIGHT)],
+                // @ts-expect-error
                 format: Scratch.Cast.toString(args.FORMAT),
                 usage: Scratch.Cast.toNumber(args.USAGE),
                 label: Scratch.Cast.toString(args.NAME)
@@ -3536,8 +3568,11 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
         createSampler(args, util) {
             resources.samplers[Scratch.Cast.toString(args.NAME)] = this.device.createSampler({
+                // @ts-expect-error
                 addressModeU: Scratch.Cast.toString(args.UMODE),
+                // @ts-expect-error
                 addressModeV: Scratch.Cast.toString(args.VMODE),
+                // @ts-expect-error
                 magFilter: Scratch.Cast.toString(args.MAGFILTER),
             })
         }
@@ -3602,6 +3637,24 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
             return JSON.stringify({
                 samplerType: Scratch.Cast.toString(args.TYPE)
             })
+        }
+
+        copyTextureToBuffer(args, util) {
+            const commandEncoder = this.device.createCommandEncoder({
+                label: "copyTextureToBuffer encoder"
+            })
+
+            commandEncoder.copyTextureToBuffer({
+                texture: resources.textures[Scratch.Cast.toString(args.TEXTURE)]
+                // todo: origin here
+            }, {
+                buffer: resources.buffers[Scratch.Cast.toString(args.BUFFER)]
+            }, {
+                width: Scratch.Cast.toNumber(args.WIDTH),
+                height: Scratch.Cast.toNumber(args.HEIGHT)
+            })
+
+            this.device.queue.submit([commandEncoder.finish()]);
         }
     }
     // @ts-ignore
