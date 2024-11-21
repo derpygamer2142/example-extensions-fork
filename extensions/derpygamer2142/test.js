@@ -3271,9 +3271,9 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                 // shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size,
             )
 
-            const copyArrayBuffer = resources.buffers[args.BUFFER].getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size*/)
-            console.log(copyArrayBuffer.slice())
-            resources.views.testview = new Float32Array(copyArrayBuffer.slice())
+            const copyArrayBuffer = resources.buffers[args.BUFFER].getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size*/).slice()
+            console.log(copyArrayBuffer)
+            resources.views.testview = new Float32Array(copyArrayBuffer)
             resources.buffers[args.BUFFER].unmap();
             this.device.popErrorScope().then((error) => {
                 if (error) this.throwError("BufferReadError", error.message, "ReadBuffer", error, util)
