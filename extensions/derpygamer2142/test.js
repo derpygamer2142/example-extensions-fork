@@ -1003,7 +1003,8 @@
                             },
                             TYPE: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: ""
+                                defaultValue: "f32",
+                                menu: "RAWTYPES"
                             }
                         }
                     },
@@ -1565,8 +1566,8 @@
                         acceptReporters: true,
                         items: [
                             "storageBarrier",
-                            "workgroupBarrier"
-                            // "textureBarrier"
+                            "workgroupBarrier",
+                            "textureBarrier"
                         ]
                     },
 
@@ -3351,7 +3352,8 @@ ${blocks[i+2].length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth+1) : "
             )
 
             const copyArrayBuffer = resources.buffers[args.BUFFER].getMappedRange(/*0, shaders[args.SHADER].inputs[Scratch.Cast.toNumber(args.BINDING)].input.size*/).slice()
-            // resources.views.testview = new Float32Array(copyArrayBuffer)
+            console.log(copyArrayBuffer)
+            resources.views.testview = new Float32Array(copyArrayBuffer)
             resources.buffers[args.BUFFER].unmap();
             this.device.popErrorScope().then((error) => {
                 if (error) this.throwError("BufferReadError", error.message, "ReadBuffer", error, util)
