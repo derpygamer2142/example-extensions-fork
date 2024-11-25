@@ -1003,7 +1003,8 @@
                             },
                             TYPE: {
                                 type: Scratch.ArgumentType.STRING,
-                                defaultValue: ""
+                                defaultValue: "f32",
+                                menu: "RAWTYPES"
                             }
                         }
                     },
