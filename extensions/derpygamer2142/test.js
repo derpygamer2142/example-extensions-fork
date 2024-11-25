@@ -1565,8 +1565,8 @@
                         acceptReporters: true,
                         items: [
                             "storageBarrier",
-                            "workgroupBarrier"
-                            // "textureBarrier"
+                            "workgroupBarrier",
+                            "textureBarrier"
                         ]
                     },
 
