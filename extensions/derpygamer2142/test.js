@@ -44,7 +44,7 @@
                 color1: "#4287f5",
                 color2: "#166af2",
                 color3: "#032966",
-                docsURI: 'https://derpygamer2142-extensions.pages.dev/docs/gpusb3',
+                docsURI: 'https://extensions.derpygamer2142.com/docs/gpusb3',
                 blocks: [
                     {
                         opcode: "compileHat",
@@ -403,7 +403,7 @@
                     {
                         opcode: "writeBuffer",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Write [SIZE] elements of data from array [ARRAY] to buffer [BUFFER] from offset [OFF1] to offset [OFF2]",
+                        text: "Write [SIZE] elements of data from arraybuffer [ARRAY] to buffer [BUFFER] from offset [OFF1] to offset [OFF2]",
                         arguments: {
                             SIZE:  { // https://www.w3.org/TR/webgpu/#dom-gpuqueue-writebuffer
                                      // in elements for typesarrays and bytes otherwise
@@ -481,7 +481,7 @@
                     {
                         opcode: "readBuffer",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Read buffer [BUFFER] to array buffer [ARRAYBUFFER]", // todo: add an output type here, not just f32s
+                        text: "Read buffer [BUFFER] to arraybuffer [ARRAYBUFFER]", // todo: add an output type here, not just f32s
                         arguments: {
                             BUFFER: {
                                 type: Scratch.ArgumentType.STRING,
@@ -1048,7 +1048,7 @@
                     {
                         opcode: "wgslFunc",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "WGSL builin [OPERATION] with args [VALUE]",
+                        text: "WGSL builtin [OPERATION] with args [VALUE]",
                         arguments: {
                             OPERATION: {
                                 type: Scratch.ArgumentType.STRING,
@@ -2633,7 +2633,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                                         this.throwError("UnexpectedInput", "Unexpected input in block input!", "AtomicFunctionBlock", "Unexpected input in Variable block!", util)
                                         return "Unexpected input in atomic function!"
                                     }
-                                    code = code.concat(`${this.textFromOp(util, blocks[i+1], false)}(${(Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2],false))}, ${(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3],false))} );`)
+                                    code = code.concat(`${this.textFromOp(util, blocks[i+1], false)}(${(Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2]) : this.textFromOp(util, blocks[i+2],false))}, ${(Array.isArray(blocks[i+3]) ? this.genWGSL(util, blocks[i+3]) : this.textFromOp(util, blocks[i+3],false))} );\n`)
 
                                     i += 3
                                     break
@@ -2645,7 +2645,7 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                                         this.throwError("UnexpectedInput", "Unexpected input in block input!", "BarrierBlock", "Unexpected input in Barrier block!", util)
                                         return "Unexpected input in barrier!"
                                     }
-                                    code = code.concat(this.textFromOp(util,blocks[i+1],false) + "();")
+                                    code = code.concat(this.textFromOp(util,blocks[i+1],false) + "();\n")
 
                                     i += 1
                                     break
