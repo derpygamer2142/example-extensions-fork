@@ -981,7 +981,47 @@
                     },
 
                     {
-                        hideFromPalette: true,
+                        opcode: "declareStruct",
+                        blockType: Scratch.BlockType.CONDITIONAL,
+                        text: "Declare struct called [NAME]",
+                        arguments: {
+                            NAME: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "MyStruct"
+                            }
+                        }
+                    },
+
+                    {
+                        opcode: "structProperty",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "Add property called [PROPERTY] with type [TYPE] to struct",
+                        arguments: {
+                            PROPERTY: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "someProperty"
+                            },
+                            TYPE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: ""
+                            }
+                        }
+                    },
+                    
+                    {
+                        opcode: "structType",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "Type of struct [STRUCT]",
+                        arguments: {
+                            STRUCT: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue: "MyStruct"
+                            }
+                        }
+                    },
+
+                    {
+                        hideFromPalette: true, // this doesn't work with compute shaders, but if i decide to get freaky and somehow add other shader types(i probably won't) why redo code
                         opcode: "samplerType",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "Sampler type"
@@ -2315,6 +2355,19 @@
                                     break
                                 }
 
+                                case "gpusb3_structType": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "StructTypeBlock", "Unexpected input in struct type block!", util)
+                                        return "Unexpected input in struct type"
+                                    }
+
+                                    code = code.concat(this.textFromOp(util, blocks[i+1], false)) // this is the same as some other blocks, but for simplicity reasons there are multiple
+
+                                    i += 1;
+                                    break
+                                }
+
+
                                 default: {
                                     this.throwError("InvalidBlock", "Invalid block!", "genWGSL", "Invalid operator type block!", util)
                                     console.error("Invalid operator! Did you forget the i += (# of inputs)?", blocks.slice(i, i+5)) // this is to idiot proof it from myself, me am big smort
@@ -2589,12 +2642,38 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
                                 case "gpusb3_barrier": {
                                     if (Array.isArray(blocks[i+1])) {
                                         // barrier block minecraft??????
-                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "BarrierBlock", "Unexpected input in Variable block!", util)
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "BarrierBlock", "Unexpected input in Barrier block!", util)
                                         return "Unexpected input in barrier!"
                                     }
                                     code = code.concat(this.textFromOp(util,blocks[i+1],false) + "();")
 
                                     i += 1
+                                    break
+                                }
+
+                                case "gpusb3_declareStruct": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "DeclareStructBlock", "Unexpected input in struct declaration block!", util)
+                                        return "Unexpected input in struct declaration"
+                                    }
+
+                                    code = code.concat(`struct ${this.textFromOp(util, blocks[i+1], false)} {
+${blocks[i+2].length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth+1) : ""}
+};\n`) // this looks ugly but it formats the code correctly
+
+                                    i += 2;
+                                    break
+                                }
+
+                                case "gpusb3_structProperty": {
+                                    if (Array.isArray(blocks[i+1])) {
+                                        this.throwError("UnexpectedInput", "Unexpected input in block input!", "StructPropertyBlock", "Unexpected input in struct property block!", util)
+                                        return "Unexpected input in struct property name"
+                                    }
+
+                                    code = code.concat(`${this.textFromOp(util, blocks[i+1], false)}: ${Array.isArray(blocks[i+2]) ? this.genWGSL(util, blocks[i+2], recursionDepth+1) : this.textFromOp(util, blocks[i+2], false)},\n`)
+
+                                    i += 2
                                     break
                                 }
 
@@ -3656,6 +3735,11 @@ while (${Array.isArray(blocks[i+1]) ? this.genWGSL(util, blocks[i+1], recursionD
 
             this.device.queue.submit([commandEncoder.finish()]);
         }
+
+        declareStruct()  { return }
+        structProperty() { return }
+        structType() { return "This block lets you use a struct as a type." }
+
     }
     // @ts-ignore
     Scratch.extensions.register(new GPUSb3())
