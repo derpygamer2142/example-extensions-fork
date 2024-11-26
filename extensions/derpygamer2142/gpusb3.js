@@ -7,7 +7,6 @@
 (function (Scratch) {
   "use strict";
 
-  // /** @import * as WebGPU from '@webgpu/types' */
 
   const vm = Scratch.vm;
   if (!Scratch.extensions.unsandboxed) {
