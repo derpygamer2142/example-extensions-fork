@@ -48,6 +48,17 @@
         docsURI: "https://extensions.derpygamer2142.com/docs/gpusb3",
         blocks: [
           {
+            opcode: "webgpuAvailable",
+            blockType: Scratch.BlockType.BOOLEAN,
+            text: "WebGPU available?"
+          },
+          {
+            opcode: "adapterConnected",
+            blockType: Scratch.BlockType.BOOLEAN,
+            text: "Connected to GPU?"
+          },
+
+          {
             opcode: "compileHat",
             blockType: Scratch.BlockType.EVENT,
             text: "Define shader [NAME] using bind group layout [BGL]",
@@ -1687,13 +1698,13 @@
       if (!navigator.gpu) {
         // why angry red lines >: (
         alert("WebGPU is not supported.");
-        throw new Error("WebGPU is not supported.");
+        // throw new Error("WebGPU is not supported.");
       }
       // @ts-ignore
       this.adapter = await navigator.gpu.requestAdapter();
       if (!this.adapter) {
         alert("Failed to get WebGPU adapter.");
-        throw Error("Failed to get WebGPU adapter.");
+        // throw Error("Failed to get WebGPU adapter.");
       }
       this.device = await this.adapter.requestDevice();
       this.device.lost.then((info) => {
@@ -4478,6 +4489,14 @@ ${blocks[i + 2].length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth + 
     }
     structType() {
       return "This block lets you use a struct as a type.";
+    }
+
+    webgpuAvailable() {
+      return !!navigator.gpu
+    }
+
+    adapterConnected() {
+      return !!this.device
     }
   }
   // @ts-ignore
