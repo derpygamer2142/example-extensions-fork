@@ -2,7 +2,11 @@
 // ID: gpusb3
 // Description: Use WebGPU compute shaders to accelerate your projects.
 // By: derpygamer2142 <https://scratch.mit.edu/users/insanetaco2000/>
-// License: MPL-2.0
+// License: MPL-2.0 AND MIT
+
+/**
+ * This project is dual licensed under MPL-2.0 and MIT.
+ */
 
 (function (Scratch) {
   "use strict";
@@ -18,7 +22,7 @@
   // penPlus = Scratch.vm.runtime.ext_obviousalexc_penPlus
   // load exposed extension stuff
   Scratch.vm.runtime.on("EXTENSION_ADDED", () => {
-    buffersExt = Scratch.vm.runtime.ext_0znzwBuffers;
+    buffersExt = Scratch.vm.runtime.ext_0znzwBuffers; // miyo's buffer extension exposes some stuff, you can use these in the arraybuffer blocks for convenience
   });
   let shaders = {};
   let error = {};
@@ -30,14 +34,14 @@
     arrayBuffers: {},
     views: {},
     textures: {}, // webgpu texture objects, actual images will be yoinked from ~~the pen+ costume library(if available)~~(scrapped idea, too complicated) and costume list
-    samplers: {},
+    samplers: {}, // this doesn't work with compute shaders but i kept it in case i lock in and add other stuff(extremely unlikely but deleting code causes me pain)
   };
   let currentBindGroup = "";
   let currentBindGroupLayout = "";
 
   class GPUSb3 {
     getInfo() {
-      this.init();
+      this.init(null, null);
       return {
         id: "gpusb3",
         name: "GPU.sb3",
@@ -59,11 +63,14 @@
           },
 
           {
-            opcode: "compileHat",
+            opcode: "compileHat", // all the shader code goes under these hats
             blockType: Scratch.BlockType.EVENT,
             text: "Define shader [NAME] using bind group layout [BGL]",
             isEdgeActivated: false,
-            arguments: {
+            arguments: { 
+              // all arguments here are grabbed using some workspace tomfoolery, hence why they don't support anything other than text
+              // originally these were fetched using a modified version of the wgsl transpiler(generateWGSL) but i just had shit idiot brain fungus
+              // and thought that was a good idea despite it being horrible
               NAME: {
                 type: Scratch.ArgumentType.STRING,
                 defaultValue: "myShader",
@@ -76,13 +83,13 @@
           },
 
           {
-            opcode: "compileStart",
+            opcode: "compileStart", // this is what converts the hats into the juicy code
             blockType: Scratch.BlockType.COMMAND,
             text: "compile shaders ",
           },
 
           {
-            opcode: "onError",
+            opcode: "onError", // error handling system to prevent everything from exploding
             blockType: Scratch.BlockType.EVENT,
             text: "when error thrown",
             isEdgeActivated: false,
@@ -101,7 +108,7 @@
           },
 
           {
-            opcode: "init",
+            opcode: "init", // this is run when the extension is loaded and is used to reconnect to the gpu
             blockType: Scratch.BlockType.COMMAND,
             text: "Reconnect to GPU",
           },
@@ -109,9 +116,9 @@
           {
             opcode: "runGPU",
             blockType: Scratch.BlockType.COMMAND,
-            text: "Run shader [GPUFUNC] using bind group [BINDGROUP] dimensions x: [X] y: [Y] z: [Z]",
+            text: "Run shader [GPUFUNC] using bind group [BINDGROUP] dimensions x: [X] y: [Y] z: [Z]", 
             arguments: {
-              GPUFUNC: {
+              GPUFUNC: { // GPUFUNC is an old name that i am to scared to change
                 type: Scratch.ArgumentType.STRING,
                 defaultValue: "myShader",
               },
@@ -139,7 +146,8 @@
             text: "Data input blocks",
           },
 
-          {
+          { // this is a bit complicated so i will point towards the docs
+            // https://extensions.derpygamer2142.com/docs/gpusb3/blocks#bindGroupLayout
             opcode: "createBindGroupLayout",
             blockType: Scratch.BlockType.CONDITIONAL,
             text: "Create bind group layout called [NAME]",
@@ -253,7 +261,7 @@
             },
           },
 
-          {
+          { // this is a GPUBuffer, not an ArrayBuffer
             blockType: Scratch.BlockType.COMMAND,
             opcode: "createBuffer",
             text: "Create buffer called [NAME] with size(in bytes) [SIZE] and usage flags [USAGE]",
@@ -287,7 +295,8 @@
             },
           },
 
-          {
+          { // this is different from WebGL textures, you can """technically""" transfer between the two but it's overly complicated
+            // and would have a bunch of overhead from running like 2 shaders and a gpu write
             opcode: "createTexture",
             blockType: Scratch.BlockType.COMMAND,
             text: "Create texture called [NAME] width dimensions [WIDTH] [HEIGHT], color format [FORMAT] and usage [USAGE]",
@@ -316,7 +325,7 @@
           },
 
           {
-            // https://www.w3.org/TR/webgpu/#buffer-usage
+            // https://www.w3.org/TR/webgpu/#texture-usage
             opcode: "textureUsage",
             blockType: Scratch.BlockType.REPORTER,
             text: "Texture usage [USAGE]",
@@ -331,6 +340,7 @@
 
           {
             // I found out after implementing this that texture samplers don't work in compute shaders :,)
+            // this continues to exist in case i add other shader types, which is extremely unlikely
             hideFromPalette: true,
             opcode: "createSampler",
             blockType: Scratch.BlockType.COMMAND,
@@ -353,6 +363,7 @@
           },
 
           {
+            // this is technically just a binary or operator but it's what's used to join usage operators
             blockType: Scratch.BlockType.REPORTER,
             opcode: "binaryOr",
             text: "Usage [A] | [B]",
@@ -369,7 +380,7 @@
           },
 
           {
-            // todo: add more typed arrays and maybe arbitrary data or something idk man
+            // this is unused, it's still here for the 2 people(more like 0) who might have projects using this
             // https://webidl.spec.whatwg.org/#AllowSharedBufferSource
             opcode: "genF32",
             blockType: Scratch.BlockType.REPORTER,
@@ -383,7 +394,7 @@
             },
           },
 
-          {
+          { // this should be self explanatory
             opcode: "copyTextureToBuffer",
             blockType: Scratch.BlockType.COMMAND,
             text: "Copy texture [TEXTURE] to buffer [BUFFER] with dimensions [WIDTH] [HEIGHT]",
@@ -407,7 +418,38 @@
             },
           },
 
-          {
+          { // this copies data from a GPUBuffer to a texture
+            // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/copyBufferToTexture
+            opcode: "copyBufferToTexture",
+            blockType: Scratch.BlockType.COMMAND,
+            text: "Copy elements with dimensions [WIDTH], [HEIGHT] from offset [OFFSET] in buffer [BUFFER] to texture [TEXTURE]",
+            arguments: {
+              WIDTH: {
+                type: Scratch.ArgumentType.NUMBER,
+                defaultValue: 1
+              },
+              HEIGHT: {
+                type: Scratch.ArgumentType.NUMBER,
+                defaultValue: 2
+              },
+              OFFSET: { // in bytes!
+                type: Scratch.ArgumentType.NUMBER,
+                defaultValue: 0
+              },
+              BUFFER: {
+                type: Scratch.ArgumentType.STRING,
+                defaultValue: "myBuffer"
+              },
+              TEXTURE: {
+                type: Scratch.ArgumentType.STRING,
+                defaultValue: "myTexture"
+              }
+            }
+          },
+
+          { // this is pretty important cuz otherwise the extension is basically useless
+            // you can write data from the cpu to the gpu which is pretty cool
+
             opcode: "writeBuffer",
             blockType: Scratch.BlockType.COMMAND,
             text: "Write [SIZE] elements of data from arraybuffer [ARRAY] to buffer [BUFFER] from offset [OFF1] to offset [OFF2]",
@@ -437,7 +479,7 @@
           },
 
           {
-            //hideFromPalette: true,
+            // this is primarily used for transferring stuff to MAP_WRITE | COPY_DST buffers
             opcode: "copyBufferToBuffer",
             blockType: Scratch.BlockType.COMMAND,
             text: "Copy [NUMBYTES] bytes of data from buffer [BUF1] from  position [BUF1OFF] to buffer [BUF2] at position [BUF2OFF]",
@@ -468,6 +510,7 @@
           },
 
           {
+            // i don't remember why this is hidden but i think it was important
             hideFromPalette: true,
             opcode: "clearBuffer",
             blockType: Scratch.BlockType.COMMAND,
@@ -489,6 +532,7 @@
           },
 
           {
+            // gotta have the MAP_READ thing here
             opcode: "readBuffer",
             blockType: Scratch.BlockType.COMMAND,
             text: "Read buffer [BUFFER] to arraybuffer [ARRAYBUFFER]", // todo: add an output type here, not just f32s
@@ -505,6 +549,7 @@
           },
 
           {
+            // costume -> GPUTexture
             opcode: "writeTexture",
             blockType: Scratch.BlockType.COMMAND,
             text: "Write texture data from [IMAGE] to texture [TEXTURE]",
@@ -524,6 +569,8 @@
             blockType: "label",
             text: "ArrayBuffer blocks",
           },
+
+          // this is just arraybuffer stuff
 
           {
             opcode: "listABs",
@@ -766,6 +813,13 @@
             blockType: "label",
             text: "WGSL Blocks",
           },
+
+          // if i had to read a bunch of stupid specs then (removed by moderator - please keep it polite) you, you need to as well
+          // because i am nice i will provide useful links
+          // https://www.w3.org/TR/WGSL/
+          // https://google.github.io/tour-of-wgsl/
+          // https://chatgpt.com/ chatgpt will be somewhat helpful because you won't need to read an entire spec to find a snippet of information
+          // for the love of whatever deity you may or may not believe in, do not use mdn as a reference here. it has incorrect and outdated information
 
           {
             opcode: "declareVar",
@@ -1678,6 +1732,14 @@
       };
     }
 
+    /**
+     * Throw an error in such a way that it can be read from the project and not break stuff
+     * @param {String} errorname The name of the error, in PascalCase
+     * @param {String} errorbody A short version of the error, punctuated
+     * @param {String} errorsource The source of the error(usually a block), in PascalCase
+     * @param {String | Object} full The errorbody, but with more detail
+     * @param {import("scratch-vm").BlockUtility} util util
+     */
     throwError(errorname, errorbody, errorsource, full, util) {
       error = {
         name: errorname ?? "Undefined. This is an error, please report it!",
@@ -1693,6 +1755,11 @@
       }
     }
 
+    /**
+     * Reconnect to WebGPU and 
+     * @param {*} args Unused
+     * @param {import("scratch-vm").BlockUtility} util util
+     */
     async init(args, util) {
       // @ts-ignore
       if (!navigator.gpu) {
@@ -1712,14 +1779,27 @@
       });
 
       // note to self: uncomment this on release
-      /*this.device.addEventListener("uncapturederror",(event) => {
-                this.throwError("UnclassifiedError",event.error.message,"Unknown",event.error)
-            })*/
+      this.device.addEventListener("uncapturederror",(event) => {
+          // @ts-ignore
+          this.throwError("UnclassifiedError",event.error.message,"Unknown",event.error, util) // this is literally in the spec and the mdn docs, idk why it's complaining about event.error being undefined https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
+      })
     }
 
+    /**
+     * given the opcode of a "raw" input, (type of text, math_number, or an extension menu), get the value.
+     * @param {import("scratch-vm").BlockUtility} util util
+     * @param {import("scratch-vm").Block} blob The field to get the data from
+     * @param {Boolean} unsafe i don't remember :trol:
+     * @returns 
+     */
     textFromOp(util, blob, unsafe) {
-      // i can't remember if blocks is _blocks, so i'm just getting it again
+      // IMPORTANT: All menus in this extension accept reporters because otherwise the field gets stored elsewhere
+      // and it's a whole thing.
       const _blocks = util.thread.blockContainer._blocks;
+      // _blocks[blob.id].fields should have exactly one key, except in the case of raw blocks(see comment a little further down)
+
+      // there is a blob.block it's lying to you
+      // @ts-ignore
       switch (blob.block) {
         case "text": {
           //console.log(_blocks[blob.id])
@@ -1784,6 +1864,7 @@
         }
 
         case "gpusb3_samplerType": {
+          // IMPORTANT: For blocks with no inputs, such as the scrapped sampler type block, 
           return "sampler"; // the codesmell here is crazy but this should work well enough
         }
 
@@ -1808,61 +1889,21 @@
           );
           console.log(blob);
 
-          // note to self: might need to check for raw inputs or fix that because if a block has no inputs the array compiler doesn't make it an array
           return "Input type not found!";
         }
       }
     }
 
-    findType(input) {
-      switch (typeof input) {
-        case "string": {
-          if (Number.isNaN(Number.parseFloat(input))) {
-            if (
-              input.toLowerCase() === "true" ||
-              input.toLowerCase() === "false"
-            ) {
-              return "boolean";
-            } else if (input.toLowerCase() === "undefined") {
-              return "undefined";
-            } else if (input.toLowerCase() === "null") {
-              return "null";
-            } else {
-              return "Error!";
-            }
-          } else {
-            return this.findType(Number.parseFloat(input));
-          }
-        }
-        case "number": {
-          if (Number.isInteger(input)) {
-            return "integer";
-          } else if (Number.isNaN(input)) {
-            return "NaN";
-          } else if (!Number.isFinite(input)) {
-            return "infinity";
-          } else {
-            return "float";
-          }
-        }
-        case "boolean": {
-          return "boolean";
-        }
-        case "undefined": {
-          return "undefined";
-        }
-        case "object": {
-          if (input === null) {
-            return "null";
-          }
-        }
-      }
-    }
-
+    /**
+     * 
+     * @param {import("scratch-vm").BlockUtility} util util
+     * @param {import("scratch-vm").Block} block The block to resolve
+     * @returns {String} Compiled output
+     */
     resolveInput(util, block) {
-      return Array.isArray(block)
-        ? this.genWGSL(util, block, 0)
-        : this.textFromOp(util, block, false);
+      return Scratch.Cast.toString(Array.isArray(block)
+        ? this.genWGSL(util, block, 1)
+        : this.textFromOp(util, block, false));
     }
 
     isStringified(text) {
@@ -2598,7 +2639,7 @@
               }
 
               case "gpusb3_computeFunc": {
-                // @group(0) @binding(0) var<storage, read_write> data: array<f32>;
+                // isStringified is used here to determine if the provided shader dimensions are valid
                 code = code.concat(`
 
 @compute @workgroup_size(${Array.isArray(blocks[i + 1]) ? "64" : this.isStringified(this.textFromOp(util, blocks[i + 1], false)) ? JSON.parse(this.textFromOp(util, blocks[i + 1], false)) : "64"}) fn computeShader(
@@ -2641,7 +2682,7 @@ if (${this.textFromOp(util, blocks[i + 1], false)} > ${this.resolveInput(util, b
 break;
 };
 
-`); // GOD FUCKING DAMN IT "break if (condition)" IS IN THE OFFICIAL SPEC WHY THE HELL IS IT INVALID THIS IS BULLSHIT
+`); // GOD (removed by moderator - please keep it polite) (removed by moderator - please keep it polite) IT "break if (condition)" IS IN THE OFFICIAL SPEC WHY THE (removed by moderator - please keep it polite) IS IT INVALID THIS IS BULL(removed by moderator - please keep it polite)
                 // I HAD TO GO OUT OF MY WAY AND SPEND 15 SECONDS CHANGING THIS CODE
                 if (blocks[i + 4].length > 0) {
                   code = code.concat(
@@ -2663,7 +2704,7 @@ break;
 while (${Array.isArray(blocks[i + 1]) ? this.genWGSL(util, blocks[i + 1], recursionDepth + 1) : this.textFromOp(util, blocks[i + 1], false)}) {
 
 `);
-                if (blocks[i + 4].length > 0) {
+                if (blocks[i + 2].length > 0) {
                   code = code.concat(
                     this.genWGSL(util, blocks[i + 2], recursionDepth + 1)
                   );
@@ -2705,16 +2746,16 @@ while (${Array.isArray(blocks[i + 1]) ? this.genWGSL(util, blocks[i + 1], recurs
                   const t = this.textFromOp(util, blocks[i + 3], false);
                   if (t == "") {
                     code = code.concat(
-                      `@group(0) @binding(${this.textFromOp(util, blocks[i + 1], false)}) var ${this.textFromOp(util, blocks[i + 2])}: ${Array.isArray(blocks[i + 4]) ? this.genWGSL(util, blocks[i + 4], recursionDepth + 1) : this.textFromOp(util, blocks[i + 4], false)};\n`
+                      `@group(0) @binding(${this.textFromOp(util, blocks[i + 1], false)}) var ${this.textFromOp(util, blocks[i + 2], false)}: ${Array.isArray(blocks[i + 4]) ? this.genWGSL(util, blocks[i + 4], recursionDepth + 1) : this.textFromOp(util, blocks[i + 4], false)};\n`
                     );
                   } else {
                     code = code.concat(
-                      `@group(0) @binding(${this.textFromOp(util, blocks[i + 1], false)}) var<${t}> ${this.textFromOp(util, blocks[i + 2])}: ${Array.isArray(blocks[i + 4]) ? this.genWGSL(util, blocks[i + 4], recursionDepth + 1) : this.textFromOp(util, blocks[i + 4], false)};\n`
+                      `@group(0) @binding(${this.textFromOp(util, blocks[i + 1], false)}) var<${t}> ${this.textFromOp(util, blocks[i + 2], false)}: ${Array.isArray(blocks[i + 4]) ? this.genWGSL(util, blocks[i + 4], recursionDepth + 1) : this.textFromOp(util, blocks[i + 4], false)};\n`
                     );
                   }
                 } else {
                   code = code.concat(
-                    `@group(0) @binding(${this.textFromOp(util, blocks[i + 1], false)}) var<${this.genWGSL(util, blocks[i + 3], recursionDepth + 1)}> ${this.textFromOp(util, blocks[i + 2])}: ${Array.isArray(blocks[i + 4]) ? this.genWGSL(util, blocks[i + 4], recursionDepth + 1) : this.textFromOp(util, blocks[i + 4], false)};\n`
+                    `@group(0) @binding(${this.textFromOp(util, blocks[i + 1], false)}) var<${this.genWGSL(util, blocks[i + 3], recursionDepth + 1)}> ${this.textFromOp(util, blocks[i + 2], false)}: ${Array.isArray(blocks[i + 4]) ? this.genWGSL(util, blocks[i + 4], recursionDepth + 1) : this.textFromOp(util, blocks[i + 4], false)};\n`
                   );
                 }
 
@@ -3301,7 +3342,8 @@ ${blocks[i + 2].length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth + 
                 "WGSLError",
                 message.message,
                 `ShaderCreation`,
-                `Error parsing WGSL in shader "${funcname}": ${message.message} - Line ${message.lineNum}:${message.linePos} ${compiled.substring(Math.max(0, message.offset - 15), message.offset)}**${compiled.substring(message.offset, message.offset + message.length)}**${compiled.substring(message.offset + message.length, Math.min(compiled.length, message.offset + message.length + 15))}`
+                `Error parsing WGSL in shader "${funcname}": ${message.message} - Line ${message.lineNum}:${message.linePos} ${compiled.substring(Math.max(0, message.offset - 15), message.offset)}**${compiled.substring(message.offset, message.offset + message.length)}**${compiled.substring(message.offset + message.length, Math.min(compiled.length, message.offset + message.length + 15))}`,
+                util
               );
               errored = true;
             }
@@ -3884,7 +3926,8 @@ ${blocks[i + 2].length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth + 
           "InvalidInput",
           "Invalid number of bytes to clear",
           "ClearBuffer",
-          `The provided number of bytes to clear, ${Scratch.Cast.toNumber(args.NUMBYTES)}, is invalid. Must be more than 0, or -1 to clear all.`
+          `The provided number of bytes to clear, ${Scratch.Cast.toNumber(args.NUMBYTES)}, is invalid. Must be more than 0, or -1 to clear all.`,
+          util
         );
       }
       if (
@@ -4492,11 +4535,62 @@ ${blocks[i + 2].length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth + 
     }
 
     webgpuAvailable() {
-      return !!navigator.gpu
+      return !!navigator.gpu // this value will be undefined if webgpu is unavailable, which is then cast to a boolean
+      // i don't remember where i saw this so my source is "just trust me bro"
     }
 
     adapterConnected() {
-      return !!this.device
+      return !!this.device // if device is undefined it means that we failed to get the adapter
+    }
+
+    copyBufferToTexture(args, util) {
+      args.BUFFER  = Scratch.Cast.toString(args.BUFFER)
+      args.TEXTURE = Scratch.Cast.toString(args.TEXTURE)
+      args.OFFSET  = Scratch.Cast.toNumber(args.OFFSET)
+      args.WIDTH   = Scratch.Cast.toNumber(args.WIDTH)
+      args.HEIGHT  = Scratch.Cast.toNumber(args.HEIGHT)
+
+      if (!Object.prototype.hasOwnProperty.call(resources.buffers, Scratch.Cast.toString(args.BUFFER))) return this.throwError("BufferNotFound", "Buffer not found", "CopyBufferToTextureBlock", "The specified buffer doesn't exist", util)
+      if (!Object.prototype.hasOwnProperty.call(resources.textures, Scratch.Cast.toString(args.TEXTURE))) return this.throwError("TextureNotFound", "Texture not found", "CopyBufferToTextureBlock", "The specified texture doesn't exist", util)
+      if (args.OFFSET < 0) return this.throwError("InvalidOffset", "Invalid offset", "CopyBufferToTextureBlock", "The provided offset is less than 0", util)
+      if (args.WIDTH <= 0 || args.HEIGHT <= 0) this.throwError("InvalidDimension", "Invalid width or height", "CopyBufferToTextureBlock", "The provided width or height is less than or equal to 0", util)
+
+
+      const commandEncoder = this.device.createCommandEncoder()
+      this.device.pushErrorScope("validation")
+      this.device.pushErrorScope("out-of-memory")
+      this.device.pushErrorScope("internal")
+
+      commandEncoder.copyBufferToTexture({
+        buffer: resources.buffers[args.BUFFER],
+        offset: args.OFFSET
+      }, {
+        texture: resources.textures[args.TEXTURE],
+      }, [args.WIDTH, args.HEIGHT])
+
+      this.device.popErrorScope().then((error) => {
+        if (error) {
+          this.throwError(
+            "BufferCopyToTextureError",
+            error.message,
+            "CopyBufferToTextureBlock",
+            error,
+            util
+          );
+        }
+      });
+
+      this.device.popErrorScope().then((error) => {
+        if (error) {
+          this.throwError(
+            "BufferCopyToTextureError",
+            error.message,
+            "CopyBufferToTextureBlock",
+            error,
+            util
+          ); 
+        }
+      });
     }
   }
   // @ts-ignore
