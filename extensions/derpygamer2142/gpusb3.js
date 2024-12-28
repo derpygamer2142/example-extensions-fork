@@ -34,6 +34,60 @@
   let currentBindGroupLayout = "";
 
   class GPUSb3 {
+
+    /**
+     * Reconnect to WebGPU and 
+     * @param {*} args Unused
+     * @param {import("scratch-vm").BlockUtility} util util
+     */
+    async init(args, util) {
+      // @ts-ignore
+      if (!navigator.gpu) {
+        // why angry red lines >: (
+        alert("WebGPU is not supported.");
+        // throw new Error("WebGPU is not supported.");
+      }
+      // @ts-ignore
+      this.adapter = await navigator.gpu.requestAdapter();
+      if (!this.adapter) {
+        alert("Failed to get WebGPU adapter.");
+        // throw Error("Failed to get WebGPU adapter.");
+      }
+      this.device = await this.adapter.requestDevice();
+      this.device.lost.then((info) => {
+        this.throwError("DeviceLost", info.message, "wgpu", info, util);
+      });
+
+      // note to self: uncomment this on release
+      this.device.addEventListener("uncapturederror",(event) => {
+          // @ts-ignore
+          this.throwError("UnclassifiedError",event.error.message,"Unknown",event.error, util) // this is literally in the spec and the mdn docs, idk why it's complaining about event.error being undefined https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
+      })
+    }
+
+    /**
+     * Throw an error in such a way that it can be read from the project and not break stuff
+     * @param {String} errorname The name of the error, in PascalCase
+     * @param {String} errorbody A short version of the error, punctuated
+     * @param {String} errorsource The source of the error(usually a block), in PascalCase
+     * @param {String | Object} full The errorbody, but with more detail
+     * @param {import("scratch-vm").BlockUtility} util util
+    */
+    throwError(errorname, errorbody, errorsource, full, util) {
+      error = {
+        name: errorname ?? "Undefined. This is an error, please report it!",
+        body: errorbody ?? "Undefined. This is an error, please report it!",
+        source: errorsource ?? "Undefined. This is an error, please report it!",
+        full: full ?? "Undefined. This is an error, please report it!",
+      };
+      console.error(error);
+      if (util) {
+        util.startHats("gpusb3_onError");
+      } else {
+        Scratch.vm.runtime.startHats("gpusb3_onError");
+      }
+    }
+
     getInfo() {
       this.init(null, null);
       return {
@@ -63,8 +117,8 @@
             isEdgeActivated: false,
             arguments: { 
               // all arguments here are grabbed using some workspace tomfoolery, hence why they don't support anything other than text
-              // originally these were fetched using a modified version of the wgsl transpiler(generateWGSL) but i just had shit idiot brain fungus
-              // and thought that was a good idea despite it being horrible
+              // originally these were fetched using a modified version of the wgsl transpiler(generateWGSL) but i just had stupid idiot brain fungus
+              // and thought that was a good idea despite it being horrible and the least efficient way to do it
               NAME: {
                 type: Scratch.ArgumentType.STRING,
                 defaultValue: "myShader",
@@ -1754,58 +1808,16 @@
       };
     }
 
-    /**
-     * Throw an error in such a way that it can be read from the project and not break stuff
-     * @param {String} errorname The name of the error, in PascalCase
-     * @param {String} errorbody A short version of the error, punctuated
-     * @param {String} errorsource The source of the error(usually a block), in PascalCase
-     * @param {String | Object} full The errorbody, but with more detail
-     * @param {import("scratch-vm").BlockUtility} util util
-     */
-    throwError(errorname, errorbody, errorsource, full, util) {
-      error = {
-        name: errorname ?? "Undefined. This is an error, please report it!",
-        body: errorbody ?? "Undefined. This is an error, please report it!",
-        source: errorsource ?? "Undefined. This is an error, please report it!",
-        full: full ?? "Undefined. This is an error, please report it!",
-      };
-      console.error(error);
-      if (util) {
-        util.startHats("gpusb3_onError");
-      } else {
-        Scratch.vm.runtime.startHats("gpusb3_onError");
-      }
-    }
 
-    /**
-     * Reconnect to WebGPU and 
-     * @param {*} args Unused
-     * @param {import("scratch-vm").BlockUtility} util util
-     */
-    async init(args, util) {
-      // @ts-ignore
-      if (!navigator.gpu) {
-        // why angry red lines >: (
-        alert("WebGPU is not supported.");
-        // throw new Error("WebGPU is not supported.");
-      }
-      // @ts-ignore
-      this.adapter = await navigator.gpu.requestAdapter();
-      if (!this.adapter) {
-        alert("Failed to get WebGPU adapter.");
-        // throw Error("Failed to get WebGPU adapter.");
-      }
-      this.device = await this.adapter.requestDevice();
-      this.device.lost.then((info) => {
-        this.throwError("DeviceLost", info.message, "wgpu", info, util);
-      });
 
-      // note to self: uncomment this on release
-      this.device.addEventListener("uncapturederror",(event) => {
-          // @ts-ignore
-          this.throwError("UnclassifiedError",event.error.message,"Unknown",event.error, util) // this is literally in the spec and the mdn docs, idk why it's complaining about event.error being undefined https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
-      })
-    }
+    /*
+
+    compiler stuff below this point v
+
+    */
+
+
+
 
     /**
      * given the opcode of a "raw" input, (type of text, math_number, or an extension menu), get the value.
@@ -1951,136 +1963,98 @@
      */
     genWGSL(util, blocks, recursionDepth) {
       // for those wondering about isGeneratingArgumentsBecauseTheOtherThingITriedDidntWork, see https://github.com/derpygamer2142/example-extensions-fork/commit/bed128377314a95f6cf2775ed4771cf08d3f3e7e
+
+      // we read through the list of stuff to compile, and after compiling each section we're offset to the next block.
+      // the output of the compilation is added to this code variable
       let code = "";
       for (let i = 0; i < blocks.length; i++) {
         //console.log(code)
         let b = blocks[i];
-        if (Array.isArray(b)) {
+        if (Array.isArray(b)) { // if the block we are compiling is an array, then we can just compile that and go on with our lives
           code = code.concat(this.genWGSL(util, blocks[i], recursionDepth + 1));
         } else {
-          if (typeof b === "object") {
-            //const op = b.block
-            switch (b.block) {
+          if (typeof b === "object") { // if the block we're reading is an object, it's a reporter block
+
+            switch (b.block) { // based on the opcode do whatever is needed
               case "operator_equals": {
-                code = code.concat(" (");
-                code = code.concat(this.resolveInput(util, blocks[i+1]));
-                code = code.concat(" == "); // temp
-                code = code.concat(this.resolveInput(util, blocks[i+2]));
-                code = code.concat(") ");
+                code = code.concat(` (${this.resolveInput(util, blocks[i+1])} == ${this.resolveInput(util, blocks[i+2])}) `)
                 i += 2;
                 break;
               }
 
               case "operator_lt": {
-                code = code.concat(" (");
-                code = code.concat(this.resolveInput(util, blocks[i+1]));
-                code = code.concat(" < ");
-                code = code.concat(this.resolveInput(util, blocks[i+2]));
-                code = code.concat(") ");
+                code = code.concat(` (${this.resolveInput(util, blocks[i+1])} < ${this.resolveInput(util, blocks[i+2])}) `)
                 i += 2;
                 break;
               }
 
               case "operator_gt": {
-                code = code.concat(" (");
-                code = code.concat(this.resolveInput(util, blocks[i+1]));
-                code = code.concat(" > ");
-                code = code.concat(this.resolveInput(util, blocks[i+2]));
-                code = code.concat(") ");
+                code = code.concat(` (${this.resolveInput(util, blocks[i+1])} > ${this.resolveInput(util, blocks[i+2])}) `)
                 i += 2;
                 break;
               }
 
               case "operator_and": {
-                code = code.concat(" (");
-                code = code.concat(this.resolveInput(util, blocks[i+1]));
-                code = code.concat(" && ");
-                code = code.concat(this.resolveInput(util, blocks[i+2]));
-                code = code.concat(") ");
+                code = code.concat(` (${this.resolveInput(util, blocks[i+1])} && ${this.resolveInput(util, blocks[i+2])}) `)
                 i += 2;
                 break;
               }
 
               case "operator_or": {
-                code = code.concat(" (");
-                code = code.concat(this.resolveInput(util, blocks[i+1]));
-                code = code.concat(" || ");
-                code = code.concat(this.resolveInput(util, blocks[i+2]));
-                code = code.concat(") ");
+                code = code.concat(` (${this.resolveInput(util, blocks[i+1])} || ${this.resolveInput(util, blocks[i+2])}) `)
                 i += 2;
                 break;
               }
 
               case "operator_add": {
-                code = code.concat(" (");
-                code = code.concat(this.resolveInput(util, blocks[i+1]));
-                code = code.concat(" + ");
-                code = code.concat(this.resolveInput(util, blocks[i+2]));
-                code = code.concat(") ");
-                i += 2;
+                code = code.concat(` (${this.resolveInput(util, blocks[i+1])} + ${this.resolveInput(util, blocks[i+2])}) `)
                 break;
               }
 
               case "operator_subtract": {
-                code = code.concat(" (");
-                code = code.concat(this.resolveInput(util, blocks[i+1]));
-                code = code.concat(" - ");
-                code = code.concat(this.resolveInput(util, blocks[i+2]));
-                code = code.concat(") ");
+                code = code.concat(` (${this.resolveInput(util, blocks[i+1])} - ${this.resolveInput(util, blocks[i+2])}) `)
                 i += 2;
                 break;
               }
 
               case "operator_multiply": {
-                code = code.concat(" (");
-                code = code.concat(this.resolveInput(util, blocks[i+1]));
-                code = code.concat(" * ");
-                code = code.concat(this.resolveInput(util, blocks[i+2]));
-                code = code.concat(") ");
+                code = code.concat(` (${this.resolveInput(util, blocks[i+1])} * ${this.resolveInput(util, blocks[i+2])}) `)
                 i += 2;
                 break;
               }
 
               case "operator_divide": {
-                code = code.concat(" (");
-                code = code.concat(this.resolveInput(util, blocks[i+1]));
-                code = code.concat(" / ");
-                code = code.concat(this.resolveInput(util, blocks[i+2]));
-                code = code.concat(") ");
+                code = code.concat(` (${this.resolveInput(util, blocks[i+1])} / ${this.resolveInput(util, blocks[i+2])}) `)
                 i += 2;
                 break;
               }
 
               case "operator_mod": {
-                code = code.concat(" (");
-                code = code.concat(this.resolveInput(util, blocks[i+1]));
-                code = code.concat(" % ");
-                code = code.concat(this.resolveInput(util, blocks[i+2]));
-                code = code.concat(") ");
+                code = code.concat(` (${this.resolveInput(util, blocks[i+1])} % ${this.resolveInput(util, blocks[i+2])}) `)
                 i += 2;
                 break;
               }
 
               case "operator_mathop": {
                 /*
-                                from https://github.com/TurboWarp/scratch-vm/blob/11eec6604d766dc75fc5eb223b7bd31f167fee88/src/blocks/scratch3_operators.js
+                from https://github.com/TurboWarp/scratch-vm/blob/11eec6604d766dc75fc5eb223b7bd31f167fee88/src/blocks/scratch3_operators.js
 
-                                case 'abs': return Math.abs(n);
-                                case 'floor': return Math.floor(n);
-                                case 'ceiling': return Math.ceil(n);
-                                case 'sqrt': return Math.sqrt(n);
-                                case 'sin': return Math.round(Math.sin((Math.PI * n) / 180) * 1e10) / 1e10;
-                                case 'cos': return Math.round(Math.cos((Math.PI * n) / 180) * 1e10) / 1e10;
-                                case 'tan': return MathUtil.tan(n);
-                                case 'asin': return (Math.asin(n) * 180) / Math.PI;
-                                case 'acos': return (Math.acos(n) * 180) / Math.PI;
-                                case 'atan': return (Math.atan(n) * 180) / Math.PI;
-                                case 'ln': return Math.log(n);
-                                case 'log': return Math.log(n) / Math.LN10;
-                                case 'e ^': return Math.exp(n);
-                                case '10 ^': return Math.pow(10, n);
-                                */
-                let op = "How do you mess up this badly?";
+                case 'abs': return Math.abs(n);
+                case 'floor': return Math.floor(n);
+                case 'ceiling': return Math.ceil(n);
+                case 'sqrt': return Math.sqrt(n);
+                case 'sin': return Math.round(Math.sin((Math.PI * n) / 180) * 1e10) / 1e10;
+                case 'cos': return Math.round(Math.cos((Math.PI * n) / 180) * 1e10) / 1e10;
+                case 'tan': return MathUtil.tan(n);
+                case 'asin': return (Math.asin(n) * 180) / Math.PI;
+                case 'acos': return (Math.acos(n) * 180) / Math.PI;
+                case 'atan': return (Math.atan(n) * 180) / Math.PI;
+                case 'ln': return Math.log(n);
+                case 'log': return Math.log(n) / Math.LN10;
+                case 'e ^': return Math.exp(n);
+                case '10 ^': return Math.pow(10, n);
+                */
+                let op = "How do you mess up this badly?"; // this shouldn't ever be present unless you intentionally do it
                 let actualop =
                   util.thread.blockContainer._blocks[b.id].fields.OPERATOR
                     .value;
@@ -2141,7 +2115,7 @@
                   }
 
                   case "log": {
-                    op = "log"; // special behavior below
+                    op = "log"; // special behavior below in the actualop check
                     break;
                   }
 
@@ -2151,7 +2125,7 @@
                   }
 
                   case "10 ^": {
-                    op = "pow";
+                    op = "pow"; // this is slow!!!1!1!
                     break;
                   }
                 }
@@ -2283,7 +2257,7 @@
                     "Unexpected input in Root type block!",
                     util
                   );
-                  return code + "Error! - compilation stopped";
+                  return "Unexpected input";
                 }
                 code = code.concat(
                   `mat${this.textFromOp(util, blocks[i+1], false)}x${this.textFromOp(util, blocks[i+2], false)}`
@@ -2481,8 +2455,16 @@
                 return "Invalid operator";
               }
             }
-          } else {
+
+
+
+
+
+
+          } else { // the block is a command/conditional/loop/whatever
             switch (b) {
+
+
               case "control_if": {
                 code = code.concat("if (");
                 code = code.concat(
@@ -2526,7 +2508,7 @@
                     "IfBlock",
                     "If statement missing condition, defaulting to true!",
                     util
-                  );
+                  ); // these don't stop compilation, it just warns
                 }
                 code = code.concat(") {\n");
                 if (blocks[i+2].length > 0) {
@@ -3357,6 +3339,29 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
       }
     }
 
+
+
+
+
+
+    
+
+    /*
+    
+    compiler stuff above this point ^
+    
+    */
+
+
+
+
+
+
+
+
+
+
+
     runGPU(args, util) {
       // run the given shader using a bind group
       if (!Object.prototype.hasOwnProperty.call(shaders, args.GPUFUNC)) {
@@ -3646,7 +3651,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
     }
 
     createBindGroup(args, util) {
-      // thanks to cst1229 for this section <3
+      // thanks to cst1229 for part of this section <3
 
       if (util.stackFrame.blockRanOnce) {
         this.device.pushErrorScope("validation");
@@ -3749,7 +3754,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
       return Scratch.Cast.toNumber(args.A) | Scratch.Cast.toNumber(args.B);
     }
 
-    genF32(args, util) {
+    genF32(args, util) { // unusable
       let array;
       try {
         array = JSON.parse(args.ARRAY);
@@ -3903,6 +3908,8 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
       // WARNING:
       // MAY CONTAIN BAD IDEA JUICE
       // GPUMapMode.READ assumes no writing will be done
+      // aka if you want to write to your mapped buffer you need to transfer it to the cpu, mess with it, then transfer it to a different buffer
+      // and send it back to the gpu
       if (
         !Object.prototype.hasOwnProperty.call(resources.buffers, args.BUFFER)
       ) {
@@ -4339,8 +4346,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
           // @ts-ignore
           vm.renderer._allSkins[util.target.sprite.costumes[i].skinId]
         );
-        //textureData = util.target.sprite.costumes[i].asset.data
-        //console.log(util.target.sprite.costumes[i].asset.data)
+        
       } else {
         throw new Error("Texture missing - " + args.IMAGE);
       }
