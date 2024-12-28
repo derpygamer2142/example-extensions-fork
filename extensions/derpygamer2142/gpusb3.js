@@ -14,8 +14,6 @@
   }
 
   let buffersExt;
-  // let penPlus;
-  // penPlus = Scratch.vm.runtime.ext_obviousalexc_penPlus
   // load exposed extension stuff
   Scratch.vm.runtime.on("EXTENSION_ADDED", () => {
     buffersExt = Scratch.vm.runtime.ext_0znzwBuffers; // miyo's buffer extension exposes some stuff, you can use these in the arraybuffer blocks for convenience
@@ -29,7 +27,7 @@
     bufferRefs: {}, // deprecated, not used anywhere anymore
     arrayBuffers: {},
     views: {},
-    textures: {}, // webgpu texture objects, actual images will be yoinked from ~~the pen+ costume library(if available)~~(scrapped idea, too complicated) and costume list
+    textures: {}, // webgpu texture objects, actual images will be yoinked from ~~the pen+ costume library(if available)~~(scrapped idea, too complicated. i go into more detail elsewhere) and costume list
     samplers: {}, // this doesn't work with compute shaders but i kept it in case i lock in and add other stuff(extremely unlikely but deleting code causes me pain)
   };
   let currentBindGroup = "";
@@ -531,7 +529,7 @@
             // gotta have the MAP_READ thing here
             opcode: "readBuffer",
             blockType: Scratch.BlockType.COMMAND,
-            text: "Read buffer [BUFFER] to arraybuffer [ARRAYBUFFER]", // todo: add an output type here, not just f32s
+            text: "Read buffer [BUFFER] to arraybuffer [ARRAYBUFFER]",
             arguments: {
               BUFFER: {
                 type: Scratch.ArgumentType.STRING,
@@ -810,12 +808,15 @@
             text: "WGSL Blocks",
           },
 
-          // if i had to read a bunch of stupid specs then (removed by moderator - please keep it polite) you, you need to as well
+          // it would be unnecessarily time consuming to explain the ins and outs of wgsl/webgpu syntax
+          // so this is left as an exercise for the reader
           // because i am nice i will provide useful links
           // https://www.w3.org/TR/WGSL/
+          // https://www.w3.org/TR/webgpu/
           // https://google.github.io/tour-of-wgsl/
           // https://chatgpt.com/ chatgpt will be somewhat helpful because you won't need to read an entire spec to find a snippet of information
-          // for the love of whatever deity you may or may not believe in, do not use mdn as a reference here. it has incorrect and outdated information
+          // https://toji.dev/webgpu-best-practices/error-handling.html seems to be one of the only places to explain error handling in human readable terms
+          // for the love of whatever deity you may or may not believe in, do not use mdn as a reference for webgpu. it has incorrect and outdated information
 
           {
             opcode: "declareVar",
@@ -1407,9 +1408,13 @@
             },
           },
         ],
-        menus: {
+
+
+        menus: { // all menus have acceptReporters set to true as otherwise they are located in other places in the block data
+                 // and it causes all sorts of issues
           TYPES: {
-            acceptReporters: true, // i don't like this, but with acceptReporters as false it shows up in fields and not inputs.
+            // types you can have variables as, auto is special and gets interpreted differently
+            acceptReporters: true,
             items: [
               "i32",
               "u32",
@@ -1420,11 +1425,15 @@
             ],
           },
           VARTYPES: {
+            // unlike javascript, let is kinda constant but var is variable and const is constant
             acceptReporters: true,
             items: ["var", "let", "const"],
           },
 
           VAROPS: {
+            // same as javascript
+            // if you are reviewing this i would be concerned if you didn't at least
+            // know what the majority of these do
             acceptReporters: true,
             items: [
               "=",
@@ -1443,12 +1452,13 @@
 
           WGSLFUNCS: {
             // every WGSL builtin function
+            // (atomics are in a seperate thing)
             acceptReporters: true,
             items: [
               "all",
               "any",
               "arrayLength",
-              "asinh", // screw atomics, i can add them later
+              "asinh",
               "bitcast",
               "bool",
               "cosh",
@@ -1457,12 +1467,13 @@
               "countTrailingZeros",
               "degrees",
               "determinant",
+              // only for fragment shaders
               /*"dpdx",
-                            "dpdxCoarse",
-                            "dpdxFine",
-                            "dpdy",
-                            "dpdyCoarse",
-                            "dpdyFine",*/
+              "dpdxCoarse",
+              "dpdxFine",
+              "dpdy",
+              "dpdyCoarse",
+              "dpdyFine",*/
               "exp",
               "exp2",
               "f32",
@@ -1492,6 +1503,7 @@
               "textureDimensions",
               "textureLoad",
               "textureStore",
+              // only for fragment shaders
               //"textureSample",
               // "textureSampleBaseClampToEdge"
               // "textureSampleBias"
@@ -1512,10 +1524,12 @@
           },
 
           FUNCTYPES: {
+            // types that functions can return as
             acceptReporters: true,
             items: ["i32", "u32", "f32", "bool", "void"],
           },
           RAWTYPES: {
+            // base variable types
             acceptReporters: true,
             items: ["i32", "u32", "f32", "bool"],
           },
@@ -1525,9 +1539,11 @@
               "buffer",
               "storageTexture",
               //"sampler"
+              // samplers removed due to not being available in compute shaders
             ],
           },
           CONSTRUCTABLETYPES: {
+            // so you can do freaky stuff like array<array<array<vec4<i32>>>> in your horribly optimized """voxel game"""(minecraft clonea)
             acceptReporters: true,
             items: ["vec2", "vec3", "vec4", "array"],
           },
@@ -1545,6 +1561,7 @@
           },
           BUFFERENTRYTYPE: {
             // why does one buffer need so much data man
+            // https://www.w3.org/TR/webgpu/#enumdef-gpubufferbindingtype
             acceptReporters: true,
             items: ["read-only-storage", "storage", "uniform"],
           },
@@ -1569,6 +1586,7 @@
             ],
           },
           ATOMICBASES: {
+            // atomics can either be i32 or u32
             acceptReporters: true,
             items: ["i32", "u32"],
           },
@@ -1576,6 +1594,8 @@
             acceptReporters: true,
             items: [
               //https://www.w3.org/TR/WGSL/#atomic-builtin-functions
+              // if you don't know what atomics are, google it and/or ask chatgpt
+              // if you are too lazy to do that, it's a variable except read/write protected across multithreading
               "atomicStore",
               "atomicAdd",
               "atomicSub",
@@ -1590,11 +1610,13 @@
           },
 
           BARRIERFUNCTIONS: {
+            // https://www.w3.org/TR/WGSL/#sync-builtin-functions
             acceptReporters: true,
             items: ["storageBarrier", "workgroupBarrier", "textureBarrier"],
           },
 
           TYPEDARRAYTYPES: {
+            // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray#typedarray_objects
             acceptReporters: true,
             items: [
               "Int32Array",
@@ -1607,7 +1629,7 @@
               "Int16Array",
               "Uint16Array",
               // "Float16Array",
-              // float16array is only available in firefox
+              // float16array is only available in firefox so it is excluded for compatibility
               "BigInt64Array",
               "BigUint64Array",
               "Float64Array",
@@ -1620,6 +1642,7 @@
           },
 
           TYPEDARRAYPROPS: {
+            // properties on a TypedArray
             acceptReporters: true,
             items: ["BYTES_PER_ELEMENT", "byteLength", "length"],
           },
@@ -1696,16 +1719,19 @@
           },
 
           ADDRESSMODES: {
+            // how to deal with querying out of texture boundaries
             acceptReporters: true,
             items: ["clamp-to-edge", "repeat", "mirror-repeat"],
           },
 
           FILTERMODES: {
+            // filtering stuff
             acceptReporters: true,
             items: ["nearest", "filter"],
           },
 
           TEXTUREENTRYTYPE: {
+            // similar to the buffer version of this
             acceptReporters: true,
             items: ["write-only", "read-only", "read-write"],
           },
@@ -1902,6 +1928,11 @@
         : this.textFromOp(util, block, false));
     }
 
+    /**
+     * Determine whether a string is a stringified object. Used for compute shader dimensions.
+     * @param {String} text A maybe stringified object
+     * @returns {Boolean}
+     */
     isStringified(text) {
       try {
         JSON.parse(text);
@@ -1911,6 +1942,13 @@
       }
     }
 
+    /**
+     * Recursively generate WGSL from the provided shunting-yard esque array
+     * @param {import("scratch-vm").BlockUtility} util util
+     * @param {Array<*>} blocks An array returned by this.compile()
+     * @param {Number} recursionDepth Recursion depth, I think this is just used for debug stuff
+     * @returns {String} WGSL code
+     */
     genWGSL(util, blocks, recursionDepth) {
       // for those wondering about isGeneratingArgumentsBecauseTheOtherThingITriedDidntWork, see https://github.com/derpygamer2142/example-extensions-fork/commit/bed128377314a95f6cf2775ed4771cf08d3f3e7e
       let code = "";
@@ -2608,8 +2646,8 @@ if (${this.textFromOp(util, blocks[i+1], false)} > ${this.resolveInput(util, blo
 break;
 };
 
-`);             // GOD (removed by moderator - please keep it polite) (removed by moderator - please keep it polite) IT "break if (condition)" IS IN THE OFFICIAL SPEC WHY THE (removed by moderator - please keep it polite) IS IT INVALID THIS IS BULL(removed by moderator - please keep it polite)
-                // I HAD TO GO OUT OF MY WAY AND SPEND 15 SECONDS CHANGING THIS CODE
+`);             // despite "break if (cond)" being in the spec, this does not work.
+                // https://www.w3.org/TR/WGSL/#break-if-statement
                 if (blocks[i + 4].length > 0) {
                   code = code.concat(
                     this.genWGSL(util, blocks[i+4], recursionDepth + 1)
@@ -2881,18 +2919,31 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
       return code;
     }
 
+    /**
+     * Get the id of an extension block given its BlockUtility. Used in a deperecated function.
+     * @param {import("scratch-vm").BlockUtility} util util
+     * @returns {String}
+     */
     getBlockId(util) {
       // this function is by CST1229
       if (util.thread.isCompiled) {
         return util.thread.peekStack();
       } else {
+        // @ts-ignore
         return util.thread.peekStackFrame().op.id;
       }
     }
 
-    genInputTree(util, thread, blocks, check, addCheck) {
+    /**
+     * 
+     * @param {import("scratch-vm").BlockUtility} util util
+     * @param {import("scratch-vm").Blocks} blocks BlockContainer to grab blocks from
+     * @param {String} check The block to generate an input tree for
+     * @param {Boolean} addCheck Whether to add check to the input tree
+     * @returns {Array | Object} Either a raw value object or an input tree
+     */
+    genInputTree(util, blocks, check, addCheck) {
       if (JSON.stringify(blocks[check].inputs) === JSON.stringify({})) {
-        // i wrote this code like 2 months ago. i think it checks if all inputs are resolved and if it's a text block or something, but i can't remember
         return {
           block: blocks[check].opcode,
           id: blocks[check].id,
@@ -2901,7 +2952,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
         // isRaw is whether it's a math_number or whatever
       } else {
         let finalinputs = [];
-        if (addCheck) {
+        if (addCheck) { // add the first block to the final input tree
           finalinputs.push({
             block: blocks[check].opcode,
             id: blocks[check].id,
@@ -2910,12 +2961,11 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
         }
 
         let inputs = Object.getOwnPropertyNames(blocks[check].inputs);
-        //finalinputs.push(inputs.length)
-        for (let i = 0; i < inputs.length; i++) {
+        
+        for (let i = 0; i < inputs.length; i++) { // for each input in the block, recursively add its tree
           finalinputs.push(
             this.genInputTree(
               util,
-              thread,
               blocks,
               blocks[check].inputs[inputs[i]].block,
               true
@@ -2926,29 +2976,38 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
       }
     }
 
+    /**
+     * uhh i'm not 100% sure what this does but it generates the silly array and is used once for whatever reason
+     * @param {import("scratch-vm").BlockUtility} util util
+     * @param {import("scratch-vm").Thread} thread The thread to compile
+     * @param {import("scratch-vm").Blocks} blocks BlockContainer
+     * @param {String} block The opcode of the block to generate stuff for
+     * @returns {Array | Object} idk man figure it out
+     */
     genBlock(util, thread, blocks, block) {
+      // why couldn't past me have commented his code 😢
+      // and i stg formatting made this borderline unreadable, it was fine before
       let output = [];
-      if (["text", "math_number"].includes(blocks[block].opcode)) {
+      if (["text", "math_number"].includes(blocks[block].opcode)) { // if this block is a raw input(text, a number) then we can return the object for convenience
         return {
           block: blocks[block].opcode,
           id: blocks[block].id,
-          isRaw: blocks[block].fields != {}, // i can't remember if this does anything. i don't think it does, but just i added it just in case
+          isRaw: blocks[block].fields != {}, // i can't remember if this does anything. i don't think it does, but just i kept it just in case
         };
       }
-      if (!Object.prototype.hasOwnProperty.call(blocks[block], "inputs")) {
-        return "";
+      if (!Object.prototype.hasOwnProperty.call(blocks[block], "inputs")) { // if the block doesn't have the inputs property(meaning it has no inputs), return a blank array
+        return [];
       }
-      let heldInputs = structuredClone(blocks[block].inputs);
+      let heldInputs = structuredClone(blocks[block].inputs); // hold onto the inputs so we can mess with them without destroying up the workspace
       output.push(blocks[block].opcode);
       if (Object.prototype.hasOwnProperty.call(heldInputs, "SUBSTACK")) {
-        delete heldInputs.SUBSTACK; // this is a quick fix and probably won't play well with other extensions.
+        delete heldInputs.SUBSTACK;
       }
       if (Object.prototype.hasOwnProperty.call(heldInputs, "SUBSTACK2")) {
         delete heldInputs.SUBSTACK2;
       }
       if (JSON.stringify(heldInputs) != JSON.stringify({})) {
-        // if the block takes inputs excluding SUBSTACK and SUBSTACK2, generate an input tree for it
-        //output.push(Object.getOwnPropertyNames(heldInputs).length)
+        // if the block takes inputs excluding SUBSTACK and SUBSTACK2(meaning it's a c block), generate an input tree for it
         for (
           let i = 0;
           i < Object.getOwnPropertyNames(heldInputs).length;
@@ -2957,7 +3016,6 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
           output.push(
             this.genInputTree(
               util,
-              thread,
               blocks,
               heldInputs[Object.getOwnPropertyNames(heldInputs)[i]].block,
               true
@@ -2966,7 +3024,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
         }
 
         if (
-          block.opcode === "gpusb3_defFunc" &&
+          blocks[block].opcode === "gpusb3_defFunc" &&
           !Object.prototype.hasOwnProperty.call(heldInputs, "ARGS")
         ) {
           output.push(null);
@@ -3011,26 +3069,35 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
       return output;
     }
 
+    /**
+     * This recursively generates a shunting-yard esque array of blocks in the format: ["opcode", "rawInputAThisIsText", ["math_add",12,34], "otherOpcode", ...]
+     * @param {import("scratch-vm").BlockUtility} util util
+     * @param {import("scratch-vm").Thread} thread A thread to compile
+     * @param {import("scratch-vm").Blocks} blocks BlockContainer, used to grab the blocks
+     * @param {String} firstblock The opcode of the block to start compiling from, as this is recursive
+     * @param {Boolean} addStart Whether to compile the first block in the thread
+     * @returns {Array}
+     */
     compile(util, thread, blocks, firstblock, addStart) {
       let output = [];
       let held = firstblock;
       if (addStart) {
         output = output.concat(this.genBlock(util, thread, blocks, held));
       }
-      let next = blocks[held].next;
+      let next = blocks[held].next; 
+      // step through each block in the thread, using the next block to determine where to step next
+      // and if the block has any inputs compile those too
       while (next != null) {
         held = next;
         next = blocks[held].next;
         output.push(blocks[held].opcode);
-        let heldInputs = structuredClone(blocks[held].inputs);
-        //output.push(gpusb3Info.blocks.find((v) => v.info.opcode == blocks[held].opcode)?.info?.blockType === "reporter" && Object.getOwnPropertyNames(heldInputs).length < 1 ? [blocks[held].opcode] : blocks[held].opcode)
-        if (Object.prototype.hasOwnProperty.call(heldInputs, "SUBSTACK")) {
-          delete heldInputs.SUBSTACK; // this is a quick fix and probably won't play well with other extensions.
-          // i will make a custom math/block system later
-        }
-        if (Object.prototype.hasOwnProperty.call(heldInputs, "SUBSTACK2")) {
-          delete heldInputs.SUBSTACK2; // see previous comment
-        }
+        let heldInputs = structuredClone(blocks[held].inputs); // hold onto the inputs so we can mess with them without destroying up the workspace
+        
+        // delete the substacks so we can check if the inputs are blank
+        if (Object.prototype.hasOwnProperty.call(heldInputs, "SUBSTACK")) delete heldInputs.SUBSTACK
+        if (Object.prototype.hasOwnProperty.call(heldInputs, "SUBSTACK2")) delete heldInputs.SUBSTACK2
+
+
         if (
           JSON.stringify(heldInputs) != JSON.stringify({}) ||
           blocks[held].opcode === "control_if" ||
@@ -3038,16 +3105,15 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
           blocks[held].opcode === "gpusb3_computeFunc"
         ) {
           // if the block takes inputs excluding SUBSTACK and SUBSTACK2, generate an input tree for it
-          //output.push(Object.getOwnPropertyNames(heldInputs).length)
+          // otherwise add a blank array
           if (Object.getOwnPropertyNames(heldInputs).length === 0) {
             output.push([]);
           } else {
-            const props = Object.getOwnPropertyNames(heldInputs);
+            const props = Object.getOwnPropertyNames(heldInputs); // generate an input tree for each of the inputs in the block
             for (let i = 0; i < props.length; i++) {
               output.push(
                 this.genInputTree(
                   util,
-                  thread,
                   blocks,
                   heldInputs[Object.getOwnPropertyNames(heldInputs)[i]].block,
                   true
@@ -3055,9 +3121,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
               );
             }
 
-            // here
-
-            if (
+            if ( // i don't know what's going on here
               blocks[held].opcode === "gpusb3_defFunc" &&
               !Object.prototype.hasOwnProperty.call(heldInputs, "ARGS")
             ) {
@@ -3065,6 +3129,8 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
             }
           }
         }
+
+        // uhhhhhhh
         if (
           Object.prototype.hasOwnProperty.call(
             blocks[held].inputs,
@@ -3087,6 +3153,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
           ) {
             output.push([]);
           } else {
+            // compile the c block's substacks
             output.push(
               this.compile(
                 util,
@@ -3107,6 +3174,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
         ) {
           // support for n-number of branches is cringe and we don't need that kind of negativity in here
           // also no extensions in my pristine compiled hats
+          // so we only support if-else and if
           if (
             blocks[held].opcode === "control_if_else" &&
             !Object.prototype.hasOwnProperty.call(
@@ -3131,46 +3199,33 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
       return output;
     }
 
+    /**
+     * Compiles all the shaders
+     * @param {*} args 
+     * @param {import("scratch-vm").BlockUtility} util util
+     */
     async compileStart(args, util) {
-      console.log(util);
-      // helpful error site: https://toji.dev/webgpu-best-practices/error-handling.html
-      // seems to be one of the only places to explain this in human readable terms
-      let threads = util.startHats("gpusb3_compileHat"); // NOTE TO SELF: THIS DOESN'T START THE HATS(why is it named that then. this is stupid and i don't like it, i am going to complain on my twitter dot com (just kidding twitter is for nerds and i don't use it. also as of writing this comment for some it reason allows weird stuff now, what were they even thinking. twitter was bad to begin with but elon musk's midlife crisis ran it so far into the ground that it burned alive, also i'm not calling it x)), thanks sharkpool
-      let newthreads = [];
-      vm.runtime.threads.forEach((i) => {
-        //console.log(i.topBlock)
-        if (
-          Object.prototype.hasOwnProperty.call(
-            util.thread.blockContainer._blocks,
-            i.topBlock
-          )
-        ) {
-          if (
-            util.thread.blockContainer._blocks[i.topBlock].opcode ===
-            "gpusb3_compileHat"
-          ) {
-            newthreads.push(i);
-          }
-        }
-      });
-      threads = newthreads;
-      //threads = vm.runtime.threads.filter((i) => util.thread.blockContainer._blocks[i.topBlock].opcode === "gpusb3_compileHat")
-      //console.log(threads)
+
+
+
+      util.startHats("gpusb3_compileHat") // NOTE TO SELF: THIS DOESN'T START THE HATS THEMSELVES(why is it named that then. this is stupid and i don't like it, i am going to complain on my twitter dot com), thanks sharkpool for providing this code
+      let threads = vm.runtime.threads.filter((i) => util.thread.blockContainer._blocks[i.topBlock].opcode === "gpusb3_compileHat")
+      
       if (threads.length > 0) {
-        await threads.forEach(async (t) => {
-          t.tryCompile(); // this doesn't do anything =D
+        await threads.forEach(async (t, i) => {
 
           const arraycompiled = this.compile(
             util,
-            threads[0],
-            threads[0].blockContainer._blocks,
-            threads[0].topBlock,
+            threads[i],
+            // @ts-ignore
+            threads[i].blockContainer._blocks,
+            threads[i].topBlock,
             false
           );
           console.log(arraycompiled);
           const compiled = this.genWGSL(util, arraycompiled, 0);
           console.log(compiled);
-          //let idkman = this.genInputTree(util, t, t.blockContainer._blocks, t.topBlock, true)
+          
           let bglInput =
             t.blockContainer._blocks[
               t.blockContainer._blocks[t.topBlock].inputs.BGL.block
@@ -3295,38 +3350,15 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
             });
 
             // if (errored) delete shaders[funcname]
-            console.log(errored)
           }
         });
 
-        console.log(util);
-        //console.log(threads)
-        // const e = this.compile(util,threads[0],threads[0].blockContainer._blocks,threads[0].topBlock,false)
-        // const compiled = this.genWGSL(util, e, false, 0)
 
-        // console.log(e)
-        // console.log(compiled)
       }
     }
-    /*
-        compute shader reference implementation
-        https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API#basic_compute_pipeline
-
-            notes:
-            
-            most of this can stay the same across multiple modules, the only things that might change
-            are the different input buffers and their usage, but that can probably be generated
-            fairly easily
-
-            this documentation is horrible, i'm fairly sure the writer forgot they were writing about
-            compute shaders halfway through and then just decided to talk about render shaders
-
-            
-
-
-        */
 
     runGPU(args, util) {
+      // run the given shader using a bind group
       if (!Object.prototype.hasOwnProperty.call(shaders, args.GPUFUNC)) {
         this.throwError(
           "ShaderNotFound",
@@ -3407,7 +3439,6 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
             util
           );
       });
-      //console.log("yay the function ran without errors =D")
     }
 
     compileHat(args, util) {}
@@ -3493,6 +3524,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
     }
 
     createBuffer(args, util) {
+      // essentially just device.createBuffer but with some scratch stuff
       this.device.pushErrorScope("validation");
       this.device.pushErrorScope("internal");
       this.device.pushErrorScope("out-of-memory");
@@ -3735,7 +3767,6 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
     continue(args, util) {}
 
     writeBuffer(args, util) {
-      // todo: more input types here
       if (
         !Object.prototype.hasOwnProperty.call(
           resources.buffers,
@@ -3924,7 +3955,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
           );
       });
       resources.arrayBuffers[Scratch.Cast.toString(args.ARRAYBUFFER)] =
-        copyArrayBuffer; // todo: error handling here
+        copyArrayBuffer;
       // @ts-ignore
       //return JSON.stringify(Array.from(new Float32Array(data)));
     }
@@ -4296,7 +4327,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
     writeTexture(args, util) {
       let textureData;
       // if (penPlus) {
-      //  todo: error handling here and adding pen+ costume library support
+      //  todo: pen+ costume library support?
       // }
       const i = util.target.getCostumeIndexByName(
         Scratch.Cast.toString(args.IMAGE)
@@ -4418,7 +4449,6 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
       commandEncoder.copyTextureToBuffer(
         {
           texture: resources.textures[Scratch.Cast.toString(args.TEXTURE)],
-          // todo: origin here
         },
         {
           buffer: resources.buffers[Scratch.Cast.toString(args.BUFFER)],
@@ -4443,7 +4473,7 @@ ${blocks[i+2]?.length > 0 ? this.genWGSL(util, blocks[i+2], recursionDepth + 1) 
     }
 
     webgpuAvailable() {
-      return !!navigator.gpu // this value will be undefined if webgpu is unavailable, which is then cast to a boolean
+      return !!navigator.gpu // this value will be undefined if webgpu is unavailable, which is then cast to a boolean(!!undefined === false)
       // i don't remember where i saw this so my source is "just trust me bro"
     }
 
