@@ -70,8 +70,8 @@
      * @param {*} args Unused
      * @param {import("scratch-vm").BlockUtility} util util
      */
-    init(args, util) {
-      InitPromise = new Promise((resolve, reject) => { 
+    async init(args, util) {
+      InitPromise = new Promise(async (resolve, reject) => { 
         // we need to keep stuff from running before the adapter and stuff has been fetched
         // we do this by returning a promise while we're working, and everything can check if they should wait
         Object.keys(resources).forEach((k) => {
@@ -86,50 +86,40 @@
           resolve(false)
         }
         // @ts-ignore
-        navigator.gpu.requestAdapter().then((adapter) => {
-
-          this.adapter = adapter
+        this.adapter = await navigator.gpu.requestAdapter();
+        if (!this.adapter) {
+          // alert("Failed to get WebGPU adapter.");
+          this.throwError("AdapterGetFail", "Failed to get adapter", "Init", "Failed to get GPU adapter", util);
+          resolve(false);
+        }
         
-          if (!this.adapter) {
-            // alert("Failed to get WebGPU adapter.");
-            this.throwError("AdapterGetFail", "Failed to get adapter", "Init", "Failed to get GPU adapter", util);
-            resolve(false);
-          }
-          
-          this.adapter.requestDevice({
-            label: "GPU.sb3 device"
-          }).then((device) => {
-            this.device = device
-          
-            this.device.lost.then((info) => {
-              this.throwError("DeviceLost", info.message, "wgpu", info, util);
-              InitPromise = false
-            });
+        this.device = await this.adapter.requestDevice({
+          label: "GPU.sb3 device"
+        });
+        this.device.lost.then((info) => {
+          this.throwError("DeviceLost", info.message, "wgpu", info, util);
+          InitPromise = false
+        });
 
-            // note to self: uncomment this on release
-            this.device.addEventListener("uncapturederror", (event) => {
-              this.throwError(
-                "UnclassifiedError",
-                // @ts-ignore
-                event.error.message,
-                "Unknown",
-                // @ts-ignore
-                event.error,
-                util
-              ); // this is literally in the spec and the mdn docs, idk why it's complaining about event.error being undefined https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
-            });
+        // note to self: uncomment this on release
+        this.device.addEventListener("uncapturederror", (event) => {
+          this.throwError(
+            "UnclassifiedError",
+            // @ts-ignore
+            event.error.message,
+            "Unknown",
+            // @ts-ignore
+            event.error,
+            util
+          ); // this is literally in the spec and the mdn docs, idk why it's complaining about event.error being undefined https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
+        });
 
-            
-            resolve(true)
-
-          })
-        })
-
+        
+        resolve(true)
       }).then((value) => {
         InitPromise = value
       })
       
-      return InitPromise
     }
 
     /**
