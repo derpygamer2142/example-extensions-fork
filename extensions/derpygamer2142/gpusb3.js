@@ -49,77 +49,45 @@
   const ATOMICCOLOR = "#e64e4e"; // light red
   const ARBWGSLCOLOR = "#3528bf"; // dark blue
 
-  let InitPromise = null
-
   class GPUSb3 {
-    /**
-     * Check whether the init functino is still being run, and device is valid
-     * @returns {Promise<Boolean>} Whether we can run stuff on the GPU
-     */
-    async canRun() {
-      if (!InitPromise) return false
-      if (InitPromise instanceof Promise) {
-        await InitPromise
-        return true
-      }
-      else if (InitPromise) return true
-    }
-
     /**
      * Reconnect to WebGPU and clear resources
      * @param {*} args Unused
      * @param {import("scratch-vm").BlockUtility} util util
      */
     async init(args, util) {
-      InitPromise = new Promise(async (resolve, reject) => { 
-        // we need to keep stuff from running before the adapter and stuff has been fetched
-        // we do this by returning a promise while we're working, and everything can check if they should wait
-        Object.keys(resources).forEach((k) => {
-          resources[k] = {};
-        });
-        // @ts-ignore
-        if (!navigator.gpu) {
-          // why angry red lines >: (
-          // alert("WebGPU is not supported.");
-          // throw new Error("WebGPU is not supported.");
-          this.throwError("NotSupported"," WebGPU is not supported", "Init", "WebGPU is not supported", util);
-          resolve(false)
-        }
-        // @ts-ignore
-        this.adapter = await navigator.gpu.requestAdapter();
-        if (!this.adapter) {
-          // alert("Failed to get WebGPU adapter.");
-          this.throwError("AdapterGetFail", "Failed to get adapter", "Init", "Failed to get GPU adapter", util);
-          resolve(false);
-        }
-        
-        this.device = await this.adapter.requestDevice({
-          label: "GPU.sb3 device"
-        });
-        this.device.lost.then((info) => {
-          this.throwError("DeviceLost", info.message, "wgpu", info, util);
-          InitPromise = false
-        });
+      Object.keys(resources).forEach((k) => {
+        resources[k] = {};
+      });
+      // @ts-ignore
+      if (!navigator.gpu) {
+        // why angry red lines >: (
+        alert("WebGPU is not supported.");
+        // throw new Error("WebGPU is not supported.");
+      }
+      // @ts-ignore
+      this.adapter = await navigator.gpu.requestAdapter();
+      if (!this.adapter) {
+        alert("Failed to get WebGPU adapter.");
+        // throw Error("Failed to get WebGPU adapter.");
+      }
+      this.device = await this.adapter.requestDevice();
+      this.device.lost.then((info) => {
+        this.throwError("DeviceLost", info.message, "wgpu", info, util);
+      });
 
-        // note to self: uncomment this on release
-        this.device.addEventListener("uncapturederror", (event) => {
-          this.throwError(
-            "UnclassifiedError",
-            // @ts-ignore
-            event.error.message,
-            "Unknown",
-            // @ts-ignore
-            event.error,
-            util
-          ); // this is literally in the spec and the mdn docs, idk why it's complaining about event.error being undefined https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
-        });
-
-        
-        resolve(true)
-      }).then((value) => {
-        InitPromise = value
-      })
-      
+      // note to self: uncomment this on release
+      this.device.addEventListener("uncapturederror", (event) => {
+        this.throwError(
+          "UnclassifiedError",
+          // @ts-ignore
+          event.error.message,
+          "Unknown",
+          // @ts-ignore
+          event.error,
+          util
+        ); // this is literally in the spec and the mdn docs, idk why it's complaining about event.error being undefined https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
+      });
     }
 
     /**
@@ -3351,8 +3319,6 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
      * @param {import("scratch-vm").BlockUtility} util util
      */
     async compileStart(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "CompileShadersBlock", "Cannot run block, WebGPU may not be available", util)
-
       util.startHats("gpusb3_compileHat"); // NOTE TO SELF: THIS DOESN'T START THE HATS THEMSELVES(why is it named that then. this is stupid and i don't like it, i am going to complain on my twitter dot com), thanks sharkpool for providing this code
       let threads = vm.runtime.threads.filter(
         (i) =>
@@ -3510,8 +3476,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
     
     */
 
-    async runGPU(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "RunShaderBlock", "Cannot run block, WebGPU may not be available", util)
+    runGPU(args, util) {
       // run the given shader using a bind group
       if (!Object.prototype.hasOwnProperty.call(shaders, args.GPUFUNC)) {
         return this.throwError(
@@ -3675,8 +3640,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
       return "This block is used to create something out of whatever type you defined.";
     }
 
-    async createBuffer(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "CreateBufferBlock", "Cannot run block, WebGPU may not be available", util)
+    createBuffer(args, util) {
       // essentially just device.createBuffer but with some scratch stuff
       this.device.pushErrorScope("validation");
       this.device.pushErrorScope("internal");
@@ -3720,8 +3684,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
       });
     }
 
-    async createBindGroupLayout(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "CreateBindGroupLayoutBlock", "Cannot run block, WebGPU may not be available", util)
+    createBindGroupLayout(args, util) {
       // thanks to cst1229 for this section <3
       if (util.stackFrame.blockRanOnce) {
         this.device.pushErrorScope("validation");
@@ -3772,8 +3735,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
       util.stackFrame.blockRanOnce = true;
     }
 
-    async bindGroupLayoutEntry(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "BindGroupLayoutEntryBlock", "Cannot run block, WebGPU may not be available", util)
+    bindGroupLayoutEntry(args, util) {
       let parsed;
       try {
         parsed = JSON.parse(args.DESC);
@@ -3799,8 +3761,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
       resources.bindGroupLayouts[currentBindGroupLayout].push(o);
     }
 
-    async createBindGroup(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "CreateBindGroupBlock", "Cannot run block, WebGPU may not be available", util)
+    createBindGroup(args, util) {
       // thanks to cst1229 for part of this section <3
 
       if (util.stackFrame.blockRanOnce) {
@@ -3853,8 +3814,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
       util.stackFrame.blockRanOnce = true;
     }
 
-    async bindGroupEntry(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "BindGroupEntryBlock", "Cannot run block, WebGPU may not be available", util)
+    bindGroupEntry(args, util) {
       const kv = {
         buffer: "buffers",
         storageTexture: "textures",
@@ -3922,8 +3882,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
 
     continue(args, util) {}
 
-    async writeBuffer(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "WriteBufferBlock", "Cannot run block, WebGPU may not be available", util)
+    writeBuffer(args, util) {
       if (
         !Object.prototype.hasOwnProperty.call(
           resources.buffers,
@@ -3961,8 +3920,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
       );
     }
 
-    async copyBufferToBuffer(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "CopyBufferToBufferBlock", "Cannot run block, WebGPU may not be available", util)
+    copyBufferToBuffer(args, util) {
       if (
         Scratch.Cast.toNumber(args.NUMBYTES) <= 0 ||
         args.BUF1 === args.BUF2 ||
@@ -3972,7 +3930,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
         return this.throwError(
           "InvalidInput",
           "Invalid input recieved when trying to copy data",
-          "CopyBufferToBufferBlock",
+          "CopyDataBlock",
           "Failed to copy data between buffers, check that the buffers exist, buffer 1 isn't the same as buffer 2, and the number of bytes is more than or equal to 0",
           util
         );
@@ -3995,7 +3953,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
           this.throwError(
             "CopyBufferToBufferError",
             error.message,
-            "CopyBufferToBufferBlock",
+            "CopyingBufferToBuffer",
             error,
             util
           );
@@ -4005,7 +3963,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
           this.throwError(
             "CopyBufferToBufferError",
             error.message,
-            "CopyBufferToBufferBlock",
+            "CopyingBufferToBuffer",
             error,
             util
           );
@@ -4013,8 +3971,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
       this.device.queue.submit([commandEncoder.finish()]);
     }
 
-    async clearBuffer(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "ClearBufferBlock", "Cannot run block, WebGPU may not be available", util)
+    clearBuffer(args, util) {
       if (
         Scratch.Cast.toNumber(args.NUMBYTES) <= 0 &&
         Scratch.Cast.toNumber(args.NUMBYTES) !== -1
@@ -4058,7 +4015,6 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
     }
 
     async readBuffer(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "ReadBufferBlock", "Cannot run block, WebGPU may not be available", util)
       // WARNING:
       // MAY CONTAIN BAD IDEA JUICE
       // GPUMapMode.READ assumes no writing will be done
@@ -4446,8 +4402,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
       }
     }
 
-    async createTexture(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "CreateTextureBlock", "Cannot run block, WebGPU may not be available", util)
+    createTexture(args, util) {
       resources.textures[Scratch.Cast.toString(args.NAME)] =
         this.device.createTexture({
           size: [
@@ -4485,8 +4440,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
      * @param {*} args
      * @param {import("scratch-vm").BlockUtility} util
      */
-    async writeTexture(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "WriteTextureBlock", "Cannot run block, WebGPU may not be available", util)
+    writeTexture(args, util) {
       let textureData;
       // if (penPlus) {
       //  todo: pen+ costume library support?
@@ -4593,8 +4547,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
       });
     }
 
-    async copyTextureToBuffer(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "CopyTextureToBufferBlock", "Cannot run block, WebGPU may not be available", util)
+    copyTextureToBuffer(args, util) {
       if (
         !Object.prototype.hasOwnProperty.call(
           resources.buffers,
@@ -4675,8 +4628,7 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
       return !!this.device; // if device is undefined it means that we failed to get the adapter
     }
 
-    async copyBufferToTexture(args, util) {
-      if (!(await this.canRun())) return this.throwError("RunFailed", "Cannot run block", "CopyBufferToTextureBlock", "Cannot run block, WebGPU may not be available", util)
+    copyBufferToTexture(args, util) {
       args.BUFFER = Scratch.Cast.toString(args.BUFFER);
       args.TEXTURE = Scratch.Cast.toString(args.TEXTURE);
       args.OFFSET = Scratch.Cast.toNumber(args.OFFSET);
