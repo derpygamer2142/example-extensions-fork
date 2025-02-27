@@ -33,8 +33,7 @@
   let currentBindGroupLayout = "";
 
   // GPU.sb3 blocks
-  const BINDGROUPLAYOUTCOLOR = "#edcf0c"; // orange
-  const BINDGROUPLAYOUTCOLOR2 = "#c7ae0c";
+  const BINDGROUPLAYOUTCOLOR = "#1d723e"; // orange
   const BINDGROUPCOLOR = "#e85009"; // reddish-orange
   const TEXTURECOLOR = "#0fb5d6"; // sky blue
   const BUFFERCOLOR = "#b31064"; // maroon
@@ -275,8 +274,6 @@
               },
             },
             color1: BINDGROUPLAYOUTCOLOR,
-            color2: BINDGROUPLAYOUTCOLOR2,
-            color3: BINDGROUPLAYOUTCOLOR2,
           },
 
           {
@@ -291,7 +288,6 @@
               },
             },
             color1: BINDGROUPLAYOUTCOLOR,
-            color2: BINDGROUPLAYOUTCOLOR2,
           },
 
           {
@@ -310,7 +306,6 @@
               },
             },
             color1: BINDGROUPLAYOUTCOLOR,
-            color2: BINDGROUPLAYOUTCOLOR2,
           },
 
           {
