@@ -48,6 +48,8 @@
   const ATOMICCOLOR = "#e64e4e"; // light red
   const ARBWGSLCOLOR = "#3528bf"; // dark blue
 
+
+  
   class GPUSb3 {
     constructor() {
       this.device = null;
@@ -75,6 +77,7 @@
         );
         // throw new Error("WebGPU is not supported.");
       }
+
       // @ts-ignore
       this.adapter = await navigator.gpu.requestAdapter();
       if (!this.adapter) {
@@ -124,6 +127,7 @@
         source: errorsource ?? "Undefined. This is an error, please report it!",
         full: full ?? "Undefined. This is an error, please report it!",
       };
+
       console.error(error);
       if (util) {
         util.startHats("gpusb3_onError");
