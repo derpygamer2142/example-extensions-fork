@@ -143,6 +143,12 @@
         docsURI: "https://extensions.derpygamer2142.com/docs/gpusb3",
         blocks: [
           {
+            opcode: "debug",
+            blockType: Scratch.BlockType.COMMAND,
+            text: "DEBUG"
+          },
+
+          {
             opcode: "webgpuAvailable",
             blockType: Scratch.BlockType.BOOLEAN,
             text: Scratch.translate("WebGPU available?"),
@@ -2014,92 +2020,95 @@
     /**
      * given the opcode of a "raw" input, (type of text, math_number, or an extension menu), get the value.
      * @param {import("scratch-vm").BlockUtility} util util
-     * @param {import("scratch-vm").Block} blob The field to get the data from
+     * @param {String} id The field to get the data from
      * @param {Boolean} unsafe i don't remember :trol:
      * @returns
      */
-    textFromOp(util, blob, unsafe) {
+    textFromOp(util, id, unsafe) {
       // IMPORTANT: All menus in this extension accept reporters because otherwise the field gets stored elsewhere
       // and it's a whole thing.
       const _blocks = util.thread.blockContainer._blocks;
-      // _blocks[blob.id].fields should have exactly one key, except in the case of raw blocks(see comment a little further down)
+      // blob.fields should have exactly one key, except in the case of raw blocks(see comment a little further down)
 
-      // there is a blob.block it's lying to you
-      // @ts-ignore
-      switch (blob.block) {
+
+      const blob = _blocks[id];
+      switch (blob.opcode) {
         case "text": {
-          //console.log(_blocks[blob.id])
-          return _blocks[blob.id].fields.TEXT.value;
+          return blob.fields.TEXT.value;
         }
         case "math_number": {
-          return _blocks[blob.id].fields.NUM.value;
+          return blob.fields.NUM.value;
         }
         case "gpusb3_menu_VARTYPES": {
-          return _blocks[blob.id].fields.VARTYPES.value;
+          return blob.fields.VARTYPES.value;
         }
         case "gpusb3_menu_VAROPS": {
-          return _blocks[blob.id].fields.VAROPS.value;
+          return blob.fields.VAROPS.value;
         }
         case "gpusb3_menu_TYPES": {
-          return _blocks[blob.id].fields.TYPES.value;
+          return blob.fields.TYPES.value;
         }
         case "gpusb3_menu_WGSLFUNCS": {
-          return _blocks[blob.id].fields.WGSLFUNCS.value;
+          return blob.fields.WGSLFUNCS.value;
         }
         case "gpusb3_menu_FUNCTYPES": {
-          return _blocks[blob.id].fields.FUNCTYPES.value;
+          return blob.fields.FUNCTYPES.value;
         }
         case "gpusb3_menu_RAWTYPES": {
-          return _blocks[blob.id].fields.RAWTYPES.value;
+          return blob.fields.RAWTYPES.value;
         }
 
         case "gpusb3_menu_BGLENTRYTYPES": {
-          return _blocks[blob.id].fields.BGLENTRYTYPES.value;
+          return blob.fields.BGLENTRYTYPES.value;
         }
 
         case "gpusb3_menu_CONSTRUCTABLETYPES": {
-          return _blocks[blob.id].fields.CONSTRUCTABLETYPES.value;
+          return blob.fields.CONSTRUCTABLETYPES.value;
         }
 
         case "gpusb3_menu_BUFFERUSAGE": {
-          return _blocks[blob.id].fields.BUFFERUSAGE.value;
+          return blob.fields.BUFFERUSAGE.value;
         }
 
         case "gpusb3_menu_BUFFERENTRYTYPE": {
-          return _blocks[blob.id].fields.BUFFERENTRYTYPE.value;
+          return blob.fields.BUFFERENTRYTYPE.value;
         }
 
         case "gpusb3_menu_VARUSAGE": {
-          return _blocks[blob.id].fields.VARUSAGE.value;
+          return blob.fields.VARUSAGE.value;
         }
 
         case "gpusb3_menu_ATOMICBASES": {
-          return _blocks[blob.id].fields.ATOMICBASES.value;
+          return blob.fields.ATOMICBASES.value;
         }
 
         case "gpusb3_menu_ATOMICFUNCTIONS": {
-          return _blocks[blob.id].fields.ATOMICFUNCTIONS.value;
+          return blob.fields.ATOMICFUNCTIONS.value;
         }
 
         case "gpusb3_menu_BARRIERFUNCTIONS": {
-          return _blocks[blob.id].fields.BARRIERFUNCTIONS.value;
+          return blob.fields.BARRIERFUNCTIONS.value;
         }
 
         case "gpusb3_menu_TEXTUREBASETYPES": {
-          return _blocks[blob.id].fields.TEXTUREBASETYPES.value;
+          return blob.fields.TEXTUREBASETYPES.value;
         }
 
         case "gpusb3_samplerType": {
+          // v past me either didn't finish this comment or removed part of it, and i don't remember what it said
+          // i am now reworking the compiler and i could probably fix whatever i was yapping about but i don't want to look through stuff to figure it out
+          // the "solution" here is to just do whatever this case does and return the desired input if anyone ever decides to use this kind of block again
+
           // IMPORTANT: For blocks with no inputs, such as the scrapped sampler type block,
           return "sampler"; // the codesmell here is crazy but this should work well enough
         }
 
         case "gpusb3_menu_VARIABLEACCESSTYPES": {
-          return _blocks[blob.id].fields.VARIABLEACCESSTYPES.value;
+          return blob.fields.VARIABLEACCESSTYPES.value;
         }
 
         case "gpusb3_menu_TEXTURECOLORFORMATS": {
-          return _blocks[blob.id].fields.TEXTURECOLORFORMATS.value;
+          return blob.fields.TEXTURECOLORFORMATS.value;
         }
 
         default: {
@@ -2130,7 +2139,7 @@
       return Scratch.Cast.toString(
         Array.isArray(block)
           ? this.genWGSL(util, block, 1)
-          : this.textFromOp(util, block, false)
+          : this.textFromOp(util, block.id, false)
       );
     }
 
@@ -3148,266 +3157,69 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
      * @returns {Array | Object} Either a raw value object or an input tree
      */
     genInputTree(util, blocks, check, addCheck) {
-      if (JSON.stringify(blocks[check].inputs) === JSON.stringify({})) {
-        return {
-          block: blocks[check].opcode,
-          id: blocks[check].id,
-          isRaw: blocks[check].fields != {},
-        };
-        // isRaw is whether it's a math_number or whatever
-      } else {
-        let finalinputs = [];
-        if (addCheck) {
-          // add the first block to the final input tree
-          finalinputs.push({
-            block: blocks[check].opcode,
-            id: blocks[check].id,
-            isRaw: blocks[check].fields != {},
-          });
-        }
-
-        let inputs = Object.getOwnPropertyNames(blocks[check].inputs);
-
-        for (let i = 0; i < inputs.length; i++) {
-          // for each input in the block, recursively add its tree
-          finalinputs.push(
-            this.genInputTree(
-              util,
-              blocks,
-              blocks[check].inputs[inputs[i]].block,
-              true
-            )
-          );
-        }
-        return finalinputs;
-      }
     }
 
     /**
-     * uhh i'm not 100% sure what this does but it generates the silly array and is used once for whatever reason
+     * Generate a node in the abstract syntax tree for a given block or input
      * @param {import("scratch-vm").BlockUtility} util util
      * @param {import("scratch-vm").Thread} thread The thread to compile
      * @param {import("scratch-vm").Blocks} blocks BlockContainer
-     * @param {String} block The opcode of the block to generate stuff for
-     * @returns {Array | Object} idk man figure it out
+     * @param {String} block The id of the block to generate stuff for
+     * @returns {Object} The node, see below comment
      */
     genBlock(util, thread, blocks, block) {
-      // why couldn't past me have commented his code 😢
-      // and i stg formatting made this borderline unreadable, it was fine before
-      let output = [];
-      if (["text", "math_number"].includes(blocks[block].opcode)) {
-        // if this block is a raw input(text, a number) then we can return the object for convenience
-        return {
-          block: blocks[block].opcode,
-          id: blocks[block].id,
-          isRaw: blocks[block].fields != {}, // i can't remember if this does anything. i don't think it does, but just i kept it just in case
-        };
+      let obj = { 
+        _opcode: blocks[block].opcode, // block opcode
+        _id: block, // block id
+        _raw: false, // whether this block is a raw input, where the opcode is "text", "math_number", "gpusb3_menu_TYPES", etc.
+        _value: null // if this block is a raw input, what its value is
+      };
+      const inputs = Object.keys(blocks[block].inputs);
+      for (const input of inputs) {
+        obj[input] = this.compile(util, util.thread, blocks, blocks[block].inputs[input].block, true, input.includes("SUBSTACK"));
       }
-      if (!Object.prototype.hasOwnProperty.call(blocks[block], "inputs")) {
-        // if the block doesn't have the inputs property(meaning it has no inputs), return a blank array
-        return [];
+      
+      if (inputs.length === 0 && Object.keys(blocks[block].fields).length === 1) {
+        // this block is a raw input such as "text", "math_number", or a menu such as "gpusb3_menu_TYPES"
+        obj._raw = true;
+        obj._value = this.textFromOp(util, block, false);
       }
-      let heldInputs = structuredClone(blocks[block].inputs); // hold onto the inputs so we can mess with them without destroying up the workspace
-      output.push(blocks[block].opcode);
-      if (Object.prototype.hasOwnProperty.call(heldInputs, "SUBSTACK")) {
-        delete heldInputs.SUBSTACK;
-      }
-      if (Object.prototype.hasOwnProperty.call(heldInputs, "SUBSTACK2")) {
-        delete heldInputs.SUBSTACK2;
-      }
-      if (JSON.stringify(heldInputs) != JSON.stringify({})) {
-        // if the block takes inputs excluding SUBSTACK and SUBSTACK2(meaning it's a c block), generate an input tree for it
-        for (
-          let i = 0;
-          i < Object.getOwnPropertyNames(heldInputs).length;
-          i++
-        ) {
-          output.push(
-            this.genInputTree(
-              util,
-              blocks,
-              heldInputs[Object.getOwnPropertyNames(heldInputs)[i]].block,
-              true
-            )
-          );
-        }
 
-        if (
-          blocks[block].opcode === "gpusb3_defFunc" &&
-          !Object.prototype.hasOwnProperty.call(heldInputs, "ARGS")
-        ) {
-          output.push(null);
-        }
-      }
-      if (
-        Object.prototype.hasOwnProperty.call(blocks[block].inputs, "SUBSTACK")
-      ) {
-        output.push(
-          this.compile(
-            util,
-            thread,
-            blocks,
-            blocks[block].inputs.SUBSTACK.block,
-            true
-          )
-        );
-      }
-      if (
-        Object.prototype.hasOwnProperty.call(blocks[block].inputs, "SUBSTACK2")
-      ) {
-        // support for n-number of branches is cringe and we don't need that kind of negativity in here
-        // also no extensions in my pristine compiled hats
-        if (
-          !Object.prototype.hasOwnProperty.call(
-            blocks[block].inputs,
-            "SUBSTACK"
-          )
-        ) {
-          output.push([]);
-        }
-        output.push(
-          this.compile(
-            util,
-            thread,
-            blocks,
-            blocks[block].inputs.SUBSTACK2.block,
-            true
-          )
-        );
-      }
-      return output;
+      return obj
     }
 
+    /*
+    todo: super cool explanation goes here
+    */
+
     /**
-     * This recursively generates a shunting-yard esque array of blocks in the format: ["opcode", "rawInputAThisIsText", ["math_add",12,34], "otherOpcode", ...]
+     * This recursively generates a collapsed abstract syntax tree(idk if this is the right term). See comment above this function for more information.
      * @param {import("scratch-vm").BlockUtility} util util
      * @param {import("scratch-vm").Thread} thread A thread to compile
      * @param {import("scratch-vm").Blocks} blocks BlockContainer, used to grab the blocks
-     * @param {String} firstblock The opcode of the block to start compiling from, as this is recursive
+     * @param {String} firstblock The id of the block to start compiling from, as this is recursive
      * @param {Boolean} addStart Whether to compile the first block in the thread
-     * @returns {Array}
+     * @param {Boolean} isStack Whether this segment is a stack of blocks. If it is, this function returns an array, otherwise it returns an object
+     * @returns {Array | Object} Collapsed abstract syntax tree, see comment above this function
      */
-    compile(util, thread, blocks, firstblock, addStart) {
-      let output = [];
-      let held = firstblock;
+    compile(util, thread, blocks, firstblock, addStart, isStack) {
+      let output = isStack ? [] : {};
+      let next = blocks[firstblock].next;
       if (addStart) {
-        output = output.concat(this.genBlock(util, thread, blocks, held));
-      }
-      let next = blocks[held].next;
-      // step through each block in the thread, using the next block to determine where to step next
-      // and if the block has any inputs compile those too
-      while (next != null) {
-        held = next;
-        next = blocks[held].next;
-        output.push(blocks[held].opcode);
-        let heldInputs = structuredClone(blocks[held].inputs); // hold onto the inputs so we can mess with them without destroying up the workspace
-
-        // delete the substacks so we can check if the inputs are blank
-        if (Object.prototype.hasOwnProperty.call(heldInputs, "SUBSTACK"))
-          delete heldInputs.SUBSTACK;
-        if (Object.prototype.hasOwnProperty.call(heldInputs, "SUBSTACK2"))
-          delete heldInputs.SUBSTACK2;
-
-        if (
-          JSON.stringify(heldInputs) != JSON.stringify({}) ||
-          blocks[held].opcode === "control_if" ||
-          blocks[held].opcode === "control_if_else" ||
-          blocks[held].opcode === "gpusb3_computeFunc"
-        ) {
-          // if the block takes inputs excluding SUBSTACK and SUBSTACK2, generate an input tree for it
-          // otherwise add a blank array
-          if (Object.getOwnPropertyNames(heldInputs).length === 0) {
-            output.push([]);
-          } else {
-            const props = Object.getOwnPropertyNames(heldInputs); // generate an input tree for each of the inputs in the block
-            for (let i = 0; i < props.length; i++) {
-              output.push(
-                this.genInputTree(
-                  util,
-                  blocks,
-                  heldInputs[Object.getOwnPropertyNames(heldInputs)[i]].block,
-                  true
-                )
-              );
-            }
-
-            if (
-              // i don't know what's going on here
-              blocks[held].opcode === "gpusb3_defFunc" &&
-              !Object.prototype.hasOwnProperty.call(heldInputs, "ARGS")
-            ) {
-              output.push(null);
-            }
-          }
+        if (isStack) {
+          output.push(this.genBlock(util, thread, blocks, firstblock));
         }
-
-        // uhhhhhhh
-        if (
-          Object.prototype.hasOwnProperty.call(
-            blocks[held].inputs,
-            "SUBSTACK"
-          ) ||
-          blocks[held].opcode === "control_if" ||
-          blocks[held].opcode === "control_if_else" ||
-          blocks[held].opcode === "gpusb3_computeFunc" ||
-          blocks[held].opcode === "gpusb3_defFunc"
-        ) {
-          if (
-            (blocks[held].opcode === "control_if" ||
-              blocks[held].opcode === "gpusb3_computeFunc" ||
-              blocks[held].opcode === "gpusb3_defFunc" ||
-              blocks[held].opcode === "control_if_else") &&
-            !Object.prototype.hasOwnProperty.call(
-              blocks[held].inputs,
-              "SUBSTACK"
-            )
-          ) {
-            output.push([]);
-          } else {
-            // compile the c block's substacks
-            output.push(
-              this.compile(
-                util,
-                thread,
-                blocks,
-                blocks[held].inputs.SUBSTACK.block,
-                true
-              )
-            );
-          }
-        }
-        if (
-          Object.prototype.hasOwnProperty.call(
-            blocks[held].inputs,
-            "SUBSTACK2"
-          ) ||
-          blocks[held].opcode === "control_if_else"
-        ) {
-          // support for n-number of branches is cringe and we don't need that kind of negativity in here
-          // also no extensions in my pristine compiled hats
-          // so we only support if-else and if
-          if (
-            blocks[held].opcode === "control_if_else" &&
-            !Object.prototype.hasOwnProperty.call(
-              blocks[held].inputs,
-              "SUBSTACK2"
-            )
-          ) {
-            output.push([]);
-          } else {
-            output.push(
-              this.compile(
-                util,
-                thread,
-                blocks,
-                blocks[held].inputs.SUBSTACK2.block,
-                true
-              )
-            );
-          }
+        else {
+          output = this.genBlock(util, thread, blocks, firstblock);
         }
       }
-      return output;
+
+      while (next) { // keep going until next becomes null, which means there's no more blocks
+        output.push(this.genBlock(util, thread, blocks, next));
+        next = blocks[next].next;
+      }
+
+      return output
     }
 
     /**
@@ -3440,7 +3252,8 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
             // @ts-ignore
             threads[i].blockContainer._blocks,
             threads[i].topBlock,
-            false
+            false,
+            true
           );
           console.log(arraycompiled);
           const compiled = this.genWGSL(util, arraycompiled, 0);
@@ -5073,6 +4886,21 @@ ${blocks[i + 2]?.length > 0 ? this.genWGSL(util, blocks[i + 2], recursionDepth +
         }
       });
     }
+
+    /**
+     * 
+     * @param {*} args 
+     * @param {import("scratch-vm").BlockUtility} util 
+     */
+    debug(args, util) {
+      console.log(util.thread);
+      console.log(util.thread.blockContainer._blocks);
+
+      // @ts-ignore
+      console.log(this.compile(util, util.thread, util.thread.blockContainer._blocks, util.thread.topBlock, true, true));
+    }
+
+
   }
   // @ts-ignore
   Scratch.extensions.register(new GPUSb3());
