@@ -146,7 +146,7 @@
             hideFromPalette: true,
             opcode: "debug",
             blockType: Scratch.BlockType.COMMAND,
-            text: "DEBUG"
+            text: "DEBUG",
           },
 
           {
@@ -2031,7 +2031,6 @@
       const _blocks = util.thread.blockContainer._blocks;
       // blob.fields should have exactly one key, except in the case of raw blocks(see comment a little further down)
 
-
       const blob = _blocks[id];
       switch (blob.opcode) {
         case "text": {
@@ -2154,9 +2153,16 @@
      */
     resolvePossibleMissingInput(util, block, defaultValue, recursionDepth) {
       if (block) {
-        return this.genWGSL(util, block, recursionDepth+1)
+        return this.genWGSL(util, block, recursionDepth + 1);
       }
-      this.throwError("CompilationWarning", "Replacing missing input!", "WGSLGeneration","Replacing a missing input with the default value " + Scratch.Cast.toString(defaultValue), util);
+      this.throwError(
+        "CompilationWarning",
+        "Replacing missing input!",
+        "WGSLGeneration",
+        "Replacing a missing input with the default value " +
+          Scratch.Cast.toString(defaultValue),
+        util
+      );
       return defaultValue;
     }
 
@@ -2186,80 +2192,91 @@
 
       // we read through the list of stuff to compile, and after compiling each section we're offset to the next block.
       // the output of the compilation is added to this code variable
-      if (!Array.isArray(blocks) && blocks._value !== null) return blocks._value; // not an array = it's a raw input
-      else if (blocks._value === null) blocks = [blocks] // kinda hacky because i'm too lazy to change the tree format
+      if (!Array.isArray(blocks) && blocks._value !== null)
+        return blocks._value; // not an array = it's a raw input
+      else if (blocks._value === null) blocks = [blocks]; // kinda hacky because i'm too lazy to change the tree format
 
       let code = "";
       for (let i = 0; i < blocks.length; i++) {
         //console.log(code)
         let b = blocks[i];
-            // if the block we're reading is an object, it's a reporter block
+        // if the block we're reading is an object, it's a reporter block
 
-            switch (
-              b._opcode // based on the opcode do whatever is needed
-            ) {
-              case "operator_equals": {
-                code = code.concat(` (${this.genWGSL(util, b.OPERAND1, recursionDepth+1)} == ${this.genWGSL(util, b.OPERAND2, recursionDepth+1)}) `);
-                break;
-              }
+        switch (
+          b._opcode // based on the opcode do whatever is needed
+        ) {
+          case "operator_equals": {
+            code = code.concat(
+              ` (${this.genWGSL(util, b.OPERAND1, recursionDepth + 1)} == ${this.genWGSL(util, b.OPERAND2, recursionDepth + 1)}) `
+            );
+            break;
+          }
 
-              case "operator_lt": {
-                code = code.concat(` (${this.genWGSL(util, b.OPERAND1, recursionDepth+1)} < ${this.genWGSL(util, b.OPERAND2, recursionDepth+1)}) `);
-                break;
-              }
+          case "operator_lt": {
+            code = code.concat(
+              ` (${this.genWGSL(util, b.OPERAND1, recursionDepth + 1)} < ${this.genWGSL(util, b.OPERAND2, recursionDepth + 1)}) `
+            );
+            break;
+          }
 
-              case "operator_gt": {
-                code = code.concat(` (${this.genWGSL(util, b.OPERAND1, recursionDepth+1)} > ${this.genWGSL(util, b.OPERAND2, recursionDepth+1)}) `);
-                break;
-              }
+          case "operator_gt": {
+            code = code.concat(
+              ` (${this.genWGSL(util, b.OPERAND1, recursionDepth + 1)} > ${this.genWGSL(util, b.OPERAND2, recursionDepth + 1)}) `
+            );
+            break;
+          }
 
-              case "operator_and": {
-                code = code.concat(` (${this.resolvePossibleMissingInput(util, b.OPERAND1, true, recursionDepth+1)} && ${this.resolvePossibleMissingInput(util, b.OPERAND2, true, recursionDepth+1)}) `);
-                break;
-              }
+          case "operator_and": {
+            code = code.concat(
+              ` (${this.resolvePossibleMissingInput(util, b.OPERAND1, true, recursionDepth + 1)} && ${this.resolvePossibleMissingInput(util, b.OPERAND2, true, recursionDepth + 1)}) `
+            );
+            break;
+          }
 
-              case "operator_or": {
-                code = code.concat(` (${this.resolvePossibleMissingInput(util, b.OPERAND1, true, recursionDepth+1)} && ${this.resolvePossibleMissingInput(util, b.OPERAND2, true, recursionDepth+1)}) `);
-                break;
-              }
+          case "operator_or": {
+            code = code.concat(
+              ` (${this.resolvePossibleMissingInput(util, b.OPERAND1, true, recursionDepth + 1)} && ${this.resolvePossibleMissingInput(util, b.OPERAND2, true, recursionDepth + 1)}) `
+            );
+            break;
+          }
 
-              case "operator_add": {
-                code = code.concat(
-                  ` (${this.genWGSL(util, b.NUM1, recursionDepth+1)} + ${this.genWGSL(util, b.NUM2, recursionDepth+1)}) `
-                );
-                break;
-              }
+          case "operator_add": {
+            code = code.concat(
+              ` (${this.genWGSL(util, b.NUM1, recursionDepth + 1)} + ${this.genWGSL(util, b.NUM2, recursionDepth + 1)}) `
+            );
+            break;
+          }
 
-              case "operator_subtract": {
-                code = code.concat(
-                  ` (${this.genWGSL(util, b.NUM1, recursionDepth+1)} - ${this.genWGSL(util, b.NUM2, recursionDepth+1)}) `
-                );
-                break;
-              }
+          case "operator_subtract": {
+            code = code.concat(
+              ` (${this.genWGSL(util, b.NUM1, recursionDepth + 1)} - ${this.genWGSL(util, b.NUM2, recursionDepth + 1)}) `
+            );
+            break;
+          }
 
-              case "operator_multiply": {
-                code = code.concat(
-                  ` (${this.genWGSL(util, b.NUM1, recursionDepth+1)} * ${this.genWGSL(util, b.NUM2, recursionDepth+1)}) `
-                );
-                break;
-              }
+          case "operator_multiply": {
+            code = code.concat(
+              ` (${this.genWGSL(util, b.NUM1, recursionDepth + 1)} * ${this.genWGSL(util, b.NUM2, recursionDepth + 1)}) `
+            );
+            break;
+          }
 
-              case "operator_divide": {
-                code = code.concat(
-                  ` (${this.genWGSL(util, b.NUM1, recursionDepth+1)} / ${this.genWGSL(util, b.NUM2, recursionDepth+1)}) `
-                );
-                break;
-              }
+          case "operator_divide": {
+            code = code.concat(
+              ` (${this.genWGSL(util, b.NUM1, recursionDepth + 1)} / ${this.genWGSL(util, b.NUM2, recursionDepth + 1)}) `
+            );
+            break;
+          }
 
-              case "operator_mod": {
-                code = code.concat(
-                  ` (${this.genWGSL(util, b.NUM1, recursionDepth+1)} % ${this.genWGSL(util, b.NUM2, recursionDepth+1)}) `
-                );
-                break;
-              }
+          case "operator_mod": {
+            code = code.concat(
+              ` (${this.genWGSL(util, b.NUM1, recursionDepth + 1)} % ${this.genWGSL(util, b.NUM2, recursionDepth + 1)}) `
+            );
+            break;
+          }
 
-              case "operator_mathop": {
-                /*
+          case "operator_mathop": {
+            /*
                 from https://github.com/TurboWarp/scratch-vm/blob/11eec6604d766dc75fc5eb223b7bd31f167fee88/src/blocks/scratch3_operators.js
 
                 case 'abs': return Math.abs(n);
@@ -2277,477 +2294,500 @@
                 case 'e ^': return Math.exp(n);
                 case '10 ^': return Math.pow(10, n);
                 */
-                let op = "How do you mess up this badly?"; // this shouldn't ever be present unless you intentionally do it
-                let actualop =
-                  util.thread.blockContainer._blocks[b.id].fields.OPERATOR
-                    .value;
-                switch (actualop) {
-                  case "abs": {
-                    op = "abs";
-                    break;
-                  }
-
-                  case "floor": {
-                    op = "floor";
-                    break;
-                  }
-
-                  case "ceiling": {
-                    op = "ceil";
-                    break;
-                  }
-
-                  case "sqrt": {
-                    op = "sqrt";
-                    break;
-                  }
-
-                  case "sin": {
-                    op = "sin";
-                    break;
-                  }
-
-                  case "cos": {
-                    op = "cos";
-                    break;
-                  }
-
-                  case "tan": {
-                    op = "tan";
-                    break;
-                  }
-
-                  case "asin": {
-                    op = "asin";
-                    break;
-                  }
-
-                  case "acos": {
-                    op = "acos";
-                    break;
-                  }
-
-                  case "atan": {
-                    op = "atan";
-                    break;
-                  }
-
-                  case "ln": {
-                    op = "log"; // confusing
-                    break;
-                  }
-
-                  case "log": {
-                    op = "log"; // special behavior below in the actualop check
-                    break;
-                  }
-
-                  case "e ^": {
-                    op = "exp";
-                    break;
-                  }
-
-                  case "10 ^": {
-                    op = "pow"; // this is slow!!!1!1!
-                    break;
-                  }
-                }
-                code = code.concat(op);
-                code = code.concat(op === "pow" ? "(10.0, " : "(");
-                code = code.concat(this.genWGSL(util, b.NUM, recursionDepth+1));
-                code = code.concat(
-                  actualop === "log"
-                    ? ") / " + Scratch.Cast.toString(Math.LN10)
-                    : ")"
-                );
+            let op = "How do you mess up this badly?"; // this shouldn't ever be present unless you intentionally do it
+            let actualop =
+              util.thread.blockContainer._blocks[b.id].fields.OPERATOR.value;
+            switch (actualop) {
+              case "abs": {
+                op = "abs";
                 break;
               }
 
-              case "gpusb3_wgslFunc": {
-                if (!b.OPERATION._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input",
-                    "WGSLBuiltinBlock",
-                    "Function input should not have an input",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(`${this.genWGSL(util, b.OPERATION, recursionDepth+1)}(${this.genWGSL(util, b.VALUE, recursionDepth+1)})`)
+              case "floor": {
+                op = "floor";
                 break;
               }
 
-              case "gpusb3_funcArgs": {
-                code = code.concat(`${this.genWGSL(util, b.ARG, recursionDepth+1)}, ${this.genWGSL(util, b.NEXT, recursionDepth+1)}`);
+              case "ceiling": {
+                op = "ceil";
                 break;
               }
 
-              case "gpusb3_getVar": {
-                if (!b.NAME._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input",
-                    "GetVariableBlock",
-                    "Unexpected input in get variable block",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(this.genWGSL(util, b.NAME, recursionDepth+1)); // if your variable name is invalid it's your own fault and you can cry about it
+              case "sqrt": {
+                op = "sqrt";
                 break;
               }
 
-              case "gpusb3_constructFromType": {
-                code = code.concat(
-                  `${this.genWGSL(util, b.TYPE, recursionDepth+1)}(${this.genWGSL(util, b.VALUES, recursionDepth+1)})`
-                );
+              case "sin": {
+                op = "sin";
                 break;
               }
 
-              case "gpusb3_getProp": {
-                if (!b.PROP._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "GetPropertyBlock",
-                    "Unexpected input in Get Property block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(
-                  `${this.genWGSL(util, b.OBJECT, recursionDepth+1)}.${this.genWGSL(util, b.PROP, recursionDepth+1)}`
-                );
+              case "cos": {
+                op = "cos";
                 break;
               }
 
-              case "gpusb3_indexObject": {
-                // https://www.w3.org/TR/WGSL/#matrix-access-expr
-                code = code.concat(
-                  `${this.genWGSL(util, b.ARRAY, recursionDepth+1)}[${this.genWGSL(util, b.INDEX, recursionDepth+1)}]`
-                );
+              case "tan": {
+                op = "tan";
                 break;
               }
 
-              case "gpusb3_typeConstructor": {
-                code = code.concat(
-                  `${this.genWGSL(util, b.TYPE, recursionDepth+1)}<${this.genWGSL(util, b.SUBTYPE, recursionDepth+1)}`
-                );
-
-                // this will be a<b,c> if d is undefined, and a<b,c,d> otherwise
-                if (!b.LENGTH._raw ||(b.LENGTH._raw && b.LENGTH._value !== "")) {
-                  code = code.concat(
-                    `, ${this.genWGSL(util, b.LENGTH, recursionDepth + 1)}`
-                  );
-                }
-                code = code.concat(">");
+              case "asin": {
+                op = "asin";
                 break;
               }
 
-              case "gpusb3_rootType": {
-                if (!b.TYPE._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "RootTypeBlock",
-                    "Unexpected input in Root type block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(this.genWGSL(util, b.TYPE, recursionDepth+1));
+              case "acos": {
+                op = "acos";
                 break;
               }
 
-              case "gpusb3_matrixType": {
-                if (
-                  !b.COLUMNS._raw ||
-                  !b.ROWS._raw
-                ) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "MatrixTypeBlock",
-                    "Unexpected input in Root type block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(
-                  `mat${this.genWGSL(util, b.COLUMNS, recursionDepth+1)}x${this.genWGSL(util, b.ROWS, recursionDepth+1)}`
-                );
+              case "atan": {
+                op = "atan";
                 break;
               }
 
-              case "gpusb3_defFuncArgs": {
-                if (!b.ARGNAME._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "DefFuncArgsBlock",
-                    "Unexpected input in Def func args block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-
-                code = code.concat(
-                  `${this.genWGSL(util, b.ARGNAME, recursionDepth+1)}: ${this.genWGSL(util, b.ARGTYPE, recursionDepth+1)}`
-                );
-
-                if (!b.NEXTARG._raw || (b.NEXTARG._raw && b.NEXTARG._value !== "")) {
-                  code = code.concat(
-                    `, ${this.genWGSL(util, b.NEXTARG, recursionDepth + 1)}`
-                  );
-                }
-
+              case "ln": {
+                op = "log"; // confusing
                 break;
               }
 
-              case "gpusb3_getFuncArg": {
-                if (!b.ARGNAME._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "GetFuncArgBlock",
-                    "Unexpected input in Get func arg block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(this.textFromOp(util, b.ARGNAME, false));
+              case "log": {
+                op = "log"; // special behavior below in the actualop check
                 break;
               }
 
-              case "gpusb3_r_runFunc": {
-                if (!b.FUNCNAME._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "RunFuncBlock",
-                    "Unexpected input in Run func block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(`${this.genWGSL(util, b.FUNCNAME, recursionDepth+1)}(${this.genWGSL(util, b.ARGS, recursionDepth+1)})`)
+              case "e ^": {
+                op = "exp";
                 break;
               }
 
-              case "gpusb3_variableUsage": {
-                if (!b.USAGE._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "VariableUsageBlock",
-                    "Unexpected input in Variable block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(this.genWGSL(util, b.USAGE, recursionDepth+1));
-
-                if (!b.NEXT._raw) {
-                  code = code.concat(", ");
-                  code = code.concat(
-                    this.genWGSL(util, b.NEXT, recursionDepth + 1)
-                  );
-                }
+              case "10 ^": {
+                op = "pow"; // this is slow!!!1!1!
                 break;
               }
+            }
+            code = code.concat(op);
+            code = code.concat(op === "pow" ? "(10.0, " : "(");
+            code = code.concat(this.genWGSL(util, b.NUM, recursionDepth + 1));
+            code = code.concat(
+              actualop === "log"
+                ? ") / " + Scratch.Cast.toString(Math.LN10)
+                : ")"
+            );
+            break;
+          }
 
-              case "gpusb3_atomicLoad": {
-                code = code.concat(
-                  "atomicLoad(" + this.genWGSL(util, b.ATOMIC, recursionDepth+1) + ")"
-                );
+          case "gpusb3_wgslFunc": {
+            if (!b.OPERATION._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input",
+                "WGSLBuiltinBlock",
+                "Function input should not have an input",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(
+              `${this.genWGSL(util, b.OPERATION, recursionDepth + 1)}(${this.genWGSL(util, b.VALUE, recursionDepth + 1)})`
+            );
+            break;
+          }
 
-                break;
+          case "gpusb3_funcArgs": {
+            code = code.concat(
+              `${this.genWGSL(util, b.ARG, recursionDepth + 1)}, ${this.genWGSL(util, b.NEXT, recursionDepth + 1)}`
+            );
+            break;
+          }
+
+          case "gpusb3_getVar": {
+            if (!b.NAME._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input",
+                "GetVariableBlock",
+                "Unexpected input in get variable block",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(this.genWGSL(util, b.NAME, recursionDepth + 1)); // if your variable name is invalid it's your own fault and you can cry about it
+            break;
+          }
+
+          case "gpusb3_constructFromType": {
+            code = code.concat(
+              `${this.genWGSL(util, b.TYPE, recursionDepth + 1)}(${this.genWGSL(util, b.VALUES, recursionDepth + 1)})`
+            );
+            break;
+          }
+
+          case "gpusb3_getProp": {
+            if (!b.PROP._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "GetPropertyBlock",
+                "Unexpected input in Get Property block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(
+              `${this.genWGSL(util, b.OBJECT, recursionDepth + 1)}.${this.genWGSL(util, b.PROP, recursionDepth + 1)}`
+            );
+            break;
+          }
+
+          case "gpusb3_indexObject": {
+            // https://www.w3.org/TR/WGSL/#matrix-access-expr
+            code = code.concat(
+              `${this.genWGSL(util, b.ARRAY, recursionDepth + 1)}[${this.genWGSL(util, b.INDEX, recursionDepth + 1)}]`
+            );
+            break;
+          }
+
+          case "gpusb3_typeConstructor": {
+            code = code.concat(
+              `${this.genWGSL(util, b.TYPE, recursionDepth + 1)}<${this.genWGSL(util, b.SUBTYPE, recursionDepth + 1)}`
+            );
+
+            // this will be a<b,c> if d is undefined, and a<b,c,d> otherwise
+            if (!b.LENGTH._raw || (b.LENGTH._raw && b.LENGTH._value !== "")) {
+              code = code.concat(
+                `, ${this.genWGSL(util, b.LENGTH, recursionDepth + 1)}`
+              );
+            }
+            code = code.concat(">");
+            break;
+          }
+
+          case "gpusb3_rootType": {
+            if (!b.TYPE._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "RootTypeBlock",
+                "Unexpected input in Root type block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(this.genWGSL(util, b.TYPE, recursionDepth + 1));
+            break;
+          }
+
+          case "gpusb3_matrixType": {
+            if (!b.COLUMNS._raw || !b.ROWS._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "MatrixTypeBlock",
+                "Unexpected input in Root type block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(
+              `mat${this.genWGSL(util, b.COLUMNS, recursionDepth + 1)}x${this.genWGSL(util, b.ROWS, recursionDepth + 1)}`
+            );
+            break;
+          }
+
+          case "gpusb3_defFuncArgs": {
+            if (!b.ARGNAME._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "DefFuncArgsBlock",
+                "Unexpected input in Def func args block!",
+                util
+              );
+              return "Unexpected input";
+            }
+
+            code = code.concat(
+              `${this.genWGSL(util, b.ARGNAME, recursionDepth + 1)}: ${this.genWGSL(util, b.ARGTYPE, recursionDepth + 1)}`
+            );
+
+            if (
+              !b.NEXTARG._raw ||
+              (b.NEXTARG._raw && b.NEXTARG._value !== "")
+            ) {
+              code = code.concat(
+                `, ${this.genWGSL(util, b.NEXTARG, recursionDepth + 1)}`
+              );
+            }
+
+            break;
+          }
+
+          case "gpusb3_getFuncArg": {
+            if (!b.ARGNAME._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "GetFuncArgBlock",
+                "Unexpected input in Get func arg block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(this.textFromOp(util, b.ARGNAME, false));
+            break;
+          }
+
+          case "gpusb3_r_runFunc": {
+            if (!b.FUNCNAME._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "RunFuncBlock",
+                "Unexpected input in Run func block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(
+              `${this.genWGSL(util, b.FUNCNAME, recursionDepth + 1)}(${this.genWGSL(util, b.ARGS, recursionDepth + 1)})`
+            );
+            break;
+          }
+
+          case "gpusb3_variableUsage": {
+            if (!b.USAGE._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "VariableUsageBlock",
+                "Unexpected input in Variable block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(this.genWGSL(util, b.USAGE, recursionDepth + 1));
+
+            if (!b.NEXT._raw) {
+              code = code.concat(", ");
+              code = code.concat(
+                this.genWGSL(util, b.NEXT, recursionDepth + 1)
+              );
+            }
+            break;
+          }
+
+          case "gpusb3_atomicLoad": {
+            code = code.concat(
+              "atomicLoad(" +
+                this.genWGSL(util, b.ATOMIC, recursionDepth + 1) +
+                ")"
+            );
+
+            break;
+          }
+
+          case "gpusb3_atomicType": {
+            if (!b.BASE._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "AtomicTypeBlock",
+                "Unexpected input in Variable block!",
+                util
+              );
+              return "Unexpected input in variable usage!";
+            }
+            code = code.concat(
+              "atomic<" + this.genWGSL(util, b.BASE, recursionDepth + 1) + ">"
+            );
+
+            break;
+          }
+
+          case "gpusb3_r_atomicFunc": {
+            if (!b.OP._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "AtomicFunctionBlock",
+                "Unexpected input in Variable block!",
+                util
+              );
+              return "Unexpected input in atomic function!";
+            }
+
+            code = code.concat(
+              `${this.genWGSL(util, b.OP, recursionDepth + 1)}(${this.genWGSL(util, b.ATOMIC, recursionDepth + 1)}, ${this.genWGSL(util, b.VALUE, recursionDepth + 1)})`
+            );
+
+            break;
+          }
+
+          case "gpusb3_variablePointer": {
+            code = code.concat(
+              "&" + this.genWGSL(util, b.VAR, recursionDepth + 1)
+            );
+
+            break;
+          }
+
+          case "gpusb3_textureType": {
+            code = code.concat(
+              `texture_storage_2d<${this.genWGSL(util, b.TYPE, recursionDepth + 1)}, ${this.genWGSL(util, b.ACCESS, recursionDepth + 1)}>`
+            );
+
+            break;
+          }
+
+          case "gpusb3_samplerType": {
+            code = code.concat("sampler"); // probably one of the simplest blocks here
+
+            break;
+          }
+
+          case "gpusb3_structType": {
+            if (!b.STRUCT._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "StructTypeBlock",
+                "Unexpected input in struct type block!",
+                util
+              );
+              return "Unexpected input in struct type";
+            }
+
+            code = code.concat(
+              this.genWGSL(util, b.OBJECT, recursionDepth + 1)
+            ); // this is the same as some other blocks, but for clarity reasons there are multiple
+
+            break;
+          }
+
+          // non reporters
+
+          case "control_if": {
+            code = code.concat("if (");
+            code = code.concat(
+              this.resolvePossibleMissingInput(
+                util,
+                b.CONDITON,
+                "true",
+                recursionDepth
+              )
+            );
+            code = code.concat(") {\n");
+            if (b.SUBSTACK) {
+              code = code.concat(
+                this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
+              );
+            }
+
+            code = code.concat("\n}\n"); // newlines for some semblance of readability
+            break;
+            // did i spell that right
+          }
+
+          case "control_if_else": {
+            code = code.concat("if (");
+            code = code.concat(
+              this.resolvePossibleMissingInput(
+                util,
+                b.CONDITON,
+                "true",
+                recursionDepth
+              )
+            );
+            code = code.concat(") {\n");
+            if (b.SUBSTACK) {
+              code = code.concat(
+                this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
+              );
+            }
+
+            code = code.concat("\n}\nelse {\n"); // newlines for some semblance of readability
+            if (b.SUBSTACK2) {
+              code = code.concat(
+                this.genWGSL(util, b.SUBSTACK2, recursionDepth + 1)
+              );
+            }
+            code = code.concat("\n}\n");
+            break;
+          }
+
+          case "gpusb3_declareVar": {
+            code = code.concat(
+              !b.VARTYPE._raw
+                ? `var<${this.genWGSL(util, b.VARTYPE, recursionDepth + 1)}>`
+                : this.genWGSL(util, b.VARTYPE, recursionDepth + 1)
+            );
+            code = code.concat(" ");
+            code = code.concat(
+              !b.NAME._raw
+                ? "_"
+                : this.genWGSL(util, b.NAME, recursionDepth + 1)
+            );
+
+            const t = this.genWGSL(util, b.TYPE, recursionDepth + 1);
+            if (t !== "auto") {
+              code = code.concat(": ");
+              code = code.concat(t);
+            }
+            if (b.VALUE._raw) {
+              const t = this.genWGSL(util, b.VALUE, recursionDepth + 1);
+              //console.log(JSON.stringify(t), t == "")
+              if (t != "") {
+                code = code.concat(" = ");
+                code = code.concat(t);
               }
+            } else {
+              code = code.concat(" = ");
+              code = code.concat(
+                this.genWGSL(util, b.VALUE, recursionDepth + 1)
+              );
+            }
 
-              case "gpusb3_atomicType": {
-                if (!b.BASE._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "AtomicTypeBlock",
-                    "Unexpected input in Variable block!",
-                    util
-                  );
-                  return "Unexpected input in variable usage!";
-                }
-                code = code.concat(
-                  "atomic<" + this.genWGSL(util, b.BASE, recursionDepth+1) + ">"
-                );
+            code = code.concat(";\n");
+            break;
+          }
 
-                break;
-              }
+          case "gpusb3_varOp": {
+            if (!b.VAROP._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input for block input!",
+                "VarOpBlock",
+                "Unexpected input in Variable operation block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(
+              this.genWGSL(util, b.VARNAME, recursionDepth + 1)
+            );
+            code = code.concat(
+              ` ${this.genWGSL(util, b.VAROP, recursionDepth + 1)} ${this.genWGSL(util, b.INPUT, recursionDepth + 1)};\n`
+            );
 
-              case "gpusb3_r_atomicFunc": {
-                if (!b.OP._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "AtomicFunctionBlock",
-                    "Unexpected input in Variable block!",
-                    util
-                  );
-                  return "Unexpected input in atomic function!";
-                }
+            break;
+          }
 
-                code = code.concat(
-                  `${this.genWGSL(util, b.OP, recursionDepth+1)}(${this.genWGSL(util, b.ATOMIC, recursionDepth+1)}, ${this.genWGSL(util, b.VALUE, recursionDepth+1)})`
-                );
-
-                break;
-              }
-
-              case "gpusb3_variablePointer": {
-                code = code.concat(
-                  "&" + this.genWGSL(util, b.VAR, recursionDepth+1)
-                );
-
-                break;
-              }
-
-              case "gpusb3_textureType": {
-                code = code.concat(
-                  `texture_storage_2d<${this.genWGSL(util, b.TYPE, recursionDepth+1)}, ${this.genWGSL(util, b.ACCESS, recursionDepth+1)}>`
-                );
-
-                break;
-              }
-
-              case "gpusb3_samplerType": {
-                code = code.concat("sampler"); // probably one of the simplest blocks here
-
-                break;
-              }
-
-              case "gpusb3_structType": {
-                if (!b.STRUCT._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "StructTypeBlock",
-                    "Unexpected input in struct type block!",
-                    util
-                  );
-                  return "Unexpected input in struct type";
-                }
-
-                code = code.concat(this.genWGSL(util, b.OBJECT, recursionDepth+1)); // this is the same as some other blocks, but for clarity reasons there are multiple
-
-                break;
-              }
-
-
-
-              // non reporters
-
-              case "control_if": {
-                code = code.concat("if (");
-                code = code.concat(this.resolvePossibleMissingInput(util, b.CONDITON, "true", recursionDepth));
-                code = code.concat(") {\n");
-                if (b.SUBSTACK) {
-                  code = code.concat(
-                    this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
-                  );
-                }
-
-                code = code.concat("\n}\n"); // newlines for some semblance of readability
-                break;
-                // did i spell that right
-              }
-
-              case "control_if_else": {
-                code = code.concat("if (");
-                code = code.concat(this.resolvePossibleMissingInput(util, b.CONDITON, "true", recursionDepth));
-                code = code.concat(") {\n");
-                if (b.SUBSTACK) {
-                  code = code.concat(
-                    this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
-                  );
-                }
-
-                code = code.concat("\n}\nelse {\n"); // newlines for some semblance of readability
-                if (b.SUBSTACK2) {
-                  code = code.concat(
-                    this.genWGSL(util, b.SUBSTACK2, recursionDepth + 1)
-                  );
-                }
-                code = code.concat("\n}\n");
-                break;
-              }
-
-              case "gpusb3_declareVar": {
-                code = code.concat(
-                  !b.VARTYPE._raw
-                    ? `var<${this.genWGSL(util, b.VARTYPE, recursionDepth + 1)}>`
-                    : this.genWGSL(util, b.VARTYPE, recursionDepth+1)
-                );
-                code = code.concat(" ");
-                code = code.concat(
-                  !b.NAME._raw
-                    ? "_"
-                    : this.genWGSL(util, b.NAME, recursionDepth+1)
-                );
-
-                const t = this.genWGSL(util, b.TYPE, recursionDepth+1);
-                if (t !== "auto") {
-                  code = code.concat(": ");
-                  code = code.concat(t);
-                }
-                if (b.VALUE._raw) {
-                  const t = this.genWGSL(util, b.VALUE, recursionDepth+1);
-                  //console.log(JSON.stringify(t), t == "")
-                  if (t != "") {
-                    code = code.concat(" = ");
-                    code = code.concat(t);
-                  }
-                } else {
-                  code = code.concat(" = ");
-                  code = code.concat(
-                    this.genWGSL(util, b.VALUE, recursionDepth + 1)
-                  );
-                }
-
-                code = code.concat(";\n");
-                break;
-              }
-
-              case "gpusb3_varOp": {
-                if (!b.VAROP._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input for block input!",
-                    "VarOpBlock",
-                    "Unexpected input in Variable operation block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(this.genWGSL(util, b.VARNAME, recursionDepth+1));
-                code = code.concat(
-                  ` ${this.genWGSL(util, b.VAROP, recursionDepth+1)} ${this.genWGSL(util, b.INPUT, recursionDepth+1)};\n`
-                );
-
-                break;
-              }
-
-              case "gpusb3_computeFunc": {
-                if (!b.WGSIZE._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "StructTypeBlock",
-                    "Unexpected input in struct type block!",
-                    util
-                  )
-                  return "Unexpected input"
-                }
-                // isStringified is used here to determine if the provided shader dimensions are valid
-                code = code.concat(`
+          case "gpusb3_computeFunc": {
+            if (!b.WGSIZE._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "StructTypeBlock",
+                "Unexpected input in struct type block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            // isStringified is used here to determine if the provided shader dimensions are valid
+            code = code.concat(`
 
 @compute @workgroup_size(${this.isStringified(b.WGSIZE._value) ? JSON.parse(b.WGSIZE._value) : "64"}) fn computeShader(
 
@@ -2758,294 +2798,286 @@
 @builtin(num_workgroups) num_workgroups: vec3<u32>
 
                                 ) {\n\n`);
-                if (b.SUBSTACK) {
-                  code = code.concat(
-                    this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
-                  );
-                } else {
-                  code = code.concat("return;\n");
-                }
+            if (b.SUBSTACK) {
+              code = code.concat(
+                this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
+              );
+            } else {
+              code = code.concat("return;\n");
+            }
 
-                code = code.concat("}\n");
-                break;
-              }
+            code = code.concat("}\n");
+            break;
+          }
 
-              case "gpusb3_wgslForLoop": {
-                if (!b.VARNAME._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input for block input!",
-                    "ForLoopBlock",
-                    "Unexpected input in For loop block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(`
-var ${this.genWGSL(util, b.VARNAME, recursionDepth+1)} = ${this.genWGSL(util, b.START, recursionDepth+1)};
+          case "gpusb3_wgslForLoop": {
+            if (!b.VARNAME._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input for block input!",
+                "ForLoopBlock",
+                "Unexpected input in For loop block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(`
+var ${this.genWGSL(util, b.VARNAME, recursionDepth + 1)} = ${this.genWGSL(util, b.START, recursionDepth + 1)};
 loop {
-if (${this.genWGSL(util, b.VARNAME, recursionDepth+1)} > ${this.genWGSL(util, b.END, recursionDepth+1)}) {
+if (${this.genWGSL(util, b.VARNAME, recursionDepth + 1)} > ${this.genWGSL(util, b.END, recursionDepth + 1)}) {
 break;
 };
 
 `); // despite "break if (cond)" being in the spec, it does not work so we use a weird version instead
-                // https://www.w3.org/TR/WGSL/#break-if-statement
-                if (b.SUBSTACK) {
-                  code = code.concat(
-                    this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
-                  );
-                } else {
-                  code = code.concat("break;\n");
-                }
+            // https://www.w3.org/TR/WGSL/#break-if-statement
+            if (b.SUBSTACK) {
+              code = code.concat(
+                this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
+              );
+            } else {
+              code = code.concat("break;\n");
+            }
 
-                code = code.concat(
-                  `${this.genWGSL(util, b.VARNAME, recursionDepth+1)}++;\n}\n`
-                ); // newlines for some semblance of readability
-                break;
-              }
+            code = code.concat(
+              `${this.genWGSL(util, b.VARNAME, recursionDepth + 1)}++;\n}\n`
+            ); // newlines for some semblance of readability
+            break;
+          }
 
-              case "gpusb3_wgslWhileLoop": {
-                code = code.concat(`
-while (${this.genWGSL(util, b.COND, recursionDepth+1)}) {
+          case "gpusb3_wgslWhileLoop": {
+            code = code.concat(`
+while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
 
 `);
-                if (b.SUBSTACK) {
-                  code = code.concat(
-                    this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
-                  );
-                } else {
-                  code = code.concat("break;\n");
-                }
+            if (b.SUBSTACK) {
+              code = code.concat(
+                this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
+              );
+            } else {
+              code = code.concat("break;\n");
+            }
 
-                code = code.concat(`}\n`); // newlines for some semblance of readability
-                break;
-              }
+            code = code.concat(`}\n`); // newlines for some semblance of readability
+            break;
+          }
 
-              case "gpusb3_break": {
-                code = code.concat("break;\n");
-                break;
-              }
+          case "gpusb3_break": {
+            code = code.concat("break;\n");
+            break;
+          }
 
-              case "gpusb3_continue": {
-                code = code.concat("continue;\n");
-                break;
-              }
+          case "gpusb3_continue": {
+            code = code.concat("continue;\n");
+            break;
+          }
 
-              case "gpusb3_bindInput": {
-                if (
-                  !b.BINDNUM._raw ||
-                  !b.VARNAME._raw
-                ) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input for block input!",
-                    "BindResourceBlock",
-                    "Unexpected input in Bind resource block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                if (b.SETTINGS._raw) {
-                  const t = b.SETTINGS._value
-                  if (t == "") {
-                    code = code.concat(
-                      `@group(0) @binding(${this.genWGSL(util, b.BINDNUM, recursionDepth+1)}) var ${this.genWGSL(util, b.VARNAME, recursionDepth+1)}: ${this.genWGSL(util, b.INPUTTYPE, recursionDepth+1)};\n`
-                    );
-                  } else {
-                    code = code.concat(
-                      `@group(0) @binding(${this.genWGSL(util, b.BINDNUM, recursionDepth+1)}) var<${t}> ${this.genWGSL(util, b.VARNAME, recursionDepth+1)}: ${this.genWGSL(util, b.INPUTTYPE, recursionDepth+1)};\n`
-                    );
-                  }
-                } else {
-                  code = code.concat(
-                    `@group(0) @binding(${this.genWGSL(util, b.BINDNUM, recursionDepth+1)}) var<${this.genWGSL(util, b.SETTINGS, recursionDepth+1)}> ${this.genWGSL(util, b.VARNAME, recursionDepth+1)}: ${this.genWGSL(util, b.INPUTTYPE, recursionDepth+1)};\n`
-                  );
-                }
-
-                break;
-              }
-
-              case "gpusb3_defFunc": {
-                if (!b.FUNCNAME._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input for block input!",
-                    "DefFuncBlock",
-                    "Unexpected input in Function definition block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
+          case "gpusb3_bindInput": {
+            if (!b.BINDNUM._raw || !b.VARNAME._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input for block input!",
+                "BindResourceBlock",
+                "Unexpected input in Bind resource block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            if (b.SETTINGS._raw) {
+              const t = b.SETTINGS._value;
+              if (t == "") {
                 code = code.concat(
-                  `fn ${this.genWGSL(util, b.FUNCNAME, recursionDepth+1)}(`
+                  `@group(0) @binding(${this.genWGSL(util, b.BINDNUM, recursionDepth + 1)}) var ${this.genWGSL(util, b.VARNAME, recursionDepth + 1)}: ${this.genWGSL(util, b.INPUTTYPE, recursionDepth + 1)};\n`
                 );
-
-                code = code.concat(this.genWGSL(util, b.ARGS, recursionDepth+1));
-
-                if (!b.TYPE._raw) {
-                  code = code.concat(
-                    `) -> ${this.genWGSL(util, b.TYPE, recursionDepth + 1)}`
-                  );
-                } else {
-                  code = code.concat(
-                    b.TYPE._value === "void"
-                      ? ") {\n"
-                      : `) -> ${this.genWGSL(util, b.TYPE, recursionDepth+1)} {\n`
-                  );
-                }
-
-                if (b.SUBSTACK) {
-                  code = code.concat(
-                    this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
-                  );
-                }
-
-                code = code.concat("}\n"); // newlines for some semblance of readability
-                break;
-              }
-
-              case "gpusb3_funcReturn": {
-                code = code.concat(`return`);
-                if (!b.TORETURN._raw) {
-                  code = code.concat(
-                    " " + this.genWGSL(util, b.TORETURN, recursionDepth + 1)
-                  );
-                } else if (b.TORETURN._value !== "") {
-                  code = code.concat(" ");
-                  code = code.concat(
-                    this.genWGSL(util, b.TORETURN, recursionDepth+1)
-                  );
-                }
-                code = code.concat(";\n");
-                break;
-              }
-
-              case "gpusb3_c_runFunc": {
-                if (!b.FUNCNAME._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input for block input!",
-                    "RunFuncBlock",
-                    "Unexpected input in Run function block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(this.genWGSL(util, b.FUNCNAME, recursionDepth+1));
+              } else {
                 code = code.concat(
-                  `(${this.genWGSL(util, b.ARGS, recursionDepth+1)});\n`
+                  `@group(0) @binding(${this.genWGSL(util, b.BINDNUM, recursionDepth + 1)}) var<${t}> ${this.genWGSL(util, b.VARNAME, recursionDepth + 1)}: ${this.genWGSL(util, b.INPUTTYPE, recursionDepth + 1)};\n`
                 );
-
-                break;
               }
+            } else {
+              code = code.concat(
+                `@group(0) @binding(${this.genWGSL(util, b.BINDNUM, recursionDepth + 1)}) var<${this.genWGSL(util, b.SETTINGS, recursionDepth + 1)}> ${this.genWGSL(util, b.VARNAME, recursionDepth + 1)}: ${this.genWGSL(util, b.INPUTTYPE, recursionDepth + 1)};\n`
+              );
+            }
 
-              case "gpusb3_c_arbitraryWGSL": {
-                code = code.concat(this.genWGSL(util, b.TEXT, recursionDepth+1));
+            break;
+          }
 
-                break;
-              }
+          case "gpusb3_defFunc": {
+            if (!b.FUNCNAME._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input for block input!",
+                "DefFuncBlock",
+                "Unexpected input in Function definition block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(
+              `fn ${this.genWGSL(util, b.FUNCNAME, recursionDepth + 1)}(`
+            );
 
-              case "gpusb3_r_arbitraryWGSL": {
-                code = code.concat(this.genWGSL(util, b.TEXT, recursionDepth+1));
+            code = code.concat(this.genWGSL(util, b.ARGS, recursionDepth + 1));
 
-                break;
-              }
+            if (!b.TYPE._raw) {
+              code = code.concat(
+                `) -> ${this.genWGSL(util, b.TYPE, recursionDepth + 1)}`
+              );
+            } else {
+              code = code.concat(
+                b.TYPE._value === "void"
+                  ? ") {\n"
+                  : `) -> ${this.genWGSL(util, b.TYPE, recursionDepth + 1)} {\n`
+              );
+            }
 
-              case "gpusb3_c_atomicFunc": {
-                if (!b.OP._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "AtomicFunctionBlock",
-                    "Unexpected input in Variable block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(
-                  `${this.genWGSL(util, b.OP, recursionDepth+1)}(${this.genWGSL(util, b.ATOMIC, recursionDepth+1)}, ${this.genWGSL(util, b.VALUE, recursionDepth+1)} );\n`
-                );
+            if (b.SUBSTACK) {
+              code = code.concat(
+                this.genWGSL(util, b.SUBSTACK, recursionDepth + 1)
+              );
+            }
 
-                break;
-              }
+            code = code.concat("}\n"); // newlines for some semblance of readability
+            break;
+          }
 
-              case "gpusb3_barrier": {
-                if (!b.TYPE._raw) {
-                  // barrier block minecraft??????
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "BarrierBlock",
-                    "Unexpected input in Barrier block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
-                code = code.concat(
-                  this.genWGSL(util, b.TYPE, recursionDepth+1) + "();\n"
-                );
+          case "gpusb3_funcReturn": {
+            code = code.concat(`return`);
+            if (!b.TORETURN._raw) {
+              code = code.concat(
+                " " + this.genWGSL(util, b.TORETURN, recursionDepth + 1)
+              );
+            } else if (b.TORETURN._value !== "") {
+              code = code.concat(" ");
+              code = code.concat(
+                this.genWGSL(util, b.TORETURN, recursionDepth + 1)
+              );
+            }
+            code = code.concat(";\n");
+            break;
+          }
 
-                break;
-              }
+          case "gpusb3_c_runFunc": {
+            if (!b.FUNCNAME._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input for block input!",
+                "RunFuncBlock",
+                "Unexpected input in Run function block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(
+              this.genWGSL(util, b.FUNCNAME, recursionDepth + 1)
+            );
+            code = code.concat(
+              `(${this.genWGSL(util, b.ARGS, recursionDepth + 1)});\n`
+            );
 
-              case "gpusb3_declareStruct": {
-                if (!b.NAME._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "DeclareStructBlock",
-                    "Unexpected input in struct declaration block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
+            break;
+          }
 
-                code =
-                  code.concat(`struct ${this.genWGSL(util, b.NAME, recursionDepth+1)} {
+          case "gpusb3_c_arbitraryWGSL": {
+            code = code.concat(this.genWGSL(util, b.TEXT, recursionDepth + 1));
+
+            break;
+          }
+
+          case "gpusb3_r_arbitraryWGSL": {
+            code = code.concat(this.genWGSL(util, b.TEXT, recursionDepth + 1));
+
+            break;
+          }
+
+          case "gpusb3_c_atomicFunc": {
+            if (!b.OP._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "AtomicFunctionBlock",
+                "Unexpected input in Variable block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(
+              `${this.genWGSL(util, b.OP, recursionDepth + 1)}(${this.genWGSL(util, b.ATOMIC, recursionDepth + 1)}, ${this.genWGSL(util, b.VALUE, recursionDepth + 1)} );\n`
+            );
+
+            break;
+          }
+
+          case "gpusb3_barrier": {
+            if (!b.TYPE._raw) {
+              // barrier block minecraft??????
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "BarrierBlock",
+                "Unexpected input in Barrier block!",
+                util
+              );
+              return "Unexpected input";
+            }
+            code = code.concat(
+              this.genWGSL(util, b.TYPE, recursionDepth + 1) + "();\n"
+            );
+
+            break;
+          }
+
+          case "gpusb3_declareStruct": {
+            if (!b.NAME._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "DeclareStructBlock",
+                "Unexpected input in struct declaration block!",
+                util
+              );
+              return "Unexpected input";
+            }
+
+            code =
+              code.concat(`struct ${this.genWGSL(util, b.NAME, recursionDepth + 1)} {
 ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
 };\n`); // this looks ugly but it formats the code correctly
 
-                break;
-              }
+            break;
+          }
 
-              case "gpusb3_structProperty": {
-                if (!b.PROPERTY._raw) {
-                  this.throwError(
-                    "UnexpectedInput",
-                    "Unexpected input in block input!",
-                    "StructPropertyBlock",
-                    "Unexpected input in struct property block!",
-                    util
-                  );
-                  return "Unexpected input";
-                }
+          case "gpusb3_structProperty": {
+            if (!b.PROPERTY._raw) {
+              this.throwError(
+                "UnexpectedInput",
+                "Unexpected input in block input!",
+                "StructPropertyBlock",
+                "Unexpected input in struct property block!",
+                util
+              );
+              return "Unexpected input";
+            }
 
-                code = code.concat(
-                  `${this.genWGSL(util, b.PROPERTY, recursionDepth+1)}: ${this.genWGSL(util, b.TYPE, recursionDepth+1)},\n`
-                );
+            code = code.concat(
+              `${this.genWGSL(util, b.PROPERTY, recursionDepth + 1)}: ${this.genWGSL(util, b.TYPE, recursionDepth + 1)},\n`
+            );
 
-                break;
-              }
+            break;
+          }
 
-              default: {
-                this.throwError(
-                  "InvalidBlock",
-                  "Invalid block!",
-                  "genWGSL",
-                  "Invalid block, WGSL generation failed!",
-                  util
-                );
-                console.error(
-                  "Invalid block!",
-                  blocks.slice(i, i + 5),
-                  b
-                );
-                return "Invalid block";
-              }
+          default: {
+            this.throwError(
+              "InvalidBlock",
+              "Invalid block!",
+              "genWGSL",
+              "Invalid block, WGSL generation failed!",
+              util
+            );
+            console.error("Invalid block!", blocks.slice(i, i + 5), b);
+            return "Invalid block";
+          }
         }
-
-
-
       }
 
       return code;
@@ -3074,8 +3106,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
      * @param {Boolean} addCheck Whether to add check to the input tree
      * @returns {Array | Object} Either a raw value object or an input tree
      */
-    genInputTree(util, blocks, check, addCheck) {
-    }
+    genInputTree(util, blocks, check, addCheck) {}
 
     /**
      * Generate a node in the abstract syntax tree for a given block or input
@@ -3086,24 +3117,34 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
      * @returns {Object} The node, see below comment
      */
     genBlock(util, thread, blocks, block) {
-      let obj = { 
+      let obj = {
         _opcode: blocks[block].opcode, // block opcode
         _id: block, // block id
         _raw: false, // whether this block is a raw input, where the opcode is "text", "math_number", "gpusb3_menu_TYPES", etc.
-        _value: null // if this block is a raw input, what its value is
+        _value: null, // if this block is a raw input, what its value is
       };
       const inputs = Object.keys(blocks[block].inputs);
       for (const input of inputs) {
-        obj[input] = this.compile(util, util.thread, blocks, blocks[block].inputs[input].block, true, input.includes("SUBSTACK"));
+        obj[input] = this.compile(
+          util,
+          util.thread,
+          blocks,
+          blocks[block].inputs[input].block,
+          true,
+          input.includes("SUBSTACK")
+        );
       }
-      
-      if (inputs.length === 0 && Object.keys(blocks[block].fields).length === 1) {
+
+      if (
+        inputs.length === 0 &&
+        Object.keys(blocks[block].fields).length === 1
+      ) {
         // this block is a raw input such as "text", "math_number", or a menu such as "gpusb3_menu_TYPES"
         obj._raw = true;
         obj._value = this.textFromOp(util, block, false);
       }
 
-      return obj
+      return obj;
     }
 
     /*
@@ -3126,18 +3167,18 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
       if (addStart) {
         if (isStack) {
           output.push(this.genBlock(util, thread, blocks, firstblock));
-        }
-        else {
+        } else {
           output = this.genBlock(util, thread, blocks, firstblock);
         }
       }
 
-      while (next) { // keep going until next becomes null, which means there's no more blocks
+      while (next) {
+        // keep going until next becomes null, which means there's no more blocks
         output.push(this.genBlock(util, thread, blocks, next));
         next = blocks[next].next;
       }
 
-      return output
+      return output;
     }
 
     /**
@@ -4806,24 +4847,29 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
     }
 
     /**
-     * 
-     * @param {*} args 
-     * @param {import("scratch-vm").BlockUtility} util 
+     *
+     * @param {*} args
+     * @param {import("scratch-vm").BlockUtility} util
      */
     debug(args, util) {
       console.log(util.thread);
       console.log(util.thread.blockContainer._blocks);
 
-      // @ts-ignore
-      const AST = this.compile(util, util.thread, util.thread.blockContainer._blocks, util.thread.blockContainer._blocks[util.thread.topBlock].next, true, true)
-
       
+      const AST = this.compile(
+        util,
+        util.thread,
+        // @ts-ignore
+        util.thread.blockContainer._blocks,
+        util.thread.blockContainer._blocks[util.thread.topBlock].next,
+        true,
+        true
+      );
+
       console.log(AST);
 
-      console.log(this.genWGSL(util, AST, 0))
+      console.log(this.genWGSL(util, AST, 0));
     }
-
-
   }
   // @ts-ignore
   Scratch.extensions.register(new GPUSb3());
