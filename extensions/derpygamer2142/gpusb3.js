@@ -16,10 +16,9 @@
   const onAdded = () => {
     buffersExt = Scratch.vm.runtime.ext_0znzwBuffers; // miyo's buffer extension exposes some stuff, you can use these in the arraybuffer blocks for convenience
     if (buffersExt) Scratch.vm.runtime.off("EXTENSION_ADDED", onAdded);
-  }
+  };
   Scratch.vm.runtime.on("EXTENSION_ADDED", onAdded);
 
-  
   let shaders = {};
   let error = {};
   let resources = {
@@ -126,7 +125,6 @@
       console.error(error);
 
       Scratch.vm.runtime.startHats("gpusb3_onError");
-
     }
 
     getInfo() {
@@ -2535,7 +2533,8 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "RunFuncBlock",
-                "Unexpected input in Run func block!");
+                "Unexpected input in Run func block!"
+              );
               return "Unexpected input";
             }
             code = code.concat(
@@ -2550,7 +2549,8 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "VariableUsageBlock",
-                "Unexpected input in Variable block!");
+                "Unexpected input in Variable block!"
+              );
               return "Unexpected input";
             }
             code = code.concat(this.genWGSL(util, b.USAGE, recursionDepth + 1));
@@ -2580,7 +2580,8 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "AtomicTypeBlock",
-                "Unexpected input in Variable block!");
+                "Unexpected input in Variable block!"
+              );
               return "Unexpected input in variable usage!";
             }
             code = code.concat(
@@ -2596,7 +2597,8 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "AtomicFunctionBlock",
-                "Unexpected input in Variable block!");
+                "Unexpected input in Variable block!"
+              );
               return "Unexpected input in atomic function!";
             }
 
@@ -2635,7 +2637,8 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "StructTypeBlock",
-                "Unexpected input in struct type block!");
+                "Unexpected input in struct type block!"
+              );
               return "Unexpected input in struct type";
             }
 
@@ -2739,7 +2742,8 @@
                 "UnexpectedInput",
                 "Unexpected input for block input!",
                 "VarOpBlock",
-                "Unexpected input in Variable operation block!");
+                "Unexpected input in Variable operation block!"
+              );
               return "Unexpected input";
             }
             code = code.concat(
@@ -2758,7 +2762,8 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "StructTypeBlock",
-                "Unexpected input in struct type block!");
+                "Unexpected input in struct type block!"
+              );
               return "Unexpected input";
             }
             // isStringified is used here to determine if the provided shader dimensions are valid
@@ -2791,7 +2796,8 @@
                 "UnexpectedInput",
                 "Unexpected input for block input!",
                 "ForLoopBlock",
-                "Unexpected input in For loop block!");
+                "Unexpected input in For loop block!"
+              );
               return "Unexpected input";
             }
             code = code.concat(`
@@ -2850,7 +2856,8 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input for block input!",
                 "BindResourceBlock",
-                "Unexpected input in Bind resource block!");
+                "Unexpected input in Bind resource block!"
+              );
               return "Unexpected input";
             }
             if (b.SETTINGS._raw) {
@@ -2879,7 +2886,8 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input for block input!",
                 "DefFuncBlock",
-                "Unexpected input in Function definition block!");
+                "Unexpected input in Function definition block!"
+              );
               return "Unexpected input";
             }
             code = code.concat(
@@ -2932,7 +2940,8 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input for block input!",
                 "RunFuncBlock",
-                "Unexpected input in Run function block!");
+                "Unexpected input in Run function block!"
+              );
               return "Unexpected input";
             }
             code = code.concat(
@@ -2963,7 +2972,8 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "AtomicFunctionBlock",
-                "Unexpected input in Variable block!");
+                "Unexpected input in Variable block!"
+              );
               return "Unexpected input";
             }
             code = code.concat(
@@ -2980,7 +2990,8 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "BarrierBlock",
-                "Unexpected input in Barrier block!");
+                "Unexpected input in Barrier block!"
+              );
               return "Unexpected input";
             }
             code = code.concat(
@@ -2996,7 +3007,8 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "DeclareStructBlock",
-                "Unexpected input in struct declaration block!");
+                "Unexpected input in struct declaration block!"
+              );
               return "Unexpected input";
             }
 
@@ -3014,7 +3026,8 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "StructPropertyBlock",
-                "Unexpected input in struct property block!");
+                "Unexpected input in struct property block!"
+              );
               return "Unexpected input";
             }
 
@@ -3030,7 +3043,8 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "InvalidBlock",
               "Invalid block!",
               "genWGSL",
-              "Invalid block, WGSL generation failed!");
+              "Invalid block, WGSL generation failed!"
+            );
             console.error("Invalid block!", blocks.slice(i, i + 5), b);
             return "Invalid block";
           }
@@ -3149,7 +3163,8 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "CompileShaders",
-          "Failed to run block as the connection the GPU is invalid.");
+          "Failed to run block as the connection the GPU is invalid."
+        );
       util.startHats("gpusb3_compileHat"); // NOTE TO SELF: THIS DOESN'T START THE HATS THEMSELVES(why is it named that then. this is stupid and i don't like it, i am going to complain on my twitter dot com), thanks sharkpool for providing this code
       let threads = vm.runtime.threads.filter(
         (i) =>
@@ -3186,7 +3201,8 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "UnexpectedInput",
               "Unexpected input for block input!",
               "ShaderDefinition",
-              "Shader name and bind group layout cannot have inputs!");
+              "Shader name and bind group layout cannot have inputs!"
+            );
           } else if (
             !Object.prototype.hasOwnProperty.call(
               resources.bindGroupLayouts,
@@ -3198,7 +3214,8 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "BindGroupLayoutNotFound",
               "Bind group layout not found!",
               `Shader "${nameInput.fields.TEXT.value}"`,
-              `Couldn't find bind group layout"${bglInput.fields.TEXT.value}", make sure to define it before compiling!`);
+              `Couldn't find bind group layout"${bglInput.fields.TEXT.value}", make sure to define it before compiling!`
+            );
           } else {
             let funcname = nameInput.fields.TEXT.value;
 
@@ -3217,7 +3234,8 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
                   "ShaderCreationError",
                   error.message,
                   "ShaderModuleCreation",
-                  error);
+                  error
+                );
                 errored = true;
               }
             });
@@ -3246,7 +3264,8 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
                 "WGSLError",
                 message.message,
                 `ShaderCreation`,
-                `Error parsing WGSL in shader "${funcname}": ${message.message} - Line ${message.lineNum}:${message.linePos} ${compiled.substring(Math.max(0, message.offset - 15), message.offset)}**${compiled.substring(message.offset, message.offset + message.length)}**${compiled.substring(message.offset + message.length, Math.min(compiled.length, message.offset + message.length + 15))}`);
+                `Error parsing WGSL in shader "${funcname}": ${message.message} - Line ${message.lineNum}:${message.linePos} ${compiled.substring(Math.max(0, message.offset - 15), message.offset)}**${compiled.substring(message.offset, message.offset + message.length)}**${compiled.substring(message.offset + message.length, Math.min(compiled.length, message.offset + message.length + 15))}`
+              );
               errored = true;
             }
 
@@ -3313,9 +3332,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "ShaderNotFound",
           "Couldn't find specified shader!",
           "RunShaderBlock",
-          "Couldn't find shader \"" +
-            Scratch.Cast.toString(args.GPUFUNC) +
-            '"!'
+          "Couldn't find shader \"" + Scratch.Cast.toString(args.GPUFUNC) + '"!'
         );
       }
       if (
