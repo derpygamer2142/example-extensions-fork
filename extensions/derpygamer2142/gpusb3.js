@@ -1,5 +1,5 @@
 // Name: GPU.sb3
-// ID: gpusb3
+// ID: derpygamergpusb3
 // Description: Use WebGPU compute shaders to accelerate your projects.
 // By: derpygamer2142 <https://scratch.mit.edu/users/insanetaco2000/>
 // License: MIT
@@ -13,9 +13,13 @@
 
   let buffersExt;
   // load exposed extension stuff
-  Scratch.vm.runtime.on("EXTENSION_ADDED", () => {
+  const onAdded = () => {
     buffersExt = Scratch.vm.runtime.ext_0znzwBuffers; // miyo's buffer extension exposes some stuff, you can use these in the arraybuffer blocks for convenience
-  });
+    if (buffersExt) Scratch.vm.runtime.off("EXTENSION_ADDED", onAdded);
+  }
+  Scratch.vm.runtime.on("EXTENSION_ADDED", onAdded);
+
+  
   let shaders = {};
   let error = {};
   let resources = {
@@ -67,8 +71,7 @@
           "WebGPUUnavailable",
           "WebGPU is not supported",
           "Init",
-          "WebGPU is unavailable in the current context",
-          util
+          "WebGPU is unavailable in the current context"
         );
         // throw new Error("WebGPU is not supported.");
       }
@@ -80,8 +83,7 @@
           "AdapterGetFail",
           "Failed to get adapter",
           "Init",
-          "Failed to get a WebGPU adapter",
-          util
+          "Failed to get a WebGPU adapter"
         );
         // throw Error("Failed to get WebGPU adapter.");
       }
@@ -89,7 +91,7 @@
       this.device = await this.adapter.requestDevice();
 
       this.device.lost.then((info) => {
-        this.throwError("DeviceLost", info.message, "wgpu", info, util);
+        this.throwError("DeviceLost", info.message, "WebGPU", info);
         this.device = null; // requestDevice will never return null so we need to account for that ourselves
       });
 
@@ -101,8 +103,7 @@
           event.error.message,
           "Unknown",
           // @ts-ignore
-          event.error,
-          util
+          event.error
         ); // this is literally in the spec and the mdn docs, idk why it's complaining about event.error being undefined https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
       });
     }
@@ -113,9 +114,8 @@
      * @param {String} errorbody A short version of the error, punctuated
      * @param {String} errorsource The source of the error(usually a block), in PascalCase
      * @param {String | Object} full The errorbody, but with more detail
-     * @param {import("scratch-vm").BlockUtility} util util
      */
-    throwError(errorname, errorbody, errorsource, full, util) {
+    throwError(errorname, errorbody, errorsource, full) {
       error = {
         name: errorname ?? "Undefined. This is an error, please report it!",
         body: errorbody ?? "Undefined. This is an error, please report it!",
@@ -124,11 +124,9 @@
       };
 
       console.error(error);
-      if (util) {
-        util.startHats("gpusb3_onError");
-      } else {
-        Scratch.vm.runtime.startHats("gpusb3_onError");
-      }
+
+      Scratch.vm.runtime.startHats("gpusb3_onError");
+
     }
 
     getInfo() {
@@ -2119,8 +2117,7 @@
             "MissingOp",
             "Input type not found, did you forget to add a menu?",
             "TextFromOp",
-            "Input type not found, did you forget to add a menu?",
-            util
+            "Input type not found, did you forget to add a menu?"
           );
           console.log(blob);
 
@@ -2160,8 +2157,7 @@
         "Replacing missing input!",
         "WGSLGeneration",
         "Replacing a missing input with the default value " +
-          Scratch.Cast.toString(defaultValue),
-        util
+          Scratch.Cast.toString(defaultValue)
       );
       return defaultValue;
     }
@@ -2385,8 +2381,7 @@
                 "UnexpectedInput",
                 "Unexpected input",
                 "WGSLBuiltinBlock",
-                "Function input should not have an input",
-                util
+                "Function input should not have an input"
               );
               return "Unexpected input";
             }
@@ -2409,8 +2404,7 @@
                 "UnexpectedInput",
                 "Unexpected input",
                 "GetVariableBlock",
-                "Unexpected input in get variable block",
-                util
+                "Unexpected input in get variable block"
               );
               return "Unexpected input";
             }
@@ -2431,8 +2425,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "GetPropertyBlock",
-                "Unexpected input in Get Property block!",
-                util
+                "Unexpected input in Get Property block!"
               );
               return "Unexpected input";
             }
@@ -2471,8 +2464,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "RootTypeBlock",
-                "Unexpected input in Root type block!",
-                util
+                "Unexpected input in Root type block!"
               );
               return "Unexpected input";
             }
@@ -2486,8 +2478,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "MatrixTypeBlock",
-                "Unexpected input in Root type block!",
-                util
+                "Unexpected input in Root type block!"
               );
               return "Unexpected input";
             }
@@ -2503,8 +2494,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "DefFuncArgsBlock",
-                "Unexpected input in Def func args block!",
-                util
+                "Unexpected input in Def func args block!"
               );
               return "Unexpected input";
             }
@@ -2531,8 +2521,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "GetFuncArgBlock",
-                "Unexpected input in Get func arg block!",
-                util
+                "Unexpected input in Get func arg block!"
               );
               return "Unexpected input";
             }
@@ -2546,9 +2535,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "RunFuncBlock",
-                "Unexpected input in Run func block!",
-                util
-              );
+                "Unexpected input in Run func block!");
               return "Unexpected input";
             }
             code = code.concat(
@@ -2563,9 +2550,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "VariableUsageBlock",
-                "Unexpected input in Variable block!",
-                util
-              );
+                "Unexpected input in Variable block!");
               return "Unexpected input";
             }
             code = code.concat(this.genWGSL(util, b.USAGE, recursionDepth + 1));
@@ -2595,9 +2580,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "AtomicTypeBlock",
-                "Unexpected input in Variable block!",
-                util
-              );
+                "Unexpected input in Variable block!");
               return "Unexpected input in variable usage!";
             }
             code = code.concat(
@@ -2613,9 +2596,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "AtomicFunctionBlock",
-                "Unexpected input in Variable block!",
-                util
-              );
+                "Unexpected input in Variable block!");
               return "Unexpected input in atomic function!";
             }
 
@@ -2654,9 +2635,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "StructTypeBlock",
-                "Unexpected input in struct type block!",
-                util
-              );
+                "Unexpected input in struct type block!");
               return "Unexpected input in struct type";
             }
 
@@ -2760,9 +2739,7 @@
                 "UnexpectedInput",
                 "Unexpected input for block input!",
                 "VarOpBlock",
-                "Unexpected input in Variable operation block!",
-                util
-              );
+                "Unexpected input in Variable operation block!");
               return "Unexpected input";
             }
             code = code.concat(
@@ -2781,9 +2758,7 @@
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "StructTypeBlock",
-                "Unexpected input in struct type block!",
-                util
-              );
+                "Unexpected input in struct type block!");
               return "Unexpected input";
             }
             // isStringified is used here to determine if the provided shader dimensions are valid
@@ -2816,9 +2791,7 @@
                 "UnexpectedInput",
                 "Unexpected input for block input!",
                 "ForLoopBlock",
-                "Unexpected input in For loop block!",
-                util
-              );
+                "Unexpected input in For loop block!");
               return "Unexpected input";
             }
             code = code.concat(`
@@ -2877,9 +2850,7 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input for block input!",
                 "BindResourceBlock",
-                "Unexpected input in Bind resource block!",
-                util
-              );
+                "Unexpected input in Bind resource block!");
               return "Unexpected input";
             }
             if (b.SETTINGS._raw) {
@@ -2908,9 +2879,7 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input for block input!",
                 "DefFuncBlock",
-                "Unexpected input in Function definition block!",
-                util
-              );
+                "Unexpected input in Function definition block!");
               return "Unexpected input";
             }
             code = code.concat(
@@ -2963,9 +2932,7 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input for block input!",
                 "RunFuncBlock",
-                "Unexpected input in Run function block!",
-                util
-              );
+                "Unexpected input in Run function block!");
               return "Unexpected input";
             }
             code = code.concat(
@@ -2996,9 +2963,7 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "AtomicFunctionBlock",
-                "Unexpected input in Variable block!",
-                util
-              );
+                "Unexpected input in Variable block!");
               return "Unexpected input";
             }
             code = code.concat(
@@ -3015,9 +2980,7 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "BarrierBlock",
-                "Unexpected input in Barrier block!",
-                util
-              );
+                "Unexpected input in Barrier block!");
               return "Unexpected input";
             }
             code = code.concat(
@@ -3033,9 +2996,7 @@ while (${this.genWGSL(util, b.COND, recursionDepth + 1)}) {
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "DeclareStructBlock",
-                "Unexpected input in struct declaration block!",
-                util
-              );
+                "Unexpected input in struct declaration block!");
               return "Unexpected input";
             }
 
@@ -3053,9 +3014,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
                 "UnexpectedInput",
                 "Unexpected input in block input!",
                 "StructPropertyBlock",
-                "Unexpected input in struct property block!",
-                util
-              );
+                "Unexpected input in struct property block!");
               return "Unexpected input";
             }
 
@@ -3071,9 +3030,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "InvalidBlock",
               "Invalid block!",
               "genWGSL",
-              "Invalid block, WGSL generation failed!",
-              util
-            );
+              "Invalid block, WGSL generation failed!");
             console.error("Invalid block!", blocks.slice(i, i + 5), b);
             return "Invalid block";
           }
@@ -3192,9 +3149,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "CompileShaders",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
-        );
+          "Failed to run block as the connection the GPU is invalid.");
       util.startHats("gpusb3_compileHat"); // NOTE TO SELF: THIS DOESN'T START THE HATS THEMSELVES(why is it named that then. this is stupid and i don't like it, i am going to complain on my twitter dot com), thanks sharkpool for providing this code
       let threads = vm.runtime.threads.filter(
         (i) =>
@@ -3231,9 +3186,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "UnexpectedInput",
               "Unexpected input for block input!",
               "ShaderDefinition",
-              "Shader name and bind group layout cannot have inputs!",
-              util
-            );
+              "Shader name and bind group layout cannot have inputs!");
           } else if (
             !Object.prototype.hasOwnProperty.call(
               resources.bindGroupLayouts,
@@ -3245,9 +3198,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "BindGroupLayoutNotFound",
               "Bind group layout not found!",
               `Shader "${nameInput.fields.TEXT.value}"`,
-              `Couldn't find bind group layout"${bglInput.fields.TEXT.value}", make sure to define it before compiling!`,
-              util
-            );
+              `Couldn't find bind group layout"${bglInput.fields.TEXT.value}", make sure to define it before compiling!`);
           } else {
             let funcname = nameInput.fields.TEXT.value;
 
@@ -3266,9 +3217,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
                   "ShaderCreationError",
                   error.message,
                   "ShaderModuleCreation",
-                  error,
-                  util
-                );
+                  error);
                 errored = true;
               }
             });
@@ -3278,8 +3227,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
                   "ShaderCreationError",
                   error.message,
                   "ShaderModuleCreation",
-                  error,
-                  util
+                  error
                 );
                 errored = true;
               }
@@ -3298,9 +3246,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
                 "WGSLError",
                 message.message,
                 `ShaderCreation`,
-                `Error parsing WGSL in shader "${funcname}": ${message.message} - Line ${message.lineNum}:${message.linePos} ${compiled.substring(Math.max(0, message.offset - 15), message.offset)}**${compiled.substring(message.offset, message.offset + message.length)}**${compiled.substring(message.offset + message.length, Math.min(compiled.length, message.offset + message.length + 15))}`,
-                util
-              );
+                `Error parsing WGSL in shader "${funcname}": ${message.message} - Line ${message.lineNum}:${message.linePos} ${compiled.substring(Math.max(0, message.offset - 15), message.offset)}**${compiled.substring(message.offset, message.offset + message.length)}**${compiled.substring(message.offset + message.length, Math.min(compiled.length, message.offset + message.length + 15))}`);
               errored = true;
             }
 
@@ -3324,8 +3270,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
                   "ComputePipelineError",
                   error.message,
                   "ComputePipelineCreation",
-                  error,
-                  util
+                  error
                 );
                 errored = true;
               }
@@ -3336,8 +3281,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
                   "ComputePipelineError",
                   error.message,
                   "ComputePipelineCreation",
-                  error,
-                  util
+                  error
                 );
                 errored = true;
               }
@@ -3361,8 +3305,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "RunShader",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       // run the given shader using a bind group
       if (!Object.prototype.hasOwnProperty.call(shaders, args.GPUFUNC)) {
@@ -3372,8 +3315,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "RunShaderBlock",
           "Couldn't find shader \"" +
             Scratch.Cast.toString(args.GPUFUNC) +
-            '"!',
-          util
+            '"!'
         );
       }
       if (
@@ -3388,8 +3330,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "RunShaderBlock",
           "Couldn't find bind group \"" +
             Scratch.Cast.toString(args.BINDGROUP) +
-            '"!',
-          util
+            '"!'
         );
       }
       let shader = shaders[args.GPUFUNC];
@@ -3419,8 +3360,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "UnclassifiedRuntimeErrorOOM",
             error.message,
             "RunShaderBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -3429,8 +3369,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "UnclassifiedRuntimeError",
             error.message,
             "RunShaderBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -3439,8 +3378,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "UnclassifiedRuntimeError",
             error.message,
             "RunShaderBlock",
-            error,
-            util
+            error
           );
       });
     }
@@ -3533,8 +3471,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "CreateBuffer",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       // essentially just device.createBuffer but with some scratch stuff
       this.device.pushErrorScope("validation");
@@ -3553,8 +3490,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "BufferCreationErrorOOM",
             error.message,
             "BufferCreation",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -3563,8 +3499,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "BufferCreationError",
             error.message,
             "BufferCreation",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -3573,8 +3508,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "BufferCreationError",
             error.message,
             "BufferCreation",
-            error,
-            util
+            error
           );
       });
     }
@@ -3585,8 +3519,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "CreateBindGroupLayout",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       // thanks to cst1229 for this section <3
       if (util.stackFrame.blockRanOnce) {
@@ -3605,8 +3538,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "BindGroupLayoutCreationErrorOOM",
               error.message,
               "BindGroupLayoutCreation",
-              error,
-              util
+              error
             );
         });
         this.device.popErrorScope().then((error) => {
@@ -3615,8 +3547,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "BindGroupLayoutCreationError",
               error.message,
               "BindGroupLayoutCreation",
-              error,
-              util
+              error
             );
         });
         this.device.popErrorScope().then((error) => {
@@ -3625,8 +3556,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "BindGroupLayoutCreationError",
               error.message,
               "BindGroupLayoutCreation",
-              error,
-              util
+              error
             );
         });
         return;
@@ -3644,8 +3574,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "BindGroupLayoutEntry",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       let parsed;
       try {
@@ -3656,8 +3585,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidEntryDescriptor",
           "Invalid bind group layout entry descriptor!",
           "BindGroupLayoutEntryBlock",
-          "The recieved descriptor for the bind group layout entry block is invalid, did you use the wrong block?",
-          util
+          "The recieved descriptor for the bind group layout entry block is invalid, did you use the wrong block?"
         );
       }
       let o = {
@@ -3678,8 +3606,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "CreateBindGroup",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       // thanks to cst1229 for part of this section <3
 
@@ -3700,8 +3627,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "BindGroupCreationErrorOOM",
               error.message,
               "BindGroupCreation",
-              error,
-              util
+              error
             );
         });
         this.device.popErrorScope().then((error) => {
@@ -3710,8 +3636,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "BindGroupCreationError",
               error.message,
               "BindGroupCreation",
-              error,
-              util
+              error
             );
         });
         this.device.popErrorScope().then((error) => {
@@ -3720,8 +3645,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
               "BindGroupCreationError",
               error.message,
               "BindGroupCreation",
-              error,
-              util
+              error
             );
         });
         return;
@@ -3739,8 +3663,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "BindGroupEntry",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       const kv = {
         buffer: "buffers",
@@ -3761,8 +3684,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "ResourceNotFound",
           "The specified resource doesn't exist",
           "BindGroupEntryBlock",
-          `Either the resource type is invalid or the provided resource name doesn't exist.`,
-          util
+          `Either the resource type is invalid or the provided resource name doesn't exist.`
         );
       }
       if (type == "buffers") {
@@ -3815,8 +3737,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "WriteBufferBlock",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       if (
         !Object.prototype.hasOwnProperty.call(
@@ -3828,8 +3749,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "BufferNotFound",
           "The provided buffer doesn't exist",
           "WriteBufferBlock",
-          `The buffer "${Scratch.Cast.toString(args.BUFFER)}" doesn't exist`,
-          util
+          `The buffer "${Scratch.Cast.toString(args.BUFFER)}" doesn't exist`
         );
       }
       if (
@@ -3842,8 +3762,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "ArrayBufferNotFound",
           "The provided arraybuffer doesn't exist",
           "WriteBufferBlock",
-          `The arraybuffer "${Scratch.Cast.toString(args.ARRAY)}" doesn't exist`,
-          util
+          `The arraybuffer "${Scratch.Cast.toString(args.ARRAY)}" doesn't exist`
         );
       }
 
@@ -3863,8 +3782,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "BufferWriteError",
             error.message,
             "WriteBufferBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -3873,8 +3791,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "BufferWriteError",
             error.message,
             "WriteBufferBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -3883,8 +3800,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "BufferWriteError",
             error.message,
             "WriteBufferBlock",
-            error,
-            util
+            error
           );
       });
     }
@@ -3895,8 +3811,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "CopyBufferToBufferBlock",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       if (
         Scratch.Cast.toNumber(args.NUMBYTES) <= 0 ||
@@ -3908,8 +3823,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidInput",
           "Invalid input recieved when trying to copy data",
           "CopyBufferToBufferBlock",
-          "Failed to copy data between buffers, check that the buffers exist, buffer 1 isn't the same as buffer 2, and the number of bytes is more than or equal to 0",
-          util
+          "Failed to copy data between buffers, check that the buffers exist, buffer 1 isn't the same as buffer 2, and the number of bytes is more than or equal to 0"
         );
       }
       const commandEncoder = this.device.createCommandEncoder({
@@ -3931,8 +3845,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "CopyBufferToBufferError",
             error.message,
             "CopyBufferToBufferBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -3941,8 +3854,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "CopyBufferToBufferError",
             error.message,
             "CopyBufferToBufferBlock",
-            error,
-            util
+            error
           );
       });
       this.device.queue.submit([commandEncoder.finish()]);
@@ -3954,8 +3866,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "ClearBufferBlock",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       if (
         Scratch.Cast.toNumber(args.NUMBYTES) <= 0 &&
@@ -3965,8 +3876,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidInput",
           "Invalid number of bytes to clear",
           "ClearBuffer",
-          `The provided number of bytes to clear, ${Scratch.Cast.toNumber(args.NUMBYTES)}, is invalid. Must be more than 0, or -1 to clear all.`,
-          util
+          `The provided number of bytes to clear, ${Scratch.Cast.toNumber(args.NUMBYTES)}, is invalid. Must be more than 0, or -1 to clear all.`
         );
       }
       if (
@@ -3979,8 +3889,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "BufferNotFound",
           "The provided buffer doesn't exist",
           "ClearBuffer",
-          `The buffer "${Scratch.Cast.toString(args.BUFFER)}" doesn't exist`,
-          util
+          `The buffer "${Scratch.Cast.toString(args.BUFFER)}" doesn't exist`
         );
       }
       const commandEncoder = this.device.createCommandEncoder({
@@ -4005,8 +3914,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "ReadBufferBlock",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       // WARNING:
       // MAY CONTAIN BAD IDEA JUICE
@@ -4020,8 +3928,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "BufferNotFound",
           "The buffer provided doesn't exist",
           "ReadBufferBlock",
-          `Buffer "${args.BUFFER}" doesn't exist.`,
-          util
+          `Buffer "${args.BUFFER}" doesn't exist.`
         );
       }
 
@@ -4049,8 +3956,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "BufferReadError",
             error.message,
             "ReadBufferBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -4059,8 +3965,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "BufferReadError",
             error.message,
             "ReadBufferBlock",
-            error,
-            util
+            error
           );
       });
       resources.arrayBuffers[Scratch.Cast.toString(args.ARRAYBUFFER)] =
@@ -4179,8 +4084,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidArray",
           "The provided array is invalid",
           "CreateArrayBufferFromArrayBlock",
-          "The provided array is invalid, or isn't an array.",
-          util
+          "The provided array is invalid, or isn't an array."
         );
       }
       const ta = this.typedArrayFromType(Scratch.Cast.toString(args.TYPE), j);
@@ -4202,8 +4106,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "ArrayBufferNotFound",
           "Array buffer not found",
           "DeleteArrayBufferBlock",
-          "The specified array buffer doesn't exist",
-          util
+          "The specified array buffer doesn't exist"
         );
       }
     }
@@ -4223,8 +4126,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "ArrayBufferNotFound",
           "Array buffer not found",
           "ResizeArrayBufferBlock",
-          "The specified array buffer doesn't exist",
-          util
+          "The specified array buffer doesn't exist"
         );
       }
     }
@@ -4242,8 +4144,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "ViewNotFound",
           "View not found",
           "DeleteViewBlock",
-          "The specified view doesn't exist",
-          util
+          "The specified view doesn't exist"
         );
       }
     }
@@ -4264,8 +4165,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "ViewNotFound",
           "View not found",
           "SetItemInViewBlock",
-          "The specified view doesn't exist",
-          util
+          "The specified view doesn't exist"
         );
       }
     }
@@ -4281,8 +4181,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidArray",
           "The provided array is invalid",
           "SetViewBlock",
-          "The provided array is invalid, or isn't an array.",
-          util
+          "The provided array is invalid, or isn't an array."
         );
       }
 
@@ -4301,8 +4200,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "ViewNotFound",
           "View not found",
           "SetViewBlock",
-          "The specified view doesn't exist",
-          util
+          "The specified view doesn't exist"
         );
       }
     }
@@ -4324,8 +4222,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "ViewNotFound",
           "View not found",
           "FillViewBlock",
-          "The specified view doesn't exist",
-          util
+          "The specified view doesn't exist"
         );
       }
     }
@@ -4401,8 +4298,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "CreateTextureBlock",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       if (
         Scratch.Cast.toNumber(args.WIDTH) < 0 ||
@@ -4412,8 +4308,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDimensions",
           "Invalid dimensions",
           "CreateTextureBlock",
-          "The provided dimensions are invalid",
-          util
+          "The provided dimensions are invalid"
         );
       this.device.pushErrorScope("validation");
       this.device.pushErrorScope("out-of-memory");
@@ -4435,8 +4330,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "CreateTextureError",
             error.message,
             "CreateTextureBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -4445,8 +4339,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "CreateTextureError",
             error.message,
             "CreateTextureBlock",
-            error,
-            util
+            error
           );
       });
     }
@@ -4481,8 +4374,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "WriteTextureBlock",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       let textureData;
       // if (penPlus) {
@@ -4519,8 +4411,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "WriteTextureError",
             error.message,
             "WriteTextureBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -4529,8 +4420,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "WriteTextureError",
             error.message,
             "WriteTextureBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -4539,8 +4429,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "WriteTextureError",
             error.message,
             "WriteTextureBlock",
-            error,
-            util
+            error
           );
       });
     }
@@ -4629,8 +4518,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "CopyTextureToBufferBlock",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       if (
         !Object.prototype.hasOwnProperty.call(
@@ -4642,8 +4530,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "BufferNotFound",
           "Buffer not found",
           "CopyTextureToBufferBlock",
-          "The specified buffer doesn't exist",
-          util
+          "The specified buffer doesn't exist"
         );
       }
       if (
@@ -4656,8 +4543,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "TextureNotFound",
           "Texture not found",
           "CopyTextureToBufferBlock",
-          "The specified texture doesn't exist",
-          util
+          "The specified texture doesn't exist"
         );
       }
       if (
@@ -4668,8 +4554,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDimensions",
           "Invalid copy dimensions",
           "CopyTextureToBufferBlock",
-          "The provided texture dimensions are invalid",
-          util
+          "The provided texture dimensions are invalid"
         );
       }
 
@@ -4702,8 +4587,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "CopyTextureToBufferError",
             error.message,
             "CopyTextureToBufferBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -4712,8 +4596,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "CopyTextureToBufferError",
             error.message,
             "CopyTextureToBufferBlock",
-            error,
-            util
+            error
           );
       });
       this.device.popErrorScope().then((error) => {
@@ -4722,8 +4605,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "CopyTextureToBufferError",
             error.message,
             "CopyTextureToBufferBlock",
-            error,
-            util
+            error
           );
       });
     }
@@ -4753,8 +4635,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "InvalidDevice",
           "Cannot run block",
           "CopyBufferToTextureBlock",
-          "Failed to run block as the connection the GPU is invalid.",
-          util
+          "Failed to run block as the connection the GPU is invalid."
         );
       args.BUFFER = Scratch.Cast.toString(args.BUFFER);
       args.TEXTURE = Scratch.Cast.toString(args.TEXTURE);
@@ -4772,8 +4653,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "BufferNotFound",
           "Buffer not found",
           "CopyBufferToTextureBlock",
-          "The specified buffer doesn't exist",
-          util
+          "The specified buffer doesn't exist"
         );
       if (
         !Object.prototype.hasOwnProperty.call(
@@ -4785,24 +4665,21 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
           "TextureNotFound",
           "Texture not found",
           "CopyBufferToTextureBlock",
-          "The specified texture doesn't exist",
-          util
+          "The specified texture doesn't exist"
         );
       if (args.OFFSET < 0)
         return this.throwError(
           "InvalidOffset",
           "Invalid offset",
           "CopyBufferToTextureBlock",
-          "The provided offset is less than 0",
-          util
+          "The provided offset is less than 0"
         );
       if (args.WIDTH <= 0 || args.HEIGHT <= 0)
         return this.throwError(
           "InvalidDimension",
           "Invalid width or height",
           "CopyBufferToTextureBlock",
-          "The provided width or height is less than or equal to 0",
-          util
+          "The provided width or height is less than or equal to 0"
         );
 
       const commandEncoder = this.device.createCommandEncoder();
@@ -4827,8 +4704,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "BufferCopyToTextureError",
             error.message,
             "CopyBufferToTextureBlock",
-            error,
-            util
+            error
           );
         }
       });
@@ -4839,8 +4715,7 @@ ${b.SUBSTACK ? this.genWGSL(util, b.SUBSTACK, recursionDepth + 1) : ""}
             "BufferCopyToTextureError",
             error.message,
             "CopyBufferToTextureBlock",
-            error,
-            util
+            error
           );
         }
       });
